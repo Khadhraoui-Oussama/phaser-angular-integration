@@ -2,12 +2,12 @@ import { Component } from '@angular/core';
 import { PhaserGame } from '../../phaser-game.component';
 import StartEmojiMatchGame from '../../../phaser/emoji-match/main';
 import { EventBus } from '../../../phaser/emoji-match/EventBus';
+import { RouterLink, RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-emoji-match-game',
-  imports: [PhaserGame],
-  template: `<phaser-game [startGame]="startGameFn"></phaser-game>`,
-  styleUrl: './emoji-match-game.component.css'
+  imports: [PhaserGame,RouterLink,RouterModule],
+  templateUrl:"./emoji-match-game.component.html",
 })
 export class EmojiMatchGameComponent {
     startGameFn = StartEmojiMatchGame;

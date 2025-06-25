@@ -2,11 +2,12 @@ import { Component } from '@angular/core';
 import { PhaserGame } from '../../phaser-game.component';
 import StartSnowmenAttackGame from '../../../phaser/snowmen-attack/main';
 import { EventBus } from '../../../phaser/snowmen-attack/EventBus';
+import { RouterLink, RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-snowmen-attack-game',
-  imports: [PhaserGame],
-  template: `<phaser-game [startGame]="startGameFn"></phaser-game>`,
+  imports: [PhaserGame,RouterModule,RouterLink],
+  templateUrl:"./snowmen-attack-game.component.html",
   styleUrl: './snowmen-attack-game.component.css'
 })
 export class SnowmenAttackGameComponent {

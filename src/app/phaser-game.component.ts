@@ -1,39 +1,62 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, Input, OnDestroy, OnInit } from "@angular/core";
 import Phaser from "phaser";
-import StartGame from "../game/main";
-import { EventBus } from "../game/EventBus";
 
+import { EventBus } from "../phaser/emoji-match/EventBus"; 
 @Component({
     selector: 'phaser-game',
     template: '<div id="game-container"></div>',
     standalone: true,
 })
-export class PhaserGame implements OnInit
-{
-    scene: Phaser.Scene;
-    game: Phaser.Game;
-    sceneCallback: (scene: Phaser.Scene) => void;
+export class PhaserGame implements OnInit, OnDestroy {
+    @Input() startGame!: (containerId: string) => Phaser.Game;
 
-    ngOnInit ()
-    {
-        this.game = StartGame('game-container');
+    game!: Phaser.Game;
 
-        EventBus.on('current-scene-ready', (scene: Phaser.Scene) =>
-        {
-            this.scene = scene;
+    ngOnInit() {
+        if (!this.startGame) {
+            console.error("No startGame function provided to PhaserGame component.");
+            return;
+        }
+        this.game = this.startGame('game-container');
 
-            if (this.sceneCallback)
-            {
-                this.sceneCallback(scene);
-            }
+        EventBus.on('current-scene-ready', (scene: Phaser.Scene) => {
+            console.log("Scene ready:", scene.scene.key);
         });
+       
     }
 
-    ngOnDestroy ()
-    {
-        if (this.game)
-        {
-            this.game.destroy(true);
-        }
+    ngOnDestroy() {
+        this.game?.destroy(true);
     }
 }
+// export class PhaserGame implements OnInit,OnDestroy
+// {
+//     @Input() startGame!: (containerId: string) => Phaser.Game;
+
+//     scene: Phaser.Scene;
+//     game!: Phaser.Game;
+//     sceneCallback: (scene: Phaser.Scene) => void;
+
+//     ngOnInit ()
+//     {
+//         this.game = StartGame('game-container');
+
+//         EventBus.on('current-scene-ready', (scene: Phaser.Scene) =>
+//         {
+//             this.scene = scene;
+
+//             if (this.sceneCallback)
+//             {
+//                 this.sceneCallback(scene);
+//             }
+//         });
+//     }
+
+//     ngOnDestroy ()
+//     {
+//         if (this.game)
+//         {
+//             this.game.destroy(true);
+//         }
+//     }
+// }

@@ -1,6 +1,5 @@
 import { Boot } from './scenes/Boot';
-import { GameOver } from './scenes/GameOver';
-import { Game as MainGame } from './scenes/Game';
+import {  MainGame } from './scenes/MainGame';
 import { MainMenu } from './scenes/MainMenu';
 import { AUTO, Game } from 'phaser';
 import { Preloader } from './scenes/Preloader';
@@ -9,23 +8,22 @@ import { Preloader } from './scenes/Preloader';
 // https://docs.phaser.io/api-documentation/typedef/types-core#gameconfig
 const config: Phaser.Types.Core.GameConfig = {
     type: AUTO,
-    width: 1024,
-    height: 768,
+    width: 800,
+    height: 600,
     parent: 'game-container',
     backgroundColor: '#028af8',
     scene: [
         Boot,
         Preloader,
         MainMenu,
-        MainGame,
-        GameOver
+        MainGame
     ]
 };
 
-const StartGame = (parent: string) => {
+const StartEmojiMatchGame = (parent: string) => {
 
     return new Game({ ...config, parent });
 
 }
 
-export default StartGame;
+export default StartEmojiMatchGame;

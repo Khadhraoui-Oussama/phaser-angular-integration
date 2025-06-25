@@ -29,34 +29,4 @@ export class PhaserGame implements OnInit, OnDestroy {
         this.game?.destroy(true);
     }
 }
-// export class PhaserGame implements OnInit,OnDestroy
-// {
-//     @Input() startGame!: (containerId: string) => Phaser.Game;
 
-//     scene: Phaser.Scene;
-//     game!: Phaser.Game;
-//     sceneCallback: (scene: Phaser.Scene) => void;
-
-//     ngOnInit ()
-//     {
-//         this.game = StartGame('game-container');
-
-//         EventBus.on('current-scene-ready', (scene: Phaser.Scene) =>
-//         {
-//             this.scene = scene;
-
-//             if (this.sceneCallback)
-//             {
-//                 this.sceneCallback(scene);
-//             }
-//         });
-//     }
-
-//     ngOnDestroy ()
-//     {
-//         if (this.game)
-//         {
-//             this.game.destroy(true);
-//         }
-//     }
-// }

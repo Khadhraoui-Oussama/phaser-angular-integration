@@ -19,11 +19,9 @@ const config: Phaser.Types.Core.GameConfig = {
         MainGame
     ]
 };
-
+//TODO : les config comme parametres
 const StartEmojiMatchGame = (parent: string) => {
-
     return new Game({ ...config, parent });
-
 }
 
 export default StartEmojiMatchGame;

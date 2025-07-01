@@ -19,6 +19,12 @@ export default class MainGame extends Phaser.Scene {
         super('MainGame');
     }
 
+    selectedTables: Set<number>;
+    init(data:{selectedTables:Set<number>}){
+        this.selectedTables = data.selectedTables
+        console.log("selectedTables in MainGame : ",this.selectedTables)
+    }
+
     create(): void {
         this.score = 0;
         this.highscore = this.registry.get('highscore') as number;

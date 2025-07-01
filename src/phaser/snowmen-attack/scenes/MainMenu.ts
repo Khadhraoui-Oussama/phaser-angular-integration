@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
 
 export default class MainMenu extends Phaser.Scene {
+   
+    
     constructor() {
         super('MainMenu');
     }
-
+    
     create(): void {
         this.sound.play('music', { loop: true, delay: 2 });
 
@@ -63,11 +65,11 @@ export default class MainMenu extends Phaser.Scene {
         });
 
         this.input.keyboard?.once('keydown-SPACE', () => {
-            this.scene.start('MainGame');
+            this.scene.start('TableSelectScene');
         }, this);
 
         this.input.once('pointerdown', () => {
-            this.scene.start('MainGame');
+            this.scene.start('TableSelectScene');
         });
     }
 }

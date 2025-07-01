@@ -8,6 +8,7 @@ export default class Preloader extends Phaser.Scene {
     }
 
     preload(): void {
+        
         // this.load.setBaseURL('https://cdn.phaserfiles.com/v385');
 
         this.loadText = this.add.text(512, 360, 'Loading ...', {

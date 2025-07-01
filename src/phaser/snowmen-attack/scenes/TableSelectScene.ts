@@ -22,7 +22,7 @@ export default class TableSelectScene extends Phaser.Scene {
         const minTableau = 2;
         const maxTableau = 10;
 
-        this.drawTitle(this.scale.width / 2, this.scale.height / 4 - 100, 'Choisis les tables à réviser');
+        this.drawTitle(this.scale.width / 2, this.scale.height / 4 - 100, 'Choisissez les tables à réviser');
         this.drawTableButtons(startX, startY, buttonWidth, buttonHeight, spacing, columns, minTableau, maxTableau);
         this.drawRandomButton(this.scale.width / 2, (this.scale.height / 4) * 2.5, minTableau, maxTableau);
         this.drawStartButton(this.scale.width / 2, (this.scale.height / 4) * 3);

@@ -21,17 +21,6 @@ function generateQuestionsForTables(selectedTables: number[]): Question[] {
             const operand2 = j;
             const answer = operand1 * operand2;
             const options = generateOptions(answer, possibleAnswersForTable);
-            // const options = new Set<number>();
-            // options.add(answer); // add the correct answer
-
-            // // Generate 3 random options that are not equal to the answer and no duplicates
-            // while(options.size < 4){
-            //     let candidateOption = possibleAnswersForTable[Math.floor(Math.random() * possibleAnswersForTable.length)];
-            //     while( options.has(candidateOption)){
-            //         candidateOption = possibleAnswersForTable[Math.floor((Math.random() * 10) +1)]
-            //     }
-            //     options.add(candidateOption)
-            // }
             const q:Question= {id:answer*operand1,operand1,operand2,answer,options,speedMultiplier:1.0}
             questions.push(q)
         }    

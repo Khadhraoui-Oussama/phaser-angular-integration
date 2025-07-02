@@ -17,6 +17,9 @@ export default class MainGame extends Phaser.Scene {
     private highscoreText!: Phaser.GameObjects.Text;
     private scoreTimer!: Phaser.Time.TimerEvent;
 
+    private questionContainer!: Phaser.GameObjects.Container;
+    private questionText!: Phaser.GameObjects.Text;
+
     constructor() {
         super('MainGame');
     }
@@ -50,8 +53,38 @@ export default class MainGame extends Phaser.Scene {
 
         this.add.image(0, 0, 'overlay').setOrigin(0);
         this.add.image(16, 0, 'sprites', 'panel-score').setOrigin(0);
+        
         this.add.image(1024 - 16, 0, 'sprites', 'panel-best').setOrigin(1, 0);
+                
+        const createQuestionUI = (questionTextValue: string) => {
+            if (this.questionContainer) {
+                this.questionContainer.destroy();
+            }
+            this.questionContainer = this.add.container(1024 / 2, 0).setDepth(1);
 
+            //4 alternatives to choose from
+            // const bgImage = this.add.image(0, 0, 'question_ui_no_top').setOrigin(0.5, 0);
+            // const bgImage = this.add.image(0, 0, 'question_ui').setOrigin(0.5, 0);
+            // const bgImage = this.add.image(0, 0, 'question_ui_large').setOrigin(0.5, 0);
+            const bgImage = this.add.image(0, 0, 'question_ui_large_short_on_top').setOrigin(0.5, 0);
+            
+
+            this.questionContainer.add(bgImage);
+
+            this.questionText = this.add.text(0, bgImage.height / 2, questionTextValue, {
+            fontFamily: 'Arial',
+            fontSize: '32px',
+            color: '#ffffff',
+            align: 'center',
+            }).setOrigin(0.5, 0.5);
+            this.questionContainer.add(this.questionText);
+        };
+
+        // Verification:
+        for (let i = 0; i < this.questions.length; i++) {            
+            setTimeout(() => createQuestionUI(`${this.questions[i].operand1} x ${this.questions[i].operand2} = ?`), i * 1000);
+        }
+        
         this.infoPanel = this.add.image(512, 384, 'sprites', 'controls');
 
         this.scoreText = this.add.text(140, 2, this.score.toString(), {

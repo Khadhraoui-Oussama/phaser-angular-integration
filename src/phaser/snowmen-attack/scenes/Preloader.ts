@@ -21,6 +21,15 @@ export default class Preloader extends Phaser.Scene {
         this.loadText.setShadow(2, 2, '#2d2d2d', 4, true, false);
 
         this.load.setPath('assets/games/snowmen-attack/');
+        
+        //loading the question_ui
+        //312px width
+        this.load.image('question_ui_large',"question_ui_large.png")
+        //246px width
+        this.load.image('question_ui',"question_ui.png")
+        this.load.image('question_ui_no_top',"question_ui_no_top.png")
+        this.load.image('question_ui_large_short_on_top',"question_ui_large_short_on_top.png")
+        //
         this.load.image('background',"background.png");
         this.load.image('overlay',"overlay.png");
         this.load.image('gameover',"gameover.png");

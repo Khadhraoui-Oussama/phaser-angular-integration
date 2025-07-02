@@ -19,6 +19,9 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         const x = (size === 'Small') ? 80 : -100;
         super(scene, x, track.y, 'sprites', frame);
         this.setOrigin(0.5, 1);
+        
+        //setting depth to 2 makes sure that big snowmen appear on top of the question board which has a depth of 1
+        this.depth = 2
         scene.add.existing(this);
         scene.physics.add.existing(this);
         if (size === 'Small') {

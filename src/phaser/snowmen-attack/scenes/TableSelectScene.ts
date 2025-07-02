@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
 
 export default class TableSelectScene extends Phaser.Scene {
-    selectedTables: Set<number>;
+    selectedTables: number[];
     buttons: Map<number, Phaser.GameObjects.Text>;
     startButton!: Phaser.GameObjects.Text;
     randomButton!: Phaser.GameObjects.Text;
 
     constructor() {
         super('TableSelectScene');
-        this.selectedTables = new Set();
+        this.selectedTables = []
         this.buttons = new Map();
     }
 
@@ -92,7 +92,7 @@ export default class TableSelectScene extends Phaser.Scene {
 
         this.startButton.setAlpha(0); // disabled by default
         this.startButton.on('pointerdown', () => {
-            if (this.selectedTables.size > 0) {
+            if (this.selectedTables.length > 0) {
                 this.scene.start('MainGame', {
                     selectedTables: Array.from(this.selectedTables),
                 });
@@ -104,13 +104,14 @@ export default class TableSelectScene extends Phaser.Scene {
         const button = this.buttons.get(tableNumber);
         if (!button) return;
 
-        tableNumber+=1
+        tableNumber += 1;
 
-        if (this.selectedTables.has(tableNumber)) {
-            this.selectedTables.delete(tableNumber);
+        const index = this.selectedTables.indexOf(tableNumber);
+        if (index !== -1) {
+            this.selectedTables.splice(index, 1);
             button.setBackgroundColor('#b43e63');
         } else {
-            this.selectedTables.add(tableNumber);
+            this.selectedTables.push(tableNumber);
             button.setBackgroundColor('#0a0');
         }
 
@@ -128,12 +129,12 @@ export default class TableSelectScene extends Phaser.Scene {
 
         this.lastRandomTable = random;
 
-        this.selectedTables.clear();
+        this.selectedTables = [];
 
         this.buttons.forEach((btn, num) => {
             if (num + 1 === random) {
                 btn.setBackgroundColor('#0a0');
-                this.selectedTables.add(num + 1);
+                this.selectedTables.push(num + 1);
             } else {
                 btn.setBackgroundColor('#b43e63');
             }
@@ -143,7 +144,7 @@ export default class TableSelectScene extends Phaser.Scene {
     }
 
     updateStartButtonState() {
-        if (this.selectedTables.size > 0) {
+        if (this.selectedTables.length > 0) {
             this.startButton.setAlpha(1);
             this.startButton.setColor('#ffffff');
         } else {

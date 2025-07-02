@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import Track from './Track';
 import Player from './Player';
 import { EventBus } from '../EventBus';
+import {generateQuestionsForTables} from '../utils/QuestionGenerator';
+import { Question,  WrongAttempt } from '../models/Types';
 
 export default class MainGame extends Phaser.Scene {
     private player!: Player;
@@ -19,10 +21,16 @@ export default class MainGame extends Phaser.Scene {
         super('MainGame');
     }
 
-    selectedTables: Set<number>;
-    init(data:{selectedTables:Set<number>}){
+    questionOrder = 0
+    wrongAttempts: WrongAttempt[] // the attempts to display at the review mistakes scene
+    questionsToRetry: Question[]; // les questions a reviser : the question.options needs to be updated before pushing to this array and we need to use these questions once the questions array is empty.
+    
+    selectedTables: number[];
+    questions : Question[] 
+    init(data:{selectedTables:number[]}){
         this.selectedTables = data.selectedTables
         console.log("selectedTables in MainGame : ",this.selectedTables)
+        this.questions = generateQuestionsForTables(this.selectedTables)
     }
 
     create(): void {

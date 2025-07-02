@@ -13,8 +13,9 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
     currentHitpoints?: number;
     maxHitpoints?: number;
     chooseEvent?: Phaser.Time.TimerEvent;
+    label: Phaser.GameObjects.Text;
 
-    constructor(scene: Phaser.Scene, track: Track, size: 'Small' | 'Big') {
+    constructor(scene: Phaser.Scene, track: Track, size: 'Small' | 'Big',option:number) {
         const frame = (size === 'Small') ? 'snowman-small-idle0' : 'snowman-big-idle0';
         const x = (size === 'Small') ? 80 : -100;
         super(scene, x, track.y, 'sprites', frame);
@@ -40,6 +41,12 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         this.previousAction = 0;
         this.currentTrack = track;
         this.play('snowmanIdle' + this.size);
+        this.label = scene.add.text(this.x, this.y, option.toString(), {
+            font: '24px Arial',
+            color: '#000000',
+        }).setOrigin(0.5, 0);
+        this.label.setShadow(2, 2, '#ffffff', 2, true, true);
+        this.label.setDepth(this.depth);
     }
 
     start(): void {
@@ -59,7 +66,9 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
 
     chooseAction(): void {
         this.isAlive = true;
-        (this.body as Phaser.Physics.Arcade.Body).enable = true;
+        if (this.body) {
+            (this.body as Phaser.Physics.Arcade.Body).enable = true;
+        
         this.setVelocityX(0);
         const t = Phaser.Math.Between(0, 100);
         if (t < 50) {
@@ -81,6 +90,8 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
                 this.goIdle();
             }
         }
+    }
+
     }
 
     walk(): void {
@@ -124,6 +135,7 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
             this.chooseEvent.remove();
         }
         this.isAlive = false;
+        this.label.setVisible(false);
         this.previousAction = -1;
         this.play('snowmanDie' + this.size);
         this.sound.play('hit-snowman');
@@ -149,6 +161,7 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
             this.chooseEvent.remove();
         }
         this.isAlive = false;
+        this.label.setVisible(false);
         this.play('snowmanIdle' + this.size);
         this.setVelocityX(0);
         return this;
@@ -156,9 +169,17 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
 
     override preUpdate(time: number, delta: number): void {
         super.preUpdate(time, delta);
+        if (this.label) {
+           this.label.setPosition(this.x, this.y + 10);
+        }
         if (this.x >= 880) {
             this.stop();
             (this.scene as any).gameOver();
         }
+        
     }
+    setLabel(text: string) {
+        this.label.setText(text);
+    }
+
 }

@@ -8,25 +8,27 @@ export default class Track {
     id: number;
     y: number;
     nest: Phaser.Physics.Arcade.Image;
-    snowmanBig: Snowman;
+    // snowmanBig: Snowman;
     snowmanSmall: Snowman;
     playerSnowballs: Phaser.Physics.Arcade.Group;
     enemySnowballs: Phaser.Physics.Arcade.Group;
     snowBallCollider: Phaser.Physics.Arcade.Collider;
     snowmanSmallCollider: Phaser.Physics.Arcade.Collider;
-    snowmanBigCollider: Phaser.Physics.Arcade.Collider;
+    // snowmanBigCollider: Phaser.Physics.Arcade.Collider;
     releaseTimerSmall: Phaser.Time.TimerEvent;
-    releaseTimerBig: Phaser.Time.TimerEvent;
+    // releaseTimerBig: Phaser.Time.TimerEvent;
+    snowmenLabel:number
+
 
     constructor(scene: Phaser.Scene, id: number, trackY: number) {
         this.scene = scene;
         this.id = id;
         this.y = trackY;
-
+        this.snowmenLabel = 0
         this.nest = scene.physics.add.image(1024, trackY - 10, 'sprites', 'nest').setOrigin(1, 1);
 
-        this.snowmanBig = new Snowman(scene, this, 'Big');
-        this.snowmanSmall = new Snowman(scene, this, 'Small');
+        // this.snowmanBig = new Snowman(scene, this, 'Big',25);
+        this.snowmanSmall = new Snowman(scene, this, 'Small',this.snowmenLabel);
 
         this.playerSnowballs = scene.physics.add.group({
             frameQuantity: 8,
@@ -60,15 +62,43 @@ export default class Track {
             undefined,
             this
         );
-        this.snowmanBigCollider = scene.physics.add.overlap(
-            this.snowmanBig,
+        // this.snowmanBigCollider = scene.physics.add.overlap(
+        //     this.snowmanBig,
+        //     this.playerSnowballs,
+        //     this.hitSnowman as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+        //     undefined,
+        //     this
+        // );
+    }
+    setSnowmenLabel(newLabel: number) {
+        this.replaceSnowmanWithLabel(newLabel);
+    }
+    replaceSnowmanWithLabel(newLabel: number) {
+        // Destroy existing snowman and label properly
+        if (this.snowmanSmall) {
+            this.snowmanSmall.label.destroy();
+            this.snowmanSmall.destroy();
+        }
+
+        // Create new snowman with new label
+        this.snowmanSmall = new Snowman(this.scene, this, 'Small', newLabel);
+
+        // Update the label stored on Track
+        this.snowmenLabel = newLabel;
+
+        // Destroy old collider and create a new one for the new snowman
+        if (this.snowmanSmallCollider) {
+            this.snowmanSmallCollider.destroy();
+        }
+
+        this.snowmanSmallCollider = this.scene.physics.add.overlap(
+            this.snowmanSmall,
             this.playerSnowballs,
             this.hitSnowman as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
             undefined,
             this
         );
     }
-
     start(minDelay: number, maxDelay: number): void {
         const delay = Phaser.Math.Between(minDelay, maxDelay);
 
@@ -79,17 +109,17 @@ export default class Track {
             }
         });
 
-        this.releaseTimerBig = this.scene.time.addEvent({
-            delay: delay * 3,
-            callback: () => {
-                this.snowmanBig.start();
-            }
-        });
+        // this.releaseTimerBig = this.scene.time.addEvent({
+        //     delay: delay * 3,
+        //     callback: () => {
+        //         this.snowmanBig.start();
+        //     }
+        // });
     }
 
     stop(): void {
         this.snowmanSmall.stop();
-        this.snowmanBig.stop();
+        // this.snowmanBig.stop();
 
         for (let snowball of this.playerSnowballs.getChildren() as PlayerSnowball[])
         {
@@ -102,7 +132,7 @@ export default class Track {
         }
 
         this.releaseTimerSmall.remove();
-        this.releaseTimerBig.remove();
+        // this.releaseTimerBig.remove();
     }
 
     hitSnowball(

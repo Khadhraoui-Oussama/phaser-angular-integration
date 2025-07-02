@@ -84,6 +84,14 @@ export default class MainGame extends Phaser.Scene {
         for (let i = 0; i < this.questions.length; i++) {            
             setTimeout(() => createQuestionUI(`${this.questions[i].operand1} x ${this.questions[i].operand2} = ?`), i * 1000);
         }
+        for (let i = 0; i < this.questions.length; i++) {            
+            setTimeout(() => {
+                this.tracks[0].setSnowmenLabel(this.questions[i].options[0])
+                this.tracks[1].setSnowmenLabel(this.questions[i].options[1])
+                this.tracks[2].setSnowmenLabel(this.questions[i].options[2])
+                this.tracks[3].setSnowmenLabel(this.questions[i].options[3])
+            }, i * 3000);
+        }
         
         this.infoPanel = this.add.image(512, 384, 'sprites', 'controls');
 

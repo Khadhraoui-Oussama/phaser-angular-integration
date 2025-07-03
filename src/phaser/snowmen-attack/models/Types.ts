@@ -15,8 +15,8 @@ export interface Question{
 
 export interface WrongAttempt{
     orderOfAppearance:number, // this will help in reviewing wrong attempts in order in the review scene
-    questionID:number,
-    attempt:number,
+    question:Question,
+    attemptedAnswer:number,
 }
 export interface RightAttempt{
     orderOfAppearance:number, 

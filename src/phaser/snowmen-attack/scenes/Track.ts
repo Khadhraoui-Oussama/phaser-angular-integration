@@ -2,6 +2,7 @@ import Snowman from './Snowman';
 import PlayerSnowball from './PlayerSnowball';
 import EnemySnowball from './EnemySnowball';
 import Phaser from 'phaser';
+import MainGame from './Game';
 
 export default class Track {
     scene: Phaser.Scene;
@@ -153,6 +154,7 @@ export default class Track {
             if (snowman.isAlive && snowman.x > 0) {
                 ball.stop();
                 snowman.hit();
+                (this.scene as MainGame).onSnowmanHit(snowman,this)
             }
         }
     }

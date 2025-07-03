@@ -21,6 +21,7 @@ function generateQuestionsForTables(selectedTables: number[]): Question[] {
             const operand2 = j;
             const answer = operand1 * operand2;
             const options = generateOptions(answer, possibleAnswersForTable);
+            shuffle(options)
             const q:Question= {id:answer*operand1,operand1,operand2,answer,options,speedMultiplier:1.0}
             questions.push(q)
         }    
@@ -29,7 +30,7 @@ function generateQuestionsForTables(selectedTables: number[]): Question[] {
     console.log(questions)
     return questions;
 }
-export {generateQuestionsForTables,generatePossibleAnswersForTable};
+export {generateQuestionsForTables,generatePossibleAnswersForTable,generateOptions};
 
 
 function generateOptions(correctAnswer: number, possibleAnswers: number[], count = 4): number[] {
@@ -50,7 +51,7 @@ function generateOptions(correctAnswer: number, possibleAnswers: number[], count
 }
 
 
-function shuffle(array:Question[]) {
+function shuffle<T>(array:T[]) {
     //Fisher-Yates shuffle algorithm 
     let currentIndex = array.length;
 

@@ -41,12 +41,19 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         this.previousAction = 0;
         this.currentTrack = track;
         this.play('snowmanIdle' + this.size);
-        this.label = scene.add.text(this.x, this.y, option.toString(), {
-            font: '24px Arial',
-            color: '#000000',
-        }).setOrigin(0.5, 0);
-        this.label.setShadow(2, 2, '#ffffff', 2, true, true);
-        this.label.setDepth(this.depth);
+        if(option !== 0){
+            this.label = scene.add.text(this.x, this.y, option.toString(), {
+                font: '1.15rem Arial',
+                color: '#000000',
+            }).setOrigin(0.5, 0.4);
+            this.label.setDepth(this.depth);
+        }else {
+            this.label = scene.add.text(this.x, this.y, '', {
+                font: '1.15rem Arial',
+                color: '#000000',
+            }).setOrigin(0.5, 0.4);
+            this.label.setDepth(this.depth);
+        }
     }
 
     start(): void {

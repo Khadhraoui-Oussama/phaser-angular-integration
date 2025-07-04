@@ -121,9 +121,10 @@ export default class MainGame extends Phaser.Scene {
             console.log("questionsToRetry: ",this.questionsToRetry)
             // Speed up all snowmen
             this.tracks.forEach(track => {
-                track.snowmanSmall.speed += 0.5;
+                track.snowmanSmall.speed += 10;
             });
-            track.snowmanSmall.stop()
+            track.setSnowmenLabel(parseInt(answer.toString()))
+            track.snowmanSmall.start()
         }
     }
     loadNextQuestion(): void {
@@ -209,7 +210,11 @@ export default class MainGame extends Phaser.Scene {
             ease: 'Power2',
         });
 
-        this.tracks.forEach((track) => track.stop());
+        this.tracks.forEach((track) => 
+            {
+                track.stop()
+                // track.snowmanSmall.stop()
+            });
 
         this.sound.stopAll();
         this.sound.play('gameover');
@@ -232,4 +237,34 @@ export default class MainGame extends Phaser.Scene {
             this.scene.start('MainMenu');
         }, this);
     }
+    onSnowmanReachedTheEndOfTheTrack(snowman: Snowman): void {
+        const answer = parseInt(snowman.label.text);
+        const correct = this.currentQuestion.answer === answer;
+
+        if (correct) {
+            console.log('Snowman with correct answer reached end: counted as wrong.');
+
+            const possibleAnswersForTable = generatePossibleAnswersForTable(this.currentQuestion.operand1);
+
+            if (!this.questionsToRetry.has(this.currentQuestion)) {
+                this.questionsToRetry.add(this.currentQuestion);
+            }
+
+            this.questionsToRetry.forEach(q => {
+                q.options = generateOptions(q.answer, possibleAnswersForTable);
+            });
+
+            this.wrongAttempts.push({
+                orderOfAppearance: this.questionOrder,
+                question: this.currentQuestion,
+                attemptedAnswer: -1, // no answer given will have to check in mistake review scene for attemptedAnnswer == -1
+            });
+        } else {
+            console.log("Snowman with wrong answer reached end : snowmen stopped in preUpdate, continue playing")
+            // snowman.stop()
+        }
+
+        this.loadNextQuestion();
+    }
+
 }

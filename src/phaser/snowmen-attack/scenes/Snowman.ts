@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import Track from './Track';
+import MainGame from './Game';
 
+const MAX_X_POSITION = 880;
 export default class Snowman extends Phaser.Physics.Arcade.Sprite {
     time: Phaser.Time.Clock;
     sound: Phaser.Sound.BaseSoundManager;
@@ -166,11 +168,18 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
     override stop(): this {
         if (this.chooseEvent) {
             this.chooseEvent.remove();
+            this.chooseEvent = undefined
         }
         this.isAlive = false;
-        this.label.setVisible(false);
-        this.play('snowmanIdle' + this.size);
+        this.label.setVisible(false)
+        
         this.setVelocityX(0);
+        this.anims.stop()
+        this.removeAllListeners()
+        if (this.body) {
+            (this.body as Phaser.Physics.Arcade.Body).enable = false;
+        }
+        this.play('snowmanIdle' + this.size);
         return this;
     }
 
@@ -179,11 +188,11 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         if (this.label) {
            this.label.setPosition(this.x, this.y + 10);
         }
-        if (this.x >= 880) {
+        if (this.x >= MAX_X_POSITION && this.isAlive) {
+            this.isAlive = false;
             this.stop();
-            (this.scene as any).gameOver();
+            (this.scene as MainGame).onSnowmanReachedTheEndOfTheTrack(this);
         }
-        
     }
     setLabel(text: string) {
         this.label.setText(text);

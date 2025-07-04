@@ -48,7 +48,7 @@ export default class Track {
             visible: false,
             classType: EnemySnowball
         });
-
+       
         this.snowBallCollider = scene.physics.add.overlap(
             this.playerSnowballs,
             this.enemySnowballs,
@@ -75,7 +75,7 @@ export default class Track {
         this.replaceSnowmanWithLabel(newLabel);
     }
     replaceSnowmanWithLabel(newLabel: number) {
-        // Destroy existing snowman and label properly
+        // Destroy existing snowman and label
         if (this.snowmanSmall) {
             this.snowmanSmall.label.destroy();
             this.snowmanSmall.destroy();

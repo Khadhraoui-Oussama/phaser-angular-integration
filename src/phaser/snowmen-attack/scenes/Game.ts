@@ -103,6 +103,7 @@ export default class MainGame extends Phaser.Scene {
 
         if (correct) {
             console.log('Correct!');
+
             this.loadNextQuestion();
         } else {
             console.log('Wrong!');
@@ -141,6 +142,7 @@ export default class MainGame extends Phaser.Scene {
     }
 
     loadNextQuestion(): void {
+        this.stopAllEnemySnowballs()
         this.questionOrder++;
         console.log("question order : ",this.questionOrder)
         if (this.questionOrder >= this.questions.length) {//acount for 0-index

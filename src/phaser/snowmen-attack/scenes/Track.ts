@@ -173,6 +173,7 @@ export default class Track {
 
         if (snowball)
         {
+            snowball.track = this;
             snowball.fire(x, this.y);
         }
     }

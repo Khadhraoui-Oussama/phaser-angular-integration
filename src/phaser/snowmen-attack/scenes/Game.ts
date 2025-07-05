@@ -106,27 +106,40 @@ export default class MainGame extends Phaser.Scene {
             this.loadNextQuestion();
         } else {
             console.log('Wrong!');
-            const possibleAnswersForTable = generatePossibleAnswersForTable(this.currentQuestion.operand1)
-            if(!this.questionsToRetry.has(this.currentQuestion)){
-                this.questionsToRetry.add(this.currentQuestion);
-            }
-            this.questionsToRetry.forEach(q => {q.options = generateOptions(q.answer,possibleAnswersForTable)})
-
-            this.wrongAttempts.push({
-                orderOfAppearance:this.questionOrder,
-                question: this.currentQuestion,
-                attemptedAnswer: answer
-            });
-            console.log("wrongAttempts: ",this.wrongAttempts)
-            console.log("questionsToRetry: ",this.questionsToRetry)
-            // Speed up all snowmen
-            this.tracks.forEach(track => {
-                track.snowmanSmall.speed += 10;
-            });
-            track.setSnowmenLabel(parseInt(answer.toString()))
-            track.snowmanSmall.start()
+            this.handleWrongAnswer(answer,track);
         }
     }
+    handleWrongAnswer(answer: number, track: Track): void {
+        console.log('Wrong!');
+
+        const possibleAnswersForTable = generatePossibleAnswersForTable(this.currentQuestion.operand1);
+
+        if (!this.questionsToRetry.has(this.currentQuestion)) {
+            this.questionsToRetry.add(this.currentQuestion);
+        }
+
+        this.questionsToRetry.forEach(q => {
+            q.options = generateOptions(q.answer, possibleAnswersForTable);
+        });
+
+        this.wrongAttempts.push({
+            orderOfAppearance: this.questionOrder,
+            question: this.currentQuestion,
+            attemptedAnswer: answer,
+        });
+
+        console.log("wrongAttempts: ", this.wrongAttempts);
+        console.log("questionsToRetry: ", this.questionsToRetry);
+
+        // Speed up all snowmen
+        this.tracks.forEach(track => {
+            track.snowmanSmall.speed += 10;
+        });
+
+        track.setSnowmenLabel(answer);
+        track.snowmanSmall.start();
+    }
+
     loadNextQuestion(): void {
         this.questionOrder++;
         console.log("question order : ",this.questionOrder)
@@ -158,6 +171,17 @@ export default class MainGame extends Phaser.Scene {
             track.snowmanSmall.start();
         });
     }
+
+    public stopAllEnemySnowballs(): void {
+        this.tracks.forEach(track => {
+            (track.enemySnowballs.getChildren() as Phaser.Physics.Arcade.Sprite[]).forEach(snowball => {
+                if (snowball.active) {
+                    snowball.stop();
+                }
+            });
+        });
+    }
+
 
     private start(): void {
         this.input.keyboard!.removeAllListeners();
@@ -229,13 +253,12 @@ export default class MainGame extends Phaser.Scene {
         //GAME OVER EVENT EMIT( snowman-attack-game.component will listen for this event)
         EventBus.emit("game-over",this)
 
-        this.input.keyboard!.once('keydown-SPACE', () => {
-            this.scene.start('MainMenu');
-        }, this);
-
-        this.input.once('pointerdown', () => {
-            this.scene.start('MainMenu');
-        }, this);
+        this.time.delayedCall(1000, () => {
+            this.scene.start('VictoryScene', {
+            score: this.score,
+             mistakes: this.wrongAttempts,
+         });
+});
     }
     onSnowmanReachedTheEndOfTheTrack(snowman: Snowman): void {
         const answer = parseInt(snowman.label.text);

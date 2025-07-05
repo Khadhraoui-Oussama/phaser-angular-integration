@@ -5,6 +5,8 @@ import Preloader from './scenes/Preloader';
 import MainMenu from './scenes/MainMenu';
 import MainGame from './scenes/Game'; // make sure Game.js was renamed to MainGame.ts
 import TableSelectScene from './scenes/TableSelectScene';
+import VictoryScene from './scenes/VictoryScene';
+import ReviewMistakesScene from './scenes/ReviewMistakesScene';
 
 const config: Phaser.Types.Core.GameConfig = {
     type: AUTO,
@@ -12,7 +14,7 @@ const config: Phaser.Types.Core.GameConfig = {
     height: 768,
     backgroundColor: '#3366b2',
     parent: 'phaser-example',
-    scene: [Boot, Preloader, MainMenu,TableSelectScene, MainGame],
+    scene: [Boot, Preloader, MainMenu,TableSelectScene, MainGame,VictoryScene, ReviewMistakesScene],
     physics: {
         default: 'arcade',
         arcade: {

@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
 import MainGame from "./Game";
+import Track from './Track';
 
 export default class EnemySnowball extends Phaser.Physics.Arcade.Sprite {
+    track!: Track;
+
     constructor(scene: Phaser.Scene, x: number, y: number, key: string, frame?: string | number) {
         super(scene, x, y, key, frame);
 
@@ -39,9 +42,15 @@ export default class EnemySnowball extends Phaser.Physics.Arcade.Sprite {
         if (this.x >= 970) {
             this.stop();
 
-            // Ensure scene has the gameOver method
             const mainScene = this.scene as MainGame;
-            mainScene.gameOver();
+
+            const snowman = this.track.snowmanSmall;
+            const answer = parseInt(snowman.label.text);
+
+            mainScene.handleWrongAnswer(answer, this.track);
+            mainScene.stopAllEnemySnowballs(); 
+            mainScene.loadNextQuestion();
         }
     }
+
 }

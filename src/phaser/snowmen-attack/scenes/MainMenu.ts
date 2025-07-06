@@ -70,6 +70,7 @@ export default class MainMenu extends Phaser.Scene {
 
         this.input.once('pointerdown', () => {
             this.scene.start('TableSelectScene');
+            
         });
     }
 }

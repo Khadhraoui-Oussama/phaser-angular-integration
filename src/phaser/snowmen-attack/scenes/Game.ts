@@ -16,7 +16,6 @@ export default class MainGame extends Phaser.Scene {
     private infoPanel!: Phaser.GameObjects.Image;
     private scoreText!: Phaser.GameObjects.Text;
     private highscoreText!: Phaser.GameObjects.Text;
-    private scoreTimer!: Phaser.Time.TimerEvent;
 
     private questionContainer!: Phaser.GameObjects.Container;
     private questionText!: Phaser.GameObjects.Text;
@@ -35,6 +34,7 @@ export default class MainGame extends Phaser.Scene {
     init(data:{selectedTables:number[]}){
         this.selectedTables = data.selectedTables
         console.log("selectedTables in MainGame : ",this.selectedTables)
+        this.questionOrder = 0;
         this.questions = generateQuestionsForTables(this.selectedTables)
     }
 
@@ -103,7 +103,10 @@ export default class MainGame extends Phaser.Scene {
 
         if (correct) {
             console.log('Correct!');
-
+            
+            this.score++;
+            this.scoreText.setText(this.score.toString()); 
+            
             this.loadNextQuestion();
         } else {
             console.log('Wrong!');
@@ -112,7 +115,10 @@ export default class MainGame extends Phaser.Scene {
     }
     handleWrongAnswer(answer: number, track: Track): void {
         console.log('Wrong!');
-
+        if(this.score >= 1){
+            this.score--;
+            this.scoreText.setText(this.score.toString());
+        }
         const possibleAnswersForTable = generatePossibleAnswersForTable(this.currentQuestion.operand1);
 
         if (!this.questionsToRetry.has(this.currentQuestion)) {
@@ -148,6 +154,10 @@ export default class MainGame extends Phaser.Scene {
     }
 
     loadNextQuestion(): void {
+        if (!this.questions || this.questions.length === 0) {
+            console.error("Questions not initialized correctly:", this.questions);
+            return;
+        }
         this.stopAllEnemySnowballs()
         this.questionOrder++;
         console.log("question order : ",this.questionOrder)
@@ -192,6 +202,10 @@ export default class MainGame extends Phaser.Scene {
 
 
     private start(): void {
+        if (!this.questions || this.questions.length === 0) {
+            console.error("Questions not initialized correctly:", this.questions);
+            return;
+        }
         this.input.keyboard!.removeAllListeners();
 
         this.tweens.add({
@@ -218,17 +232,7 @@ export default class MainGame extends Phaser.Scene {
         this.tracks[1].setSnowmenLabel(this.currentQuestion.options[1]);
         this.tracks[2].setSnowmenLabel(this.currentQuestion.options[2]);
         this.tracks[3].setSnowmenLabel(this.currentQuestion.options[3]);
-       
-
-        this.scoreTimer = this.time.addEvent({
-            delay: 1000,
-            callback: () => {
-                this.score++;
-                this.scoreText.setText(this.score.toString());
-            },
-            callbackScope: this,
-            repeat: -1,
-        });
+    
     }
 
     public gameOver(): void {
@@ -252,7 +256,6 @@ export default class MainGame extends Phaser.Scene {
         this.sound.play('gameover');
 
         this.player.stop();
-        this.scoreTimer.destroy();
 
         if (this.score > this.highscore) {
             this.highscoreText.setText('NEW!');

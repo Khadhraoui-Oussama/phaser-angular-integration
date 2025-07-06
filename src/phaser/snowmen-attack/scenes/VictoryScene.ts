@@ -3,15 +3,16 @@ import { WrongAttempt } from '../models/Types';
 
 export default class VictoryScene extends Phaser.Scene {
     private score: number = 0;
-    private mistakes: WrongAttempt[] = [];
+    private mistakes: Set<WrongAttempt> = new Set<WrongAttempt>;
 
     constructor() {
         super('VictoryScene');
     }
 
-    init(data: { score: number; mistakes: WrongAttempt[] }) {
+    init(data: { score: number; mistakes: Set<WrongAttempt> }) {
         this.score = data.score;
-        this.mistakes = data.mistakes || [];
+        data.mistakes.forEach(mistake => {this.mistakes.add(mistake)});
+        console.log(this.mistakes)
     }
 
     create() {
@@ -40,7 +41,7 @@ export default class VictoryScene extends Phaser.Scene {
             this.scene.start('MainMenu');
         });
 
-        if (this.mistakes.length > 0) {
+        if (this.mistakes.size > 0) {
             const reviewBtn = this.add.text(width / 2, height / 1.5, 'Revoir les erreurs', {
                 fontSize: '28px',
                 color: '#ffffff',

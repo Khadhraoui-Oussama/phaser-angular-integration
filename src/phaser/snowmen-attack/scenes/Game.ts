@@ -27,7 +27,7 @@ export default class MainGame extends Phaser.Scene {
     }
 
     questionOrder = 0
-    wrongAttempts: WrongAttempt[] // the attempts to display at the review mistakes scene
+    wrongAttempts: Set<WrongAttempt> // the attempts to display at the review mistakes scene
     questionsToRetry: Set<Question>; // les questions a reviser : the question.options needs to be updated before pushing to this array and we need to use these questions once the questions array is empty.
     
     selectedTables: number[];
@@ -64,7 +64,7 @@ export default class MainGame extends Phaser.Scene {
         this.score = 0;
         this.highscore = this.registry.get('highscore') as number;
         this.questionsToRetry = new Set<Question>
-        this.wrongAttempts = []
+        this.wrongAttempts = new Set<WrongAttempt>
         this.add.image(512, 384, 'background');
         this.add.image(0, 0, 'overlay').setOrigin(0);
         this.add.image(16, 0, 'sprites', 'panel-score').setOrigin(0);
@@ -123,11 +123,17 @@ export default class MainGame extends Phaser.Scene {
             q.options = generateOptions(q.answer, possibleAnswersForTable);
         });
 
-        this.wrongAttempts.push({
-            orderOfAppearance: this.questionOrder,
-            question: this.currentQuestion,
-            attemptedAnswer: answer,
-        });
+        const alreadyRegistered = Array.from(this.wrongAttempts).some(
+            attempt => attempt.question === this.currentQuestion && attempt.attemptedAnswer === answer
+        );
+
+        if (!alreadyRegistered) {
+            this.wrongAttempts.add({
+                orderOfAppearance: this.questionOrder,
+                question: this.currentQuestion,
+                attemptedAnswer: answer,
+            });
+        }
 
         console.log("wrongAttempts: ", this.wrongAttempts);
         console.log("questionsToRetry: ", this.questionsToRetry);
@@ -254,11 +260,11 @@ export default class MainGame extends Phaser.Scene {
         }
         //GAME OVER EVENT EMIT( snowman-attack-game.component will listen for this event)
         EventBus.emit("game-over",this)
-
+        console.log("send data mistakes: ",this.wrongAttempts )
         this.time.delayedCall(1000, () => {
             this.scene.start('VictoryScene', {
             score: this.score,
-             mistakes: this.wrongAttempts,
+            mistakes: this.wrongAttempts,
          });
 });
     }
@@ -278,12 +284,18 @@ export default class MainGame extends Phaser.Scene {
             this.questionsToRetry.forEach(q => {
                 q.options = generateOptions(q.answer, possibleAnswersForTable);
             });
+            const alreadyRegistered = Array.from(this.wrongAttempts).some(
+                attempt => attempt.question === this.currentQuestion && attempt.attemptedAnswer === -1
+            );
 
-            this.wrongAttempts.push({
-                orderOfAppearance: this.questionOrder,
-                question: this.currentQuestion,
-                attemptedAnswer: -1, // no answer given will have to check in mistake review scene for attemptedAnnswer == -1
-            });
+            if (!alreadyRegistered) {
+                this.wrongAttempts.add({
+                    orderOfAppearance: this.questionOrder,
+                    question: this.currentQuestion,
+                    attemptedAnswer: -1,
+                });
+            }
+            console.log(this.wrongAttempts)
         } else {
             console.log("Snowman with wrong answer reached end : snowmen stopped in preUpdate, continue playing")
             // snowman.stop()

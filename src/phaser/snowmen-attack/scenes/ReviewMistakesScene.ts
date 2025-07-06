@@ -2,14 +2,14 @@ import Phaser from 'phaser';
 import { WrongAttempt } from '../models/Types';
 
 export default class ReviewMistakesScene extends Phaser.Scene {
-    private mistakes: WrongAttempt[] = [];
+    private mistakes: Set<WrongAttempt> = new Set<WrongAttempt>;
 
     constructor() {
         super('ReviewMistakesScene');
     }
 
     init(data: { mistakes: WrongAttempt[] }) {
-        this.mistakes = data.mistakes || [];
+        data.mistakes.forEach(mistake => {this.mistakes.add(mistake)});
     }
 
     create() {
@@ -22,15 +22,16 @@ export default class ReviewMistakesScene extends Phaser.Scene {
             color: '#ff6666',
         }).setOrigin(0.5);
 
-        if (this.mistakes.length === 0) {
+        if (this.mistakes.size === 0) {
             this.add.text(width / 2, height / 2, 'Aucune erreur, bien joué', {
                 fontSize: '28px',
                 color: '#00ff88',
             }).setOrigin(0.5);
         } else {
             const scrollStart = 100;
-            this.mistakes.forEach((attempt, index) => {
-                const y = scrollStart + index * 50;
+            let i = 0;
+            this.mistakes.forEach((attempt) => {
+                const y = scrollStart + i * 50;
                 const q = attempt.question;
                 const wrongText = attempt.attemptedAnswer === -1
                     ? 'aucune réponse'
@@ -44,6 +45,8 @@ export default class ReviewMistakesScene extends Phaser.Scene {
                     fontSize: '24px',
                     color: '#ff5555',
                 });
+
+                i++;
             });
         }
 

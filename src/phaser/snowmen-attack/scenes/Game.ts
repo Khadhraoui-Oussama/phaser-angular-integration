@@ -258,8 +258,10 @@ export default class MainGame extends Phaser.Scene {
         this.player.stop();
 
         if (this.score > this.highscore) {
-            this.highscoreText.setText('NEW!');
+            this.highscore = this.score;
+            this.highscoreText.setText('NEW HighScore!');
             this.registry.set('highscore', this.score);
+            localStorage.setItem('highscore', this.score.toString()); 
         }
         //GAME OVER EVENT EMIT( snowman-attack-game.component will listen for this event)
         EventBus.emit("game-over",this)

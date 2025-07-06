@@ -6,7 +6,9 @@ export class Boot extends Phaser.Scene {
     }
 
     create(): void {
-        this.registry.set('highscore', 0);
+        const storedHighscore = localStorage.getItem('highscore');
+        const parsedHighscore = storedHighscore ? parseInt(storedHighscore) : 0;
+        this.registry.set('highscore', parsedHighscore);
         this.scene.start('Preloader');
     }
 }

@@ -1,5 +1,7 @@
-<main style="text-align: center; display: flex; flex-direction: column;" id="app">
+<main style="display: flex; flex-direction: column;align-items: center;  border: red solid 3px;" id="app">
     <p>You are playing Snowmen Attack: </p>
     <a routerLink="/" style="display: inline-block;">Go Back Home</a>
-    <phaser-game [startGame]="startGameFn"></phaser-game>
+    <div id="phaser-container" style=" border: black dotted 2px;">
+        <phaser-game [startGame]="startGameFn"></phaser-game>
+    </div>
 </main>

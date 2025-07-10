@@ -1,10 +1,13 @@
 import Phaser from 'phaser';
+import { languageManager } from '../utils/LanguageManager';
 
 export default class TableSelectScene extends Phaser.Scene {
     selectedTables: number[];
     buttons: Map<number, Phaser.GameObjects.Text>;
     startButton!: Phaser.GameObjects.Text;
     randomButton!: Phaser.GameObjects.Text;
+    titleText!: Phaser.GameObjects.Text;
+    private languageChangeUnsubscribe?: () => void;
 
     constructor() {
         super('TableSelectScene');
@@ -22,14 +25,27 @@ export default class TableSelectScene extends Phaser.Scene {
         const minTableau = 2;
         const maxTableau = 10;
 
-        this.drawTitle(this.scale.width / 2, this.scale.height / 4 - 100, 'Choisissez les tables à réviser');
+        this.drawTitle(this.scale.width / 2, this.scale.height / 4 - 100);
         this.drawTableButtons(startX, startY, buttonWidth, buttonHeight, spacing, columns, minTableau, maxTableau);
         this.drawRandomButton(this.scale.width / 2, (this.scale.height / 4) * 2.5, minTableau, maxTableau);
         this.drawStartButton(this.scale.width / 2, (this.scale.height / 4) * 3);
+
+        // Subscribe to language changes
+        this.languageChangeUnsubscribe = languageManager.onLanguageChange(() => {
+            // Only update if this scene is active and manager exists
+            if (this.scene && this.scene.manager && this.scene.isActive()) {
+                this.updateTexts();
+            }
+        });
+
+        // Listen for scene shutdown to cleanup
+        this.events.on('shutdown', () => {
+            this.cleanup();
+        });
     }
 
-    drawTitle(x: number, y: number, text: string) {
-        this.add.text(x, y, text, {
+    drawTitle(x: number, y: number) {
+        this.titleText = this.add.text(x, y, languageManager.getText('table_selection_scene_title'), {
             fontSize: '1.75rem',
             fontFamily: 'times new roman',
             color: '#ffffff',
@@ -70,7 +86,7 @@ export default class TableSelectScene extends Phaser.Scene {
     }
 
     drawRandomButton(x: number, y: number, minTableau: number, maxTableau: number) {
-        this.randomButton = this.add.text(x, y, 'Table Aléatoire', {
+        this.randomButton = this.add.text(x, y, languageManager.getText('table_selection_scene_random'), {
             fontSize: '1.5rem',
             backgroundColor: '#b43e63',
             fontFamily: 'times new roman',
@@ -82,7 +98,7 @@ export default class TableSelectScene extends Phaser.Scene {
     }
 
     drawStartButton(x: number, y: number) {
-        this.startButton = this.add.text(x, y, '▶ Commencer', {
+        this.startButton = this.add.text(x, y, languageManager.getText('table_selection_scene_start'), {
             fontSize: '1.5rem',
             fontFamily: 'times new roman',
             backgroundColor: '#0a0',
@@ -150,5 +166,32 @@ export default class TableSelectScene extends Phaser.Scene {
         } else {
             this.startButton.setAlpha(0);
         }
+    }
+
+    private updateTexts() {
+        // Only update if scene is active and text objects exist
+        if (!this.scene || !this.scene.manager || !this.scene.isActive()) return;
+        
+        // Update all translatable text elements
+        if (this.titleText && this.titleText.active) {
+            this.titleText.setText(languageManager.getText('table_selection_scene_title'));
+        }
+        if (this.randomButton && this.randomButton.active) {
+            this.randomButton.setText(languageManager.getText('table_selection_scene_random'));
+        }
+        if (this.startButton && this.startButton.active) {
+            this.startButton.setText(languageManager.getText('table_selection_scene_start'));
+        }
+    }
+
+    private cleanup() {
+        if (this.languageChangeUnsubscribe) {
+            this.languageChangeUnsubscribe();
+            this.languageChangeUnsubscribe = undefined;
+        }
+    }
+
+    destroy() {
+        this.cleanup();
     }
 }

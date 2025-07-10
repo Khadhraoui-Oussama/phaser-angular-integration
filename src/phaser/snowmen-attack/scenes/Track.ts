@@ -143,6 +143,9 @@ export default class Track {
         if (ball1 instanceof PlayerSnowball && ball2 instanceof EnemySnowball) {
             ball1.stop();
             ball2.stop();
+
+            ball1.disableBody(true, true);
+            ball2.disableBody(true, true);
         }
     }
 
@@ -153,6 +156,7 @@ export default class Track {
         if (snowman instanceof Snowman && ball instanceof PlayerSnowball) {
             if (snowman.isAlive && snowman.x > 0) {
                 ball.stop();
+                ball.destroy();
                 snowman.hit();
                 (this.scene as MainGame).onSnowmanHit(snowman,this)
             }

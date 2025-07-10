@@ -28,10 +28,10 @@ export default class ReviewMistakesScene extends Phaser.Scene {
                 color: '#00ff88',
             }).setOrigin(0.5);
         } else {
-            const scrollStart = 100;
+            const yStart = 100;
             let i = 0;
             this.mistakes.forEach((attempt) => {
-                const y = scrollStart + i * 50;
+                const y = yStart + i * 50;
                 const q = attempt.question;
                 const wrongText = attempt.attemptedAnswer === -1
                     ? 'aucune réponse'

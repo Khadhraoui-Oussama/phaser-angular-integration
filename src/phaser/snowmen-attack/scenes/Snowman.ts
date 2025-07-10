@@ -70,7 +70,7 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         this.setVisible(true);
         this.play('snowmanWalk' + this.size);
         this.setVelocityX(this.speed);
-        this.chooseEvent = this.time.delayedCall(Phaser.Math.Between(3000, 6000), this.chooseAction, [], this);
+        this.chooseEvent = this.time.delayedCall(Phaser.Math.Between(1000, 2000), this.chooseAction, [], this);
     }
 
     chooseAction(): void {

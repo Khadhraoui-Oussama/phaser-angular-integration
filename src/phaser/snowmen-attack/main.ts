@@ -12,6 +12,8 @@ const config: Phaser.Types.Core.GameConfig = {
     type: AUTO,
     width: 1024,
     height: 768,
+    mode: Phaser.Scale.FIT,
+    // autoCenter: Phaser.Scale.CENTER_BOTH,
     backgroundColor: '#3366b2',
     parent: 'phaser-example',
     scene: [Boot, Preloader, MainMenu,TableSelectScene, MainGame,VictoryScene, ReviewMistakesScene],

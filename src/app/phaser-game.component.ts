@@ -5,7 +5,8 @@ import { NgZone } from '@angular/core';
 import { EventBus } from "../phaser/snowmen-attack/EventBus"; 
 @Component({
     selector: 'phaser-game',
-    template: '<div id="game-container"></div>',
+    // template: '<div id="game-container" style="border:solid black 20px; display: inline-block;"></div>',
+    template: '',
     standalone: true,
     changeDetection: ChangeDetectionStrategy.OnPush,
 })

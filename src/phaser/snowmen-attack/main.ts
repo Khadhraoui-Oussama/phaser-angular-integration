@@ -15,8 +15,9 @@ const config: Phaser.Types.Core.GameConfig = {
     height: 768,
     scale: {
         mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-        parent: 'phaser-example',
+        autoCenter: Phaser.Scale.CENTER_HORIZONTALLY, // works the best for now 
+        //this removes the canvas from the document flow, to return it be must phaser.scale.none or make the gamecontainer have a relative postion but that removes responsiveness so must compromise
+        parent: 'game-container',
         width: 1024,
         height: 768,
         min: {

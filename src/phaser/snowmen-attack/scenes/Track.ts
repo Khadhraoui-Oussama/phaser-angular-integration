@@ -191,4 +191,25 @@ export default class Track {
             snowball.fire(x, this.y);
         }
     }
+
+    updateTrackPosition(newY: number): void {
+        // Update track Y position
+        this.y = newY;
+        
+        // Update nest position
+        if (this.nest) {
+            this.nest.y = newY - 10;
+        }
+        
+        // Update snowman position
+        if (this.snowmanSmall) {
+            this.snowmanSmall.y = newY;
+            this.snowmanSmall.currentTrack.y = newY;
+        }
+        
+        // Update label position if it exists
+        if (this.snowmanSmall && this.snowmanSmall.label) {
+            this.snowmanSmall.label.y = this.snowmanSmall.y + 10;
+        }
+    }
 }

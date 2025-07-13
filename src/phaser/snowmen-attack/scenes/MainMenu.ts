@@ -71,11 +71,15 @@ export default class MainMenu extends Phaser.Scene {
         const ball2 = this.add.image(ball2StartX, ballY2, 'sprites', 'snowball1');
         const ball3 = this.add.image(ball3StartX, ballY3, 'sprites', 'snowball1');
         
-        // Logo starts off-screen and slides in
-        this.logo = this.add.image(width + 200, centerY, 'title');
+        // Logo starts completely off-screen to the right and slides in
+        this.logo = this.add.image(width + 400, centerY, 'title'); // Increased offset to ensure completely hidden
         // Scale logo responsively
         const logoScale = Math.min(minScale * 0.8, (width * 0.6) / this.logo.width);
         this.logo.setScale(logoScale);
+        
+        // Ensure logo is completely off screen by accounting for its scaled width
+        const logoScaledWidth = this.logo.width * logoScale;
+        this.logo.x = width + logoScaledWidth;
 
         this.tweens.add({
             targets: ball1,
@@ -155,14 +159,27 @@ export default class MainMenu extends Phaser.Scene {
             textStyle
         ).setOrigin(0.5);
 
-        // Blinking effect
+        // Start completely hidden
+        this.startText.setAlpha(0);
+
+        // Fade in after the logo animation completes (delay: 1800 + duration: 600 = 2400ms)
         this.tweens.add({
             targets: this.startText,
-            alpha: 0.3,
-            duration: 1000,
-            yoyo: true,
-            repeat: -1,
-            ease: 'sine.inout'
+            alpha: 1,
+            duration: 500,
+            delay: 2500, // Slightly after logo animation
+            ease: 'power2.out',
+            onComplete: () => {
+                // Start blinking effect after fade in
+                this.tweens.add({
+                    targets: this.startText,
+                    alpha: 0.3,
+                    duration: 1000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'sine.inout'
+                });
+            }
         });
     }
 

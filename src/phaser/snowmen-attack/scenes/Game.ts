@@ -113,8 +113,12 @@ export default class MainGame extends Phaser.Scene {
         // Create responsive tracks based on screen height
         const trackPositions = ResponsiveUtils.getTrackPositions(this, 4);
         
+        // Add extra spacing between tracks for better visibility
+        const { height } = ResponsiveUtils.getResponsiveDimensions(this);
+        const extraSpacing = height * 0.035; 
+        
         this.tracks = trackPositions.map((trackY, index) => 
-            new Track(this, index, trackY)
+            new Track(this, index, trackY + (extraSpacing * index))
         );
         
         this.player = new Player(this, this.tracks[0]);
@@ -158,23 +162,15 @@ export default class MainGame extends Phaser.Scene {
             this.questionContainer.setPosition(centerX, 0);
         }
         
-        // Update track positions
+        // Update track positions with better spacing
         if (this.tracks) {
             const trackPositions = ResponsiveUtils.getTrackPositions(this, 4);
             this.tracks.forEach((track, index) => {
-                track.y = trackPositions[index];
-                // Update all game objects in the track
-                if (track.nest) {
-                    track.nest.y = trackPositions[index] - 10;
-                }
-                if (track.snowmanSmall) {
-                    track.snowmanSmall.currentTrack.y = trackPositions[index];
-                    track.snowmanSmall.y = trackPositions[index];
-                }
+                track.updateTrackPosition(trackPositions[index]);
             });
         }
         
-        // Update player position
+        // Update player position to match current track
         if (this.player) {
             this.player.y = this.player.currentTrack.y;
         }

@@ -18,26 +18,42 @@ export default class TableSelectScene extends Phaser.Scene {
 
     create() {
         const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
-        const spacing = ResponsiveUtils.getSpacing(60, this);
-        const buttonSize = ResponsiveUtils.getButtonSize(this);
         
-        // Responsive button dimensions
-        const buttonWidth = Math.min(buttonSize.width * 0.6, width * 0.15);
-        const buttonHeight = Math.min(buttonSize.height * 0.8, height * 0.08);
+        // Improved responsive spacing and layout
+        const isMobile = ResponsiveUtils.isMobile(this);
+        const isTablet = ResponsiveUtils.isTablet(this);
         
-        // Calculate responsive grid
-        const columns = ResponsiveUtils.isMobile(this) ? 3 : 4;
-        const totalWidth = columns * buttonWidth + (columns - 1) * (spacing * 0.5);
-        const startX = centerX - totalWidth / 2 + buttonWidth / 2;
-        const startY = centerY - spacing;
+        // Much closer spacing for table buttons (more compact grid)
+        const verticalSpacing = ResponsiveUtils.getSpacing(isMobile ? 12 : 18, this); // Much reduced from 25/35
+        const horizontalSpacing = ResponsiveUtils.getSpacing(isMobile ? 4 : 8, this); // Much reduced from 8/15
+        
+        // Responsive button dimensions with better proportions
+        const baseButtonWidth = isMobile ? width * 0.22 : isTablet ? width * 0.15 : width * 0.10; // Slightly smaller
+        const baseButtonHeight = isMobile ? height * 0.07 : height * 0.06; // Slightly smaller
+        
+        const buttonWidth = Math.max(baseButtonWidth, 70); // Reduced minimum from 80
+        const buttonHeight = Math.max(baseButtonHeight, 35); // Reduced minimum from 40
+        
+        // Better grid layout
+        const columns = isMobile ? 3 : 4;
+        const rows = Math.ceil(9 / columns); // 9 buttons (2-10)
+        
+        // Calculate total grid dimensions
+        const totalGridWidth = columns * buttonWidth + (columns - 1) * horizontalSpacing;
+        const totalGridHeight = rows * buttonHeight + (rows - 1) * verticalSpacing;
+        
+        // Center the grid
+        const gridStartX = centerX - totalGridWidth / 2 + buttonWidth / 2;
+        const gridStartY = centerY - totalGridHeight / 2 - ResponsiveUtils.getSpacing(80, this); // Move grid up more
         
         const minTableau = 2;
         const maxTableau = 10;
 
-        this.drawTitle(centerX, centerY - spacing * 2);
-        this.drawTableButtons(startX, startY, buttonWidth, buttonHeight, spacing * 0.5, columns, minTableau, maxTableau);
-        this.drawRandomButton(centerX, centerY + spacing * 1.5, minTableau, maxTableau);
-        this.drawStartButton(centerX, centerY + spacing * 2.5);
+        // Position elements with much better spacing between groups
+        this.drawTitle(centerX, gridStartY - ResponsiveUtils.getSpacing(60, this)); // More space above grid
+        this.drawTableButtons(gridStartX, gridStartY, buttonWidth, buttonHeight, horizontalSpacing, verticalSpacing, columns, minTableau, maxTableau);
+        this.drawRandomButton(centerX, gridStartY + totalGridHeight + ResponsiveUtils.getSpacing(50, this), minTableau, maxTableau); // More space below grid
+        this.drawStartButton(centerX, gridStartY + totalGridHeight + ResponsiveUtils.getSpacing(120, this)); // Even more space for start button
 
         // Subscribe to language changes
         this.languageChangeUnsubscribe = languageManager.onLanguageChange(() => {
@@ -66,16 +82,17 @@ export default class TableSelectScene extends Phaser.Scene {
         startY: number,
         buttonWidth: number,
         buttonHeight: number,
-        spacing: number,
+        horizontalSpacing: number,
+        verticalSpacing: number,
         columns: number,
         minTableau: number,
         maxTableau: number
     ) {
-        const buttonStyle = ResponsiveUtils.getTextStyle(18, this, {
+        const buttonStyle = ResponsiveUtils.getTextStyle(30, this, { 
             backgroundColor: '#b43e63',
             padding: { 
-                x: ResponsiveUtils.getResponsivePadding(24, this), 
-                y: ResponsiveUtils.getResponsivePadding(16, this) 
+                x: ResponsiveUtils.getResponsivePadding(18, this), 
+                y: ResponsiveUtils.getResponsivePadding(12, this)  
             },
             color: '#e2dede',
             align: 'center',
@@ -85,46 +102,94 @@ export default class TableSelectScene extends Phaser.Scene {
         for (let i = minTableau - 1; i <= maxTableau - 1; i++) {
             const col = (i - 1) % columns;
             const row = Math.floor((i - 1) / columns);
-
-            const x = startX + col * (buttonWidth + spacing);
-            const y = startY + row * (buttonHeight + spacing);
+            //  + horizontalSpacing
+            const x = startX + col * (buttonWidth  + horizontalSpacing);
+            const y = startY + row * (buttonHeight + verticalSpacing);
 
             const button = this.add.text(x, y, `x${i + 1}`, buttonStyle)
                 .setInteractive()
                 .setOrigin(0.5)
                 .on('pointerdown', () => this.toggleTable(i));
 
+            // Add hover effects for better UX
+            button.on('pointerover', () => {
+                if (!this.selectedTables.includes(i + 1)) {
+                    button.setStyle({ backgroundColor: '#d44e73' });
+                }
+            });
+            
+            button.on('pointerout', () => {
+                if (!this.selectedTables.includes(i + 1)) {
+                    button.setStyle({ backgroundColor: '#b43e63' });
+                }
+            });
+
             this.buttons.set(i, button);
         }
     }
 
-    drawRandomButton(x: number, y: number, minTableau: number, maxTableau: number) {
-        this.randomButton = this.add.text(x, y, languageManager.getText('table_selection_scene_random'), {
-            fontSize: '1.5rem',
+    drawRandomButton(x: number, y: number, minTableau: number = 2, maxTableau: number = 10) {
+        const buttonStyle = ResponsiveUtils.getTextStyle(20, this, {
             backgroundColor: '#b43e63',
             fontFamily: 'times new roman',
-            padding: { x: 20, y: 10 },
+            padding: { 
+                x: ResponsiveUtils.getResponsivePadding(20, this), 
+                y: ResponsiveUtils.getResponsivePadding(10, this) 
+            },
             color: '#ffffff',
-        }).setOrigin(0.5).setInteractive();
+        });
+
+        this.randomButton = this.add.text(x, y, languageManager.getText('table_selection_scene_random'), buttonStyle)
+            .setOrigin(0.5)
+            .setInteractive();
 
         this.randomButton.on('pointerdown', () => this.pickRandomTable(minTableau, maxTableau));
+        
+        // Add hover effects
+        this.randomButton.on('pointerover', () => {
+            this.randomButton.setStyle({ backgroundColor: '#d44e73' });
+        });
+        
+        this.randomButton.on('pointerout', () => {
+            this.randomButton.setStyle({ backgroundColor: '#b43e63' });
+        });
     }
 
     drawStartButton(x: number, y: number) {
-        this.startButton = this.add.text(x, y, languageManager.getText('table_selection_scene_start'), {
-            fontSize: '1.5rem',
+        const buttonStyle = ResponsiveUtils.getTextStyle(20, this, {
             fontFamily: 'times new roman',
             backgroundColor: '#0a0',
-            padding: { x: 30, y: 15 },
+            padding: { 
+                x: ResponsiveUtils.getResponsivePadding(30, this), 
+                y: ResponsiveUtils.getResponsivePadding(15, this) 
+            },
             color: '#999999',
-        }).setOrigin(0.5).setInteractive();
+        });
+
+        this.startButton = this.add.text(x, y, languageManager.getText('table_selection_scene_start'), buttonStyle)
+            .setOrigin(0.5)
+            .setInteractive();
 
         this.startButton.setAlpha(0); // disabled by default
+        
         this.startButton.on('pointerdown', () => {
             if (this.selectedTables.length > 0) {
                 this.scene.start('MainGame', {
                     selectedTables: Array.from(this.selectedTables),
                 });
+            }
+        });
+        
+        // Add hover effects
+        this.startButton.on('pointerover', () => {
+            if (this.selectedTables.length > 0) {
+                this.startButton.setStyle({ backgroundColor: '#0c0' });
+            }
+        });
+        
+        this.startButton.on('pointerout', () => {
+            if (this.selectedTables.length > 0) {
+                this.startButton.setStyle({ backgroundColor: '#0a0' });
             }
         });
     }

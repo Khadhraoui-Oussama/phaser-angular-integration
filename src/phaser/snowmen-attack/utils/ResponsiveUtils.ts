@@ -212,17 +212,21 @@ export class ResponsiveUtils {
     }
 
     /**
-     * Get responsive track positions for game layout
+     * Get responsive track positions for game layout with better spacing
      */
     static getTrackPositions(scene: Phaser.Scene, trackCount: number = 4) {
         const { height } = this.getResponsiveDimensions(scene);
-        const availableHeight = height * 0.8; // Use 80% of height for tracks
-        const startY = height * 0.15; // Start at 15% of height
-        const spacing = availableHeight / (trackCount + 1);
+        const isMobile = this.isMobile(scene);
+        
+        // Use even more of the screen height for tracks with much better spacing
+        const availableHeight = height * (isMobile ? 0.85 : 0.9); // Increased from 0.75/0.8
+        const startY = height * (isMobile ? 0.12 : 0.08); // Start higher on screen
+        const spacing = availableHeight / (trackCount + 1.5); // More generous spacing
         
         const positions = [];
         for (let i = 0; i < trackCount; i++) {
-            positions.push(startY + spacing * (i + 1));
+            // Much more evenly distributed spacing with larger gaps
+            positions.push(startY + spacing * (i + 1) + (spacing * 0.4)); // Increased extra spacing from 0.2 to 0.4
         }
         
         return positions;

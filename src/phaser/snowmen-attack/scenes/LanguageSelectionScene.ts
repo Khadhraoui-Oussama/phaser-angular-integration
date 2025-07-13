@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { languageManager, SupportedLanguage } from '../utils/LanguageManager';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
 
 export default class LanguageSelectionScene extends Phaser.Scene {
     private languageButtons: Map<SupportedLanguage, Phaser.GameObjects.Text> = new Map();
@@ -13,53 +14,52 @@ export default class LanguageSelectionScene extends Phaser.Scene {
     }
 
     create() {
+        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        
         // Background
-        this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, 0x000000, 0.7);
+        this.add.rectangle(centerX, centerY, width, height, 0x000000, 0.7);
 
         this.createTitle();
         this.createLanguageButtons();
         this.createBackButton();
         this.updateButtonStates();
+        
+        // Setup mobile input
+        ResponsiveUtils.setupMobileInput(this);
     }
 
     private createTitle() {
+        const { centerX, height } = ResponsiveUtils.getResponsiveDimensions(this);
+        
         this.titleText = this.add.text(
-            this.scale.width / 2,
-            this.scale.height / 4,
+            centerX,
+            height / 4,
             languageManager.getText('language_selection_title'),
-            {
-                fontSize: '32px',
-                fontFamily: 'Arial',
-                color: '#ffffff',
+            ResponsiveUtils.getTextStyle(32, this, {
                 align: 'center'
-            }
+            })
         ).setOrigin(0.5);
     }
 
     private createLanguageButtons() {
+        const { centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
         const languages: SupportedLanguage[] = ['en', 'fr', 'ar'];
-        const startY = this.scale.height / 2 - 60;
-        const spacing = 80;
+        const spacing = ResponsiveUtils.getSpacing(80, this);
+        const startY = centerY - spacing;
 
         languages.forEach((language, index) => {
             const y = startY + (index * spacing);
             const displayName = languageManager.getLanguageDisplayName(language);
             
             const button = this.add.text(
-                this.scale.width / 2,
+                centerX,
                 y,
                 displayName,
-                {
-                    fontSize: '24px',
-                    fontFamily: 'Arial',
-                    color: '#ffffff',
-                    backgroundColor: '#333333',
-                    padding: { x: 20, y: 10 }
-                }
-            ).setOrigin(0.5);
+                ResponsiveUtils.getTextStyle(24, this, {
+                    align: 'center'
+                })
+            ).setOrigin(0.5).setInteractive();
 
-            button.setInteractive({ useHandCursor: true });
-            
             button.on('pointerover', () => {
                 if (this.selectedLanguage !== language) {
                     button.setStyle({ backgroundColor: '#555555' });
@@ -81,21 +81,15 @@ export default class LanguageSelectionScene extends Phaser.Scene {
     }
 
     private createBackButton() {
+        const { width, height } = ResponsiveUtils.getResponsiveDimensions(this);
+        
         this.backButton = this.add.text(
             100,
-            this.scale.height - 100,
+            height - 100,
             languageManager.getText('back'),
-            {
-                fontSize: '20px',
-                fontFamily: 'Arial',
-                color: '#ffffff',
-                backgroundColor: '#666666',
-                padding: { x: 15, y: 8 }
-            }
-        ).setOrigin(0.5);
+            ResponsiveUtils.getTextStyle(20, this)
+        ).setOrigin(0.5).setInteractive();
 
-        this.backButton.setInteractive({ useHandCursor: true });
-        
         this.backButton.on('pointerover', () => {
             this.backButton.setStyle({ backgroundColor: '#888888' });
         });

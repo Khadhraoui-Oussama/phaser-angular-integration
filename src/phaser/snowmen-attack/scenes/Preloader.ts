@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
 
 export default class Preloader extends Phaser.Scene {
     private loadText!: Phaser.GameObjects.Text;
@@ -8,16 +9,17 @@ export default class Preloader extends Phaser.Scene {
     }
 
     preload(): void {
+        const { centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
         
-        // this.load.setBaseURL('https://cdn.phaserfiles.com/v385');
-
-        this.loadText = this.add.text(512, 360, 'Loading ...', {
-            fontFamily: 'Arial',
-            fontSize: '74px',
-            color: '#e3f2ed',
-        });
+        // Create responsive loading text
+        this.loadText = this.add.text(centerX, centerY, 'Loading ...', 
+            ResponsiveUtils.getTextStyle(74, this, {
+                color: '#e3f2ed',
+                stroke: '#203c5b',
+                strokeThickness: 6
+            })
+        );
         this.loadText.setOrigin(0.5);
-        this.loadText.setStroke('#203c5b', 6);
         this.loadText.setShadow(2, 2, '#2d2d2d', 4, true, false);
 
         this.load.setPath('assets/games/snowmen-attack/');

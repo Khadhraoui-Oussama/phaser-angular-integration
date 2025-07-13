@@ -1,8 +1,11 @@
 import Phaser from 'phaser';
 import { WrongAttempt } from '../models/Types';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { languageManager } from '../utils/LanguageManager';
 
 export default class ReviewMistakesScene extends Phaser.Scene {
     private mistakes: Set<WrongAttempt> = new Set<WrongAttempt>;
+    private unsubscribeLanguageChange?: () => void;
 
     constructor() {
         super('ReviewMistakesScene');
@@ -13,52 +16,91 @@ export default class ReviewMistakesScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height } = this.scale;
+        const { width, height, centerX } = ResponsiveUtils.getResponsiveDimensions(this);
 
         this.cameras.main.setBackgroundColor('#1b1b1b');
 
-        this.add.text(width / 2, 40, 'Erreurs à Revoir', {
-            fontSize: '40px',
-            color: '#ff6666',
-        }).setOrigin(0.5);
+        // Setup language change callback
+        this.unsubscribeLanguageChange = languageManager.onLanguageChangeWithSceneCheck(this, () => {
+            this.updateTexts();
+        });
+
+        this.updateTexts();
+        
+        // Setup mobile input
+        ResponsiveUtils.setupMobileInput(this);
+    }
+    
+    private updateTexts() {
+        // Clear existing text objects
+        this.children.removeAll(true);
+        
+        const { width, height, centerX } = ResponsiveUtils.getResponsiveDimensions(this);
+        const padding = ResponsiveUtils.getResponsivePadding(40, this);
+
+        this.add.text(centerX, padding, 'Erreurs à Revoir', 
+            ResponsiveUtils.getTextStyle(40, this, {
+                color: '#ff6666'
+            })
+        ).setOrigin(0.5, 0);
 
         if (this.mistakes.size === 0) {
-            this.add.text(width / 2, height / 2, 'Aucune erreur, bien joué', {
-                fontSize: '28px',
-                color: '#00ff88',
-            }).setOrigin(0.5);
+            this.add.text(centerX, height / 2, 'Aucune erreur, bien joué', 
+                ResponsiveUtils.getTextStyle(28, this, {
+                    color: '#00ff88'
+                })
+            ).setOrigin(0.5);
         } else {
-            const yStart = 100;
+            const yStart = padding * 2.5;
+            const spacing = ResponsiveUtils.getSpacing(50, this);
+            const leftMargin = ResponsiveUtils.getResponsivePadding(50, this);
+            const rightMargin = width / 2;
+            
             let i = 0;
             this.mistakes.forEach((attempt) => {
-                const y = yStart + i * 50;
+                const y = yStart + i * spacing;
                 const q = attempt.question;
                 const wrongText = attempt.attemptedAnswer === -1
                     ? 'aucune réponse'
                     : `${attempt.attemptedAnswer}`;
 
-                this.add.text(50, y, `${q.operand1} x ${q.operand2} = ${q.answer}`, {
-                    fontSize: '24px',
-                    color: '#ffffff',
-                });
-                this.add.text(500, y, `Réponse donnée : ${wrongText}`, {
-                    fontSize: '24px',
-                    color: '#ff5555',
-                });
+                this.add.text(leftMargin, y, `${q.operand1} x ${q.operand2} = ${q.answer}`, 
+                    ResponsiveUtils.getTextStyle(24, this)
+                );
+                this.add.text(rightMargin, y, `Réponse donnée : ${wrongText}`, 
+                    ResponsiveUtils.getTextStyle(24, this, {
+                        color: '#ff5555'
+                    })
+                );
 
                 i++;
             });
         }
 
-        const backButton = this.add.text(width / 2, height - 60, 'Retour au menu', {
-            fontSize: '28px',
-            backgroundColor: '#007acc',
-            padding: { x: 20, y: 10 },
-            color: '#ffffff',
-        }).setOrigin(0.5).setInteractive();
+        // Add responsive back button
+        const buttonSize = ResponsiveUtils.getButtonSize(this);
+        const backButton = this.add.rectangle(
+            centerX, 
+            height - ResponsiveUtils.getResponsivePadding(60, this), 
+            buttonSize.width, 
+            buttonSize.height, 
+            0x0066cc
+        ).setInteractive();
+
+        this.add.text(backButton.x, backButton.y, 'Retour', 
+            ResponsiveUtils.getTextStyle(20, this)
+        ).setOrigin(0.5);
 
         backButton.on('pointerdown', () => {
             this.scene.start('MainMenu');
         });
+    }
+
+    shutdown() {
+        // Clean up language callback
+        if (this.unsubscribeLanguageChange) {
+            this.unsubscribeLanguageChange();
+            this.unsubscribeLanguageChange = undefined;
+        }
     }
 }

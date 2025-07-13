@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
 
 export default class TableSelectScene extends Phaser.Scene {
     selectedTables: number[];
@@ -16,19 +17,27 @@ export default class TableSelectScene extends Phaser.Scene {
     }
 
     create() {
-        const startX = this.scale.width / 2 - 200;
-        const startY = this.scale.height / 4;
-        const buttonWidth = 80;
-        const buttonHeight = 40;
-        const spacing = 60;
-        const columns = 4;
+        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        const spacing = ResponsiveUtils.getSpacing(60, this);
+        const buttonSize = ResponsiveUtils.getButtonSize(this);
+        
+        // Responsive button dimensions
+        const buttonWidth = Math.min(buttonSize.width * 0.6, width * 0.15);
+        const buttonHeight = Math.min(buttonSize.height * 0.8, height * 0.08);
+        
+        // Calculate responsive grid
+        const columns = ResponsiveUtils.isMobile(this) ? 3 : 4;
+        const totalWidth = columns * buttonWidth + (columns - 1) * (spacing * 0.5);
+        const startX = centerX - totalWidth / 2 + buttonWidth / 2;
+        const startY = centerY - spacing;
+        
         const minTableau = 2;
         const maxTableau = 10;
 
-        this.drawTitle(this.scale.width / 2, this.scale.height / 4 - 100);
-        this.drawTableButtons(startX, startY, buttonWidth, buttonHeight, spacing, columns, minTableau, maxTableau);
-        this.drawRandomButton(this.scale.width / 2, (this.scale.height / 4) * 2.5, minTableau, maxTableau);
-        this.drawStartButton(this.scale.width / 2, (this.scale.height / 4) * 3);
+        this.drawTitle(centerX, centerY - spacing * 2);
+        this.drawTableButtons(startX, startY, buttonWidth, buttonHeight, spacing * 0.5, columns, minTableau, maxTableau);
+        this.drawRandomButton(centerX, centerY + spacing * 1.5, minTableau, maxTableau);
+        this.drawStartButton(centerX, centerY + spacing * 2.5);
 
         // Subscribe to language changes
         this.languageChangeUnsubscribe = languageManager.onLanguageChange(() => {
@@ -42,14 +51,14 @@ export default class TableSelectScene extends Phaser.Scene {
         this.events.on('shutdown', () => {
             this.cleanup();
         });
+
+        // Setup mobile input
+        ResponsiveUtils.setupMobileInput(this);
     }
 
     drawTitle(x: number, y: number) {
-        this.titleText = this.add.text(x, y, languageManager.getText('table_selection_scene_title'), {
-            fontSize: '1.75rem',
-            fontFamily: 'times new roman',
-            color: '#ffffff',
-        }).setOrigin(0.5);
+        const titleStyle = ResponsiveUtils.getTextStyle(28, this, { fontFamily: 'times new roman' });
+        this.titleText = this.add.text(x, y, languageManager.getText('table_selection_scene_title'), titleStyle).setOrigin(0.5);
     }
 
     drawTableButtons(
@@ -62,6 +71,17 @@ export default class TableSelectScene extends Phaser.Scene {
         minTableau: number,
         maxTableau: number
     ) {
+        const buttonStyle = ResponsiveUtils.getTextStyle(18, this, {
+            backgroundColor: '#b43e63',
+            padding: { 
+                x: ResponsiveUtils.getResponsivePadding(24, this), 
+                y: ResponsiveUtils.getResponsivePadding(16, this) 
+            },
+            color: '#e2dede',
+            align: 'center',
+            fontFamily: 'times new roman'
+        });
+
         for (let i = minTableau - 1; i <= maxTableau - 1; i++) {
             const col = (i - 1) % columns;
             const row = Math.floor((i - 1) / columns);
@@ -69,14 +89,7 @@ export default class TableSelectScene extends Phaser.Scene {
             const x = startX + col * (buttonWidth + spacing);
             const y = startY + row * (buttonHeight + spacing);
 
-            const button = this.add.text(x, y, `x${i + 1}`, {
-                fontSize: '1.5rem',
-                fontFamily: 'times new roman',
-                backgroundColor: '#b43e63',
-                padding: { x: 24, y: 16 },
-                color: '#e2dede',
-                align: 'center',
-            })
+            const button = this.add.text(x, y, `x${i + 1}`, buttonStyle)
                 .setInteractive()
                 .setOrigin(0.5)
                 .on('pointerdown', () => this.toggleTable(i));

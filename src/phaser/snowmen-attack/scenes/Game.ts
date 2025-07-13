@@ -5,6 +5,8 @@ import { EventBus } from '../EventBus';
 import {generateOptions, generatePossibleAnswersForTable, generateQuestionsForTables} from '../utils/QuestionGenerator';
 import { Question,  WrongAttempt } from '../models/Types';
 import Snowman from './Snowman';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { LanguageManager } from '../utils/LanguageManager';
 
 export default class MainGame extends Phaser.Scene {
     private player!: Player;
@@ -20,6 +22,7 @@ export default class MainGame extends Phaser.Scene {
     private questionContainer!: Phaser.GameObjects.Container;
     private questionText!: Phaser.GameObjects.Text;
     private currentQuestion!: Question;
+    private mobileControls?: any;
     
     constructor() {
         super('MainGame');
@@ -38,26 +41,32 @@ export default class MainGame extends Phaser.Scene {
         this.questions = generateQuestionsForTables(this.selectedTables)
     }
 
-    createQuestionUI(questionTextValue: string)  {
-            if (this.questionContainer) {
-                this.questionContainer.destroy();
-            }
-            this.questionContainer = this.add.container(1024 / 2, 0).setDepth(1);
+    createQuestionUI(questionTextValue: string) {
+        if (this.questionContainer) {
+            this.questionContainer.destroy();
+        }
+        
+        const { width, height, centerX } = ResponsiveUtils.getResponsiveDimensions(this);
+        
+        this.questionContainer = this.add.container(centerX, 0).setDepth(1);
 
-            //4 alternatives to choose from
-            // const bgImage = this.add.image(0, 0, 'question_ui_no_top').setOrigin(0.5, 0);
-            // const bgImage = this.add.image(0, 0, 'question_ui').setOrigin(0.5, 0);
-            // const bgImage = this.add.image(0, 0, 'question_ui_large').setOrigin(0.5, 0);
-            const bgImage = this.add.image(0, 0, 'question_ui_large_short_on_top').setOrigin(0.5, 0);
-            this.questionContainer.add(bgImage);
+        // Use responsive background image
+        const bgImage = this.add.image(0, 0, 'question_ui_large_short_on_top').setOrigin(0.5, 0);
+        
+        // Scale background for smaller screens
+        const bgScale = ResponsiveUtils.isMobile(this) ? 0.8 : ResponsiveUtils.isTablet(this) ? 0.9 : 1;
+        bgImage.setScale(bgScale);
+        
+        this.questionContainer.add(bgImage);
 
-            this.questionText = this.add.text(0, bgImage.height / 2, questionTextValue, {
-            fontFamily: 'Arial',
-            fontSize: '32px',
-            color: '#ffffff',
-            align: 'center',
-            }).setOrigin(0.5, 0.5);
-            this.questionContainer.add(this.questionText);
+        // Create responsive question text
+        this.questionText = this.add.text(0, bgImage.height * bgScale / 2, questionTextValue, 
+            ResponsiveUtils.getTextStyle(32, this, {
+                align: 'center'
+            })
+        ).setOrigin(0.5, 0.5);
+        
+        this.questionContainer.add(this.questionText);
     };
 
     create(): void {
@@ -65,36 +74,127 @@ export default class MainGame extends Phaser.Scene {
         this.highscore = this.registry.get('highscore') as number;
         this.questionsToRetry = new Set<Question>
         this.wrongAttempts = new Set<WrongAttempt>
-        this.add.image(512, 384, 'background');
-        this.add.image(0, 0, 'overlay').setOrigin(0);
-        this.add.image(16, 0, 'sprites', 'panel-score').setOrigin(0);
-        this.add.image(1024 - 16, 0, 'sprites', 'panel-best').setOrigin(1, 0);
-
-        this.tracks = [
-            new Track(this, 0, 196),
-            new Track(this, 1, 376),
-            new Track(this, 2, 536),
-            new Track(this, 3, 700),
-        ];
-        this.player = new Player(this, this.tracks[0]);
         
-        this.infoPanel = this.add.image(512, 384, 'sprites', 'controls');
-
-        this.scoreText = this.add.text(140, 2, this.score.toString(), {
-            fontFamily: 'Arial',
-            fontSize: '32px',
-            color: '#ffffff',
+        this.setupUI();
+        this.setupTracks();
+        this.setupInputs();
+        
+        // Setup resize handling
+        ResponsiveUtils.setupResizeHandler(this, () => {
+            this.handleResize();
         });
+    }
+    
+    private setupUI(): void {
+        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        
+        // Add responsive background and overlay
+        this.add.image(centerX, centerY, 'background');
+        this.add.image(0, 0, 'overlay').setOrigin(0);
+        
+        // Add responsive score panels
+        const panelPadding = ResponsiveUtils.getResponsivePadding(16, this);
+        this.add.image(panelPadding, 0, 'sprites', 'panel-score').setOrigin(0);
+        this.add.image(width - panelPadding, 0, 'sprites', 'panel-best').setOrigin(1, 0);
+        
+        this.infoPanel = this.add.image(centerX, centerY, 'sprites', 'controls');
 
-        this.highscoreText = this.add.text(820, 2, this.highscore.toString(), {
-            fontFamily: 'Arial',
-            fontSize: '32px',
-            color: '#ffffff',
-        });
+        // Create responsive text
+        this.scoreText = this.add.text(140 * (width / 1024), 2, this.score.toString(), 
+            ResponsiveUtils.getTextStyle(32, this)
+        );
+
+        this.highscoreText = this.add.text(820 * (width / 1024), 2, this.highscore.toString(), 
+            ResponsiveUtils.getTextStyle(32, this)
+        );
+    }
+    
+    private setupTracks(): void {
+        // Create responsive tracks based on screen height
+        const trackPositions = ResponsiveUtils.getTrackPositions(this, 4);
+        
+        this.tracks = trackPositions.map((trackY, index) => 
+            new Track(this, index, trackY)
+        );
+        
+        this.player = new Player(this, this.tracks[0]);
+    }
+    
+    private setupInputs(): void {
+        // Setup mobile input support
+        ResponsiveUtils.setupMobileInput(this);
+        
+        // Add touch controls for mobile
+        if (ResponsiveUtils.isMobile(this)) {
+            this.setupMobileControls();
+        }
 
         this.input.keyboard!.once('keydown-SPACE', this.start, this);
         this.input.keyboard!.once('keydown-UP', this.start, this);
         this.input.keyboard!.once('keydown-DOWN', this.start, this);
+    }
+    
+    private handleResize(): void {
+        // Reposition UI elements on resize
+        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        
+        // Update background position
+        const backgrounds = this.children.list.filter(child => 
+            (child as any).texture?.key === 'background' || (child as any).texture?.key === 'overlay'
+        );
+        backgrounds.forEach(bg => {
+            if ((bg as any).texture?.key === 'background') {
+                (bg as Phaser.GameObjects.Image).setPosition(centerX, centerY);
+            }
+        });
+        
+        // Update info panel position
+        if (this.infoPanel) {
+            this.infoPanel.setPosition(centerX, centerY);
+        }
+        
+        // Update question container position
+        if (this.questionContainer) {
+            this.questionContainer.setPosition(centerX, 0);
+        }
+        
+        // Update track positions
+        if (this.tracks) {
+            const trackPositions = ResponsiveUtils.getTrackPositions(this, 4);
+            this.tracks.forEach((track, index) => {
+                track.y = trackPositions[index];
+                // Update all game objects in the track
+                if (track.nest) {
+                    track.nest.y = trackPositions[index] - 10;
+                }
+                if (track.snowmanSmall) {
+                    track.snowmanSmall.currentTrack.y = trackPositions[index];
+                    track.snowmanSmall.y = trackPositions[index];
+                }
+            });
+        }
+        
+        // Update player position
+        if (this.player) {
+            this.player.y = this.player.currentTrack.y;
+        }
+        
+        // Update mobile controls if they exist
+        if (this.mobileControls && ResponsiveUtils.isMobile(this)) {
+            this.destroyMobileControls();
+            this.setupMobileControls();
+        }
+    }
+    
+    private destroyMobileControls(): void {
+        if (this.mobileControls) {
+            Object.values(this.mobileControls).forEach((control: any) => {
+                if (control && control.destroy) {
+                    control.destroy();
+                }
+            });
+            this.mobileControls = undefined;
+        }
     }
 
     onSnowmanHit(snowman: Snowman,track:Track): void {
@@ -208,9 +308,11 @@ export default class MainGame extends Phaser.Scene {
         }
         this.input.keyboard!.removeAllListeners();
 
+        const { height } = ResponsiveUtils.getResponsiveDimensions(this);
+
         this.tweens.add({
             targets: this.infoPanel,
-            y: 700,
+            y: height + 100, // Move off screen
             alpha: 0,
             duration: 500,
             ease: 'Power2',
@@ -236,11 +338,13 @@ export default class MainGame extends Phaser.Scene {
     }
 
     public gameOver(): void {
+        const { centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        
         this.infoPanel.setTexture('gameover');
 
         this.tweens.add({
             targets: this.infoPanel,
-            y: 384,
+            y: centerY,
             alpha: 1,
             duration: 500,
             ease: 'Power2',
@@ -307,6 +411,89 @@ export default class MainGame extends Phaser.Scene {
         }
 
         this.loadNextQuestion();
+    }
+
+    setupMobileControls(): void {
+        const { width, height } = ResponsiveUtils.getResponsiveDimensions(this);
+        
+        // Create virtual controls for mobile
+        const buttonSize = ResponsiveUtils.getButtonSize(this);
+        const padding = ResponsiveUtils.getResponsivePadding(20, this);
+        
+        // Up button
+        const upButton = this.add.rectangle(
+            padding + buttonSize.width / 2, 
+            height - padding - buttonSize.height * 3, 
+            buttonSize.width, 
+            buttonSize.height, 
+            0x0066cc, 
+            0.7
+        ).setInteractive();
+        
+        const upText = this.add.text(
+            upButton.x, 
+            upButton.y, 
+            '↑', 
+            ResponsiveUtils.getTextStyle(24, this)
+        ).setOrigin(0.5);
+        
+        // Down button
+        const downButton = this.add.rectangle(
+            padding + buttonSize.width / 2, 
+            height - padding - buttonSize.height, 
+            buttonSize.width, 
+            buttonSize.height, 
+            0x0066cc, 
+            0.7
+        ).setInteractive();
+        
+        const downText = this.add.text(
+            downButton.x, 
+            downButton.y, 
+            '↓', 
+            ResponsiveUtils.getTextStyle(24, this)
+        ).setOrigin(0.5);
+        
+        // Throw button
+        const throwButton = this.add.rectangle(
+            width - padding - buttonSize.width / 2, 
+            height - padding - buttonSize.height * 2, 
+            buttonSize.width, 
+            buttonSize.height, 
+            0xcc0066, 
+            0.7
+        ).setInteractive();
+        
+        const throwText = this.add.text(
+            throwButton.x, 
+            throwButton.y, 
+            'THROW', 
+            ResponsiveUtils.getTextStyle(16, this)
+        ).setOrigin(0.5);
+        
+        // Add touch handlers
+        upButton.on('pointerdown', () => {
+            if (this.player && this.player.isAlive) {
+                this.player.moveUp();
+            }
+        });
+        
+        downButton.on('pointerdown', () => {
+            if (this.player && this.player.isAlive) {
+                this.player.moveDown();
+            }
+        });
+        
+        throwButton.on('pointerdown', () => {
+            if (this.player && this.player.isAlive && !this.player.isThrowing) {
+                this.player.throw();
+            }
+        });
+        
+        // Store references for cleanup
+        this.mobileControls = {
+            upButton, upText, downButton, downText, throwButton, throwText
+        };
     }
 
 }

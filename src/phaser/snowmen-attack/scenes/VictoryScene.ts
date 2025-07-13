@@ -1,14 +1,17 @@
 import Phaser from 'phaser';
 import { WrongAttempt } from '../models/Types';
 import { languageManager } from '../utils/LanguageManager';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
 
 export default class VictoryScene extends Phaser.Scene {
     private score: number = 0;
     private mistakes: Set<WrongAttempt> = new Set<WrongAttempt>;
     private titleText!: Phaser.GameObjects.Text;
     private scoreText!: Phaser.GameObjects.Text;
-    private replayBtn!: Phaser.GameObjects.Text;
-    private reviewBtn!: Phaser.GameObjects.Text;
+    private replayBtn!: Phaser.GameObjects.Rectangle;
+    private replayBtnText!: Phaser.GameObjects.Text;
+    private reviewBtn!: Phaser.GameObjects.Rectangle;
+    private reviewBtnText!: Phaser.GameObjects.Text;
     private languageChangeUnsubscribe?: () => void;
 
     constructor() {
@@ -22,84 +25,116 @@ export default class VictoryScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height } = this.scale;
+        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
 
         this.cameras.main.setBackgroundColor('#1a1a1a');
 
-        this.titleText = this.add.text(width / 2, height / 4, languageManager.getText('victory_title'), {
-            fontSize: '48px',
-            color: '#ffffff',
-        }).setOrigin(0.5);
+        // Setup language change callback with scene safety
+        this.languageChangeUnsubscribe = languageManager.onLanguageChangeWithSceneCheck(this, () => {
+            this.updateTexts();
+        });
 
-        this.scoreText = this.add.text(width / 2, height / 2.7, languageManager.getFormattedText('victory_score', this.score.toString()), {
-            fontSize: '32px',
-            color: '#00ffcc',
-        }).setOrigin(0.5);
+        this.createUI();
+        
+        // Setup mobile input
+        ResponsiveUtils.setupMobileInput(this);
+        
+        // Setup resize handling
+        ResponsiveUtils.setupResizeHandler(this, () => {
+            this.handleResize();
+        });
+    }
+    
+    private createUI(): void {
+        const { width, height, centerX } = ResponsiveUtils.getResponsiveDimensions(this);
+        const buttonSize = ResponsiveUtils.getButtonSize(this);
+        const spacing = ResponsiveUtils.getSpacing(60, this);
 
-        this.replayBtn = this.add.text(width / 2, height / 2, languageManager.getText('victory_play_again'), {
-            fontSize: '28px',
-            color: '#ffffff',
-            backgroundColor: '#007acc',
-            padding: { left: 20, right: 20, top: 10, bottom: 10 },
-        }).setOrigin(0.5).setInteractive();
+        this.titleText = this.add.text(centerX, height / 4, 'Victory!', 
+            ResponsiveUtils.getTextStyle(48, this)
+        ).setOrigin(0.5);
+
+        this.scoreText = this.add.text(centerX, height / 2.7, 
+            `Score: ${this.score}`, 
+            ResponsiveUtils.getTextStyle(32, this, {
+                color: '#00ffcc'
+            })
+        ).setOrigin(0.5);
+
+        // Create responsive replay button
+        this.replayBtn = this.add.rectangle(centerX, height / 2, buttonSize.width, buttonSize.height, 0x007acc)
+            .setInteractive();
+        
+        this.replayBtnText = this.add.text(centerX, height / 2, 'Play Again',
+            ResponsiveUtils.getTextStyle(20, this)
+        ).setOrigin(0.5);
 
         this.replayBtn.on('pointerdown', () => {
             this.scene.start('MainMenu');
         });
 
+        // Add hover effects
+        this.replayBtn.on('pointerover', () => {
+            this.replayBtn.setFillStyle(0x0099ff);
+        });
+        
+        this.replayBtn.on('pointerout', () => {
+            this.replayBtn.setFillStyle(0x007acc);
+        });
+
         if (this.mistakes.size > 0) {
-            this.reviewBtn = this.add.text(width / 2, height / 1.5, languageManager.getText('review_mistakes_title'), {
-                fontSize: '28px',
-                color: '#ffffff',
-                backgroundColor: '#cc3300',
-                padding: { left: 20, right: 20, top: 10, bottom: 10 },
-            }).setOrigin(0.5).setInteractive();
+            // Create responsive review button
+            this.reviewBtn = this.add.rectangle(centerX, height / 2 + spacing, 
+                buttonSize.width, buttonSize.height, 0xcc6600)
+                .setInteractive();
+            
+            this.reviewBtnText = this.add.text(centerX, height / 2 + spacing, 'Review Mistakes',
+                ResponsiveUtils.getTextStyle(20, this)
+            ).setOrigin(0.5);
 
             this.reviewBtn.on('pointerdown', () => {
-                this.scene.start('ReviewMistakesScene', { mistakes: this.mistakes }); // you must implement ReviewScene
+                this.scene.start('ReviewMistakesScene', { mistakes: Array.from(this.mistakes) });
+            });
+            
+            // Add hover effects
+            this.reviewBtn.on('pointerover', () => {
+                this.reviewBtn.setFillStyle(0xdd7711);
+            });
+            
+            this.reviewBtn.on('pointerout', () => {
+                this.reviewBtn.setFillStyle(0xcc6600);
             });
         }
-
-        // Subscribe to language changes only when scene is active
-        this.languageChangeUnsubscribe = languageManager.onLanguageChange(() => {
-            // Only update if this scene is active and manager exists
-            if (this.scene && this.scene.manager && this.scene.isActive()) {
-                this.updateTexts();
+    }
+    
+    private updateTexts(): void {
+        if (languageManager && this.scene && this.scene.isActive()) {
+            if (this.titleText) {
+                this.titleText.setText('Victory!');
             }
-        });
-
-        // Listen for scene shutdown to cleanup
-        this.events.on('shutdown', () => {
-            this.cleanup();
-        });
-    }
-
-    private updateTexts() {
-        // Only update if scene is active and text objects exist
-        if (!this.scene || !this.scene.manager || !this.scene.isActive()) return;
-        
-        if (this.titleText && this.titleText.active) {
-            this.titleText.setText(languageManager.getText('victory_title'));
-        }
-        if (this.scoreText && this.scoreText.active) {
-            this.scoreText.setText(languageManager.getFormattedText('victory_score', this.score.toString()));
-        }
-        if (this.replayBtn && this.replayBtn.active) {
-            this.replayBtn.setText(languageManager.getText('victory_play_again'));
-        }
-        if (this.reviewBtn && this.reviewBtn.active) {
-            this.reviewBtn.setText(languageManager.getText('review_mistakes_title'));
+            if (this.scoreText) {
+                this.scoreText.setText(`Score: ${this.score}`);
+            }
+            if (this.replayBtnText) {
+                this.replayBtnText.setText('Play Again');
+            }
+            if (this.reviewBtnText) {
+                this.reviewBtnText.setText('Review Mistakes');
+            }
         }
     }
+    
+    private handleResize(): void {
+        // Clear and recreate UI elements on resize
+        this.children.removeAll(true);
+        this.createUI();
+    }
 
-    private cleanup() {
+    shutdown() {
+        // Clean up language callback
         if (this.languageChangeUnsubscribe) {
             this.languageChangeUnsubscribe();
             this.languageChangeUnsubscribe = undefined;
         }
-    }
-
-    destroy() {
-        this.cleanup();
     }
 }

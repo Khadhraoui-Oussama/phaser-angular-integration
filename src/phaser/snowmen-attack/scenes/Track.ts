@@ -3,6 +3,7 @@ import PlayerSnowball from './PlayerSnowball';
 import EnemySnowball from './EnemySnowball';
 import Phaser from 'phaser';
 import MainGame from './Game';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
 
 export default class Track {
     scene: Phaser.Scene;
@@ -25,8 +26,17 @@ export default class Track {
         this.scene = scene;
         this.id = id;
         this.y = trackY;
-        this.snowmenLabel = 0
-        this.nest = scene.physics.add.image(1024, trackY - 10, 'sprites', 'nest').setOrigin(1, 1);
+        this.snowmenLabel = 0;
+        
+        // Get responsive dimensions for proper positioning
+        const { width } = ResponsiveUtils.getResponsiveDimensions(scene);
+        
+        // Position nest responsively based on screen width
+        this.nest = scene.physics.add.image(width - 32, trackY - 10, 'sprites', 'nest').setOrigin(1, 1);
+
+        // Scale nest for smaller screens
+        const nestScale = ResponsiveUtils.isMobile(scene) ? 0.8 : 1;
+        this.nest.setScale(nestScale);
 
         // this.snowmanBig = new Snowman(scene, this, 'Big',25);
         this.snowmanSmall = new Snowman(scene, this, 'Small',this.snowmenLabel);

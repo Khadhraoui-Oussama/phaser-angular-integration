@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import Track from './Track';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
     isAlive: boolean;
@@ -12,9 +13,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     down: Phaser.Input.Keyboard.Key;
 
     constructor(scene: Phaser.Scene & { tracks: Track[] }, track: Track) {
-        super(scene, 900, track.y, 'sprites', 'idle000');
+        // Position player responsively
+        const { width } = ResponsiveUtils.getResponsiveDimensions(scene);
+        const playerX = width * 0.88; // 88% of screen width (was 900/1024)
+        
+        super(scene, playerX, track.y, 'sprites', 'idle000');
 
         this.setOrigin(0.5, 1);
+        
+        // Scale player for smaller screens
+        const playerScale = ResponsiveUtils.isMobile(scene) ? 0.8 : 1;
+        this.setScale(playerScale);
 
         scene.add.existing(this);
         scene.physics.add.existing(this);

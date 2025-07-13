@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
 
 export default class MainMenu extends Phaser.Scene {
     private startText!: Phaser.GameObjects.Text;
     private languageButton!: Phaser.GameObjects.Text;
     private languageChangeUnsubscribe?: () => void;
+    private logo!: Phaser.GameObjects.Image;
     
     constructor() {
         super('MainMenu');
@@ -13,59 +15,16 @@ export default class MainMenu extends Phaser.Scene {
     create(): void {
         this.sound.play('music', { loop: true, delay: 2 });
 
-        this.add.shader('snow', 512, 384, 1024, 768);
+        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
 
-        // Intro snowball fight
-        const ball1 = this.add.image(-64, 300, 'sprites', 'snowball1');
-        const ball2 = this.add.image(1088, 360, 'sprites', 'snowball1');
-        const ball3 = this.add.image(-64, 320, 'sprites', 'snowball1');
-        const logo = this.add.image(1700, 384, 'title');
+        // Add responsive snow effect
+        this.add.shader('snow', centerX, centerY, width, height);
 
-        this.tweens.add({
-            targets: ball1,
-            x: 1088,
-            y: 360,
-            ease: 'cubic.out',
-            duration: 600,
-            onStart: () => {
-                this.sound.play('throw');
-            }
-        });
+        // Setup responsive input for mobile
+        ResponsiveUtils.setupMobileInput(this);
 
-        this.tweens.add({
-            targets: ball2,
-            x: -64,
-            y: 280,
-            ease: 'cubic.out',
-            delay: 700,
-            duration: 600,
-            onStart: () => {
-                this.sound.play('throw');
-            }
-        });
-
-        this.tweens.add({
-            targets: ball3,
-            x: 1088,
-            y: 380,
-            ease: 'cubic.out',
-            delay: 1200,
-            duration: 600,
-            onStart: () => {
-                this.sound.play('throw');
-            }
-        });
-
-        this.tweens.add({
-            targets: logo,
-            x: 512,
-            ease: 'back.out',
-            delay: 1800,
-            duration: 600,
-            onStart: () => {
-                this.sound.play('throw');
-            }
-        });
+        // Intro snowball fight - made responsive
+        this.createResponsiveIntro();
 
         // Create start instruction text
         this.createStartText();
@@ -95,6 +54,76 @@ export default class MainMenu extends Phaser.Scene {
         });
     }
 
+    private createResponsiveIntro() {
+        const { width, height, centerX, centerY, minScale } = ResponsiveUtils.getResponsiveDimensions(this);
+        
+        // Responsive positions for snowballs
+        const ball1StartX = -64 * minScale;
+        const ball2StartX = width + 64 * minScale;
+        const ball3StartX = -64 * minScale;
+        
+        const ballY1 = height * 0.4;
+        const ballY2 = height * 0.47;
+        const ballY3 = height * 0.42;
+
+        // Intro snowball fight
+        const ball1 = this.add.image(ball1StartX, ballY1, 'sprites', 'snowball1');
+        const ball2 = this.add.image(ball2StartX, ballY2, 'sprites', 'snowball1');
+        const ball3 = this.add.image(ball3StartX, ballY3, 'sprites', 'snowball1');
+        
+        // Logo starts off-screen and slides in
+        this.logo = this.add.image(width + 200, centerY, 'title');
+        // Scale logo responsively
+        const logoScale = Math.min(minScale * 0.8, (width * 0.6) / this.logo.width);
+        this.logo.setScale(logoScale);
+
+        this.tweens.add({
+            targets: ball1,
+            x: ball2StartX,
+            y: ballY2,
+            ease: 'cubic.out',
+            duration: 600,
+            onStart: () => {
+                this.sound.play('throw');
+            }
+        });
+
+        this.tweens.add({
+            targets: ball2,
+            x: ball1StartX,
+            y: ballY1 - 20,
+            ease: 'cubic.out',
+            delay: 700,
+            duration: 600,
+            onStart: () => {
+                this.sound.play('throw');
+            }
+        });
+
+        this.tweens.add({
+            targets: ball3,
+            x: ball2StartX,
+            y: ballY2 + 20,
+            ease: 'cubic.out',
+            delay: 1200,
+            duration: 600,
+            onStart: () => {
+                this.sound.play('throw');
+            }
+        });
+
+        this.tweens.add({
+            targets: this.logo,
+            x: centerX,
+            ease: 'back.out',
+            delay: 1800,
+            duration: 600,
+            onStart: () => {
+                this.sound.play('throw');
+            }
+        });
+    }
+
     private setupInputHandlers() {
         // Clear any existing event listeners
         this.input.keyboard?.removeAllListeners();
@@ -116,16 +145,14 @@ export default class MainMenu extends Phaser.Scene {
     }
 
     private createStartText() {
+        const { width, height } = ResponsiveUtils.getResponsiveDimensions(this);
+        const textStyle = ResponsiveUtils.getTextStyle(24, this);
+        
         this.startText = this.add.text(
-            this.scale.width / 2,
-            this.scale.height - 100,
+            width / 2,
+            height - ResponsiveUtils.getSpacing(100, this),
             languageManager.getText('main_menu_click_to_start'),
-            {
-                fontSize: '24px',
-                fontFamily: 'Arial',
-                color: '#ffffff',
-                align: 'center'
-            }
+            textStyle
         ).setOrigin(0.5);
 
         // Blinking effect
@@ -140,18 +167,24 @@ export default class MainMenu extends Phaser.Scene {
     }
 
     private createLanguageButton() {
+        const { width } = ResponsiveUtils.getResponsiveDimensions(this);
         const currentLang = languageManager.getCurrentLanguage().toUpperCase();
+        const buttonSize = ResponsiveUtils.getButtonSize(this);
+        const spacing = ResponsiveUtils.getSpacing(50, this);
         
         this.languageButton = this.add.text(
-            this.scale.width - 80,
-            50,
+            width - spacing,
+            spacing,
             `🌐 ${currentLang}`,
             {
-                fontSize: '20px',
+                fontSize: buttonSize.fontSize,
                 fontFamily: 'Arial',
                 color: '#ffffff',
                 backgroundColor: '#333333',
-                padding: { x: 10, y: 5 }
+                padding: { 
+                    x: ResponsiveUtils.getResponsivePadding(10, this), 
+                    y: ResponsiveUtils.getResponsivePadding(5, this) 
+                }
             }
         ).setOrigin(0.5);
 

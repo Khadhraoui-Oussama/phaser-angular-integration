@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import Track from './Track';
 import MainGame from './Game';
+import { ResponsiveUtils } from '../utils/ResponsiveUtils';
 
 const MAX_X_POSITION = 880;
 export default class Snowman extends Phaser.Physics.Arcade.Sprite {
@@ -17,22 +18,36 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
     chooseEvent?: Phaser.Time.TimerEvent;
     label: Phaser.GameObjects.Text;
 
-    constructor(scene: Phaser.Scene, track: Track, size: 'Small' | 'Big',option:number) {
+    constructor(scene: Phaser.Scene, track: Track, size: 'Small' | 'Big', option: number) {
         const frame = (size === 'Small') ? 'snowman-small-idle0' : 'snowman-big-idle0';
-        const x = (size === 'Small') ? 80 : -100;
+        
+        // Get responsive positioning
+        const { width } = ResponsiveUtils.getResponsiveDimensions(scene);
+        const startX = width * 0.08; // Start at 8% of screen width (was 80/1024)
+        const x = (size === 'Small') ? startX : -100;
+        
         super(scene, x, track.y, 'sprites', frame);
         this.setOrigin(0.5, 1);
+        
+        // Scale snowman for smaller screens
+        const snowmanScale = ResponsiveUtils.isMobile(scene) ? 0.8 : 1;
+        this.setScale(snowmanScale);
+        
+        // Update MAX_X_POSITION based on screen width
+        this.updateMaxPosition(scene);
         
         //setting depth to 2 makes sure that big snowmen appear on top of the question board which has a depth of 1
         this.depth = 2
         scene.add.existing(this);
         scene.physics.add.existing(this);
+        
+        // Adjust body size based on scale
         if (size === 'Small') {
-            (this.body as Phaser.Physics.Arcade.Body).setSize(100, 100);
-            (this.body as Phaser.Physics.Arcade.Body).setOffset(20, 40);
+            (this.body as Phaser.Physics.Arcade.Body).setSize(100 * snowmanScale, 100 * snowmanScale);
+            (this.body as Phaser.Physics.Arcade.Body).setOffset(20 * snowmanScale, 40 * snowmanScale);
         } else {
-            (this.body as Phaser.Physics.Arcade.Body).setSize(100, 120);
-            (this.body as Phaser.Physics.Arcade.Body).setOffset(50, 50);
+            (this.body as Phaser.Physics.Arcade.Body).setSize(100 * snowmanScale, 120 * snowmanScale);
+            (this.body as Phaser.Physics.Arcade.Body).setOffset(50 * snowmanScale, 50 * snowmanScale);
         }
         this.time = scene.time;
         this.sound = scene.sound;
@@ -43,19 +58,27 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         this.previousAction = 0;
         this.currentTrack = track;
         this.play('snowmanIdle' + this.size);
+        
+        // Create responsive label
         if(option !== 0){
             this.label = scene.add.text(this.x, this.y, option.toString(), {
-                font: '1.15rem Arial',
+                font: ResponsiveUtils.getResponsiveFontSize(18, scene) + ' Arial',
                 color: '#000000',
             }).setOrigin(0.5, 0.4);
             this.label.setDepth(this.depth);
-        }else {
+        } else {
             this.label = scene.add.text(this.x, this.y, '', {
-                font: '1.15rem Arial',
+                font: ResponsiveUtils.getResponsiveFontSize(18, scene) + ' Arial',
                 color: '#000000',
             }).setOrigin(0.5, 0.4);
             this.label.setDepth(this.depth);
         }
+    }
+    
+    private updateMaxPosition(scene: Phaser.Scene): void {
+        const { width } = ResponsiveUtils.getResponsiveDimensions(scene);
+        // Update the static MAX_X_POSITION based on screen width (was 880/1024)
+        (this.constructor as any).MAX_X_POSITION = width * 0.86;
     }
 
     start(): void {
@@ -188,7 +211,12 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         if (this.label) {
            this.label.setPosition(this.x, this.y + 10);
         }
-        if (this.x >= MAX_X_POSITION && this.isAlive) {
+        
+        // Use responsive max position
+        const { width } = ResponsiveUtils.getResponsiveDimensions(this.scene);
+        const maxPosition = width * 0.86; // Same as updateMaxPosition
+        
+        if (this.x >= maxPosition && this.isAlive) {
             this.isAlive = false;
             this.stop();
             (this.scene as MainGame).onSnowmanReachedTheEndOfTheTrack(this);

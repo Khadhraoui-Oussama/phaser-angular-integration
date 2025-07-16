@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { PhaserGame } from '../../phaser-game.component';
-import StartSnowmenAttackGame, { StartSnowmenAttackGameResponsive } from '../../../phaser/snowmen-attack/main';
+import  { StartSnowmenAttackGameResponsive } from '../../../phaser/snowmen-attack/main';
 import { EventBus } from '../../../phaser/snowmen-attack/EventBus';
 import { RouterLink, RouterModule } from '@angular/router';
 import { ScreenDetectionService } from '../../services/screen-detection.service';
@@ -12,8 +12,7 @@ import { ScreenDetectionService } from '../../services/screen-detection.service'
   styleUrl: './snowmen-attack-game.component.css'
 })
 export class SnowmenAttackGameComponent {
-    startGameFn = StartSnowmenAttackGame; // Legacy function
-    startGameResponsiveFn = StartSnowmenAttackGameResponsive; // New responsive function
+     startGameResponsiveFn = StartSnowmenAttackGameResponsive; // New responsive function
     
     constructor(private screenDetectionService: ScreenDetectionService) {
         EventBus.on('current-scene-ready', (scene: Phaser.Scene) => {

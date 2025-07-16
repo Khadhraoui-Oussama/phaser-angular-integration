@@ -455,16 +455,16 @@ export default class MainGame extends Phaser.Scene {
         ).setOrigin(0.5);
         
         // Add instruction text for mobile players
-        const instructionText = this.add.text(
-            width / 2,
-            height - padding - buttonSize.height * 2.5,
-            'Tap upper/lower screen to move • Tap button to throw',
-            ResponsiveGameUtils.getTextStyle(12, this, { 
-                color: '#ffffff',
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                padding: { x: 10, y: 5 }
-            })
-        ).setOrigin(0.5);
+        // const instructionText = this.add.text(
+        //     width / 2,
+        //     height - padding - buttonSize.height * 2.5,
+        //     'Tap upper/lower screen to move • Tap button to throw',
+        //     ResponsiveGameUtils.getTextStyle(12, this, { 
+        //         color: '#ffffff',
+        //         backgroundColor: 'rgba(0,0,0,0.5)',
+        //         padding: { x: 10, y: 5 }
+        //     })
+        // ).setOrigin(0.5);
         
         // Add touch handlers
         throwButton.on('pointerdown', () => {
@@ -493,7 +493,7 @@ export default class MainGame extends Phaser.Scene {
         
         // Store references for cleanup
         this.mobileControls = {
-            throwButton, throwText, instructionText
+            throwButton, throwText, 
         };
     }
 

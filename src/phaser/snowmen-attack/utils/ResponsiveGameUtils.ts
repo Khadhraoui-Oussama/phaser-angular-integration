@@ -24,8 +24,7 @@ export class ResponsiveGameUtils {
             config: responsiveConfig || {
                 assetScale: 1,
                 uiScale: 1,
-                screenSize: 'desktop',
-                assetFolder: 'desktop'
+                screenSize: 'desktop'
             }
         };
     }
@@ -120,15 +119,7 @@ export class ResponsiveGameUtils {
         const { width, config } = this.getResponsiveConfig(scene);
         const maxWidth = width * (maxWidthPercent / 100);
         
-        // Additional sprite-specific scaling for smaller screens
-        let spriteScale = config.assetScale;
-        
-        // // Apply extra scaling reduction for sprites specifically
-        // if (config.screenSize === 'mobile') {
-        //     spriteScale *= 0.6; // Further reduce mobile sprites by 40%
-        // } else if (config.screenSize === 'tablet') {
-        //     spriteScale *= 0.75; // Further reduce tablet sprites by 25%
-        // }
+       let spriteScale = config.assetScale;
         
         const finalScale = Math.min(spriteScale, maxWidth / sprite.width);
         sprite.setScale(finalScale);
@@ -142,14 +133,6 @@ export class ResponsiveGameUtils {
         
         // Base scale from responsive config
         let spriteScale = config.assetScale;
-        
-        // // Additional sprite-specific scaling
-        // if (config.screenSize === 'mobile') {
-        //     spriteScale *= 0.8; // Mobile sprites: 25% * 0.6 = 15% of original
-        // } else if (config.screenSize === 'tablet') {
-        //     spriteScale *= 0.9; // Tablet sprites: 45% * 0.75 = 33.75% of original
-        // }
-        // // Desktop remains at 100%
         
         return spriteScale;
     }

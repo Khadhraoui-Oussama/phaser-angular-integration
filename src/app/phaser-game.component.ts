@@ -59,7 +59,6 @@ export class PhaserGame implements OnInit, OnDestroy {
                 height: 768,
                 assetScale: 1,
                 uiScale: 1,
-                assetFolder: 'desktop',
                 screenSize: 'desktop' as any
             };
         }
@@ -76,7 +75,7 @@ export class PhaserGame implements OnInit, OnDestroy {
                 if (this.game && newDimensions) {
                     this.updateGameDimensions(newDimensions);
                     // Optionally restart game with new dimensions
-                    // this.restartGameWithNewDimensions(newDimensions);
+                    this.restartGameWithNewDimensions(newDimensions);
                 }
             },
             error: (error) => {

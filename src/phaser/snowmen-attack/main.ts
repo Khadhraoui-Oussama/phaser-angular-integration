@@ -15,7 +15,6 @@ export interface GameDimensions {
     height: number;
     assetScale: number;
     uiScale: number;
-    assetFolder: string;
     screenSize: string;
 }
 
@@ -35,7 +34,7 @@ const createResponsiveConfig = (dimensions: GameDimensions, parent: string): Pha
         width: dimensions.width,
         height: dimensions.height,
         scale: {
-            mode: Phaser.Scale.NONE, // Changed from FIT to keep in document flow
+            mode: Phaser.Scale.NONE,
             parent: parent,
             width: dimensions.width,
             height: dimensions.height,
@@ -66,52 +65,13 @@ const createResponsiveConfig = (dimensions: GameDimensions, parent: string): Pha
     };
 };
 
-// Legacy config for backward compatibility
-const config: Phaser.Types.Core.GameConfig = {
-    type: AUTO,
-    width: 1024,
-    height: 768,
-    scale: {
-        mode: Phaser.Scale.FIT,
-        // autoCenter: Phaser.Scale.CENTER_VERTICALLY, 
-        // autoCenter: Phaser.Scale.CENTER_BOTH, 
-        autoCenter: Phaser.Scale.CENTER_HORIZONTALLY, // works the best for now 
-        //this removes the canvas from the document flow, to return it be must phaser.scale.none or make the gamecontainer have a relative postion but that removes responsiveness so must compromise
-        parent: 'game-container',
-        width: 1024,
-        height: 768,
-        min: {
-            width: 320,
-            height: 240
-        },
-        max: {
-            // width: 800,
-            // height: 600
-            width: 800,
-            height: 600
-        }
-    },
-    backgroundColor: '#3366b2',
-    scene: [Boot, Preloader, MainMenu, TableSelectScene, MainGame, VictoryScene, ReviewMistakesScene, LanguageSelectionScene],
-    physics: {
-        default: 'arcade',
-        arcade: {
-            debug: false
-        }
-    }
-};
-
 // New responsive game initialization function
 const StartSnowmenAttackGameResponsive = (parent: string, dimensions: GameDimensions) => {
     const responsiveConfig = createResponsiveConfig(dimensions, parent);
     return new Game(responsiveConfig);
 }
 
-// Legacy function for backward compatibility
-const StartSnowmenAttackGame = (parent: string) => {
-    return new Game({ ...config, parent });
-}
+
 
 export { StartSnowmenAttackGameResponsive };
-export default StartSnowmenAttackGame;
 

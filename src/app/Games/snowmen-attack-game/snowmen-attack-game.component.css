@@ -72,18 +72,17 @@
     }
 }
 
-/* Mobile styles */
 @media (max-width: 768px) {
     .game-container {
         padding: 0.5rem;
     }
-    
+        
     .game-info p {
         font-size: 1.1rem;
     }
 }
 
-/* Tablet styles */
+
 @media (min-width: 769px) and (max-width: 1199px) {
     .game-container {
         padding: 1rem;
@@ -94,7 +93,6 @@
     }
 }
 
-/* Desktop styles */
 @media (min-width: 1200px) {
     .game-container {
         padding: 2rem;

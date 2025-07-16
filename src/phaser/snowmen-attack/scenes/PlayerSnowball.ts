@@ -7,12 +7,12 @@ export default class PlayerSnowball extends Phaser.Physics.Arcade.Sprite {
 
         // Use hardcoded scale values for different screen sizes
         const { config } = ResponsiveGameUtils.getResponsiveConfig(scene);
-        let snowballScale = 0.5; // Default desktop scale
+        let snowballScale = 0.8; // Default desktop scale
         
         if (config.screenSize === 'mobile') {
-            snowballScale = 0.2; // Smaller scale for mobile
+            snowballScale = 0.35; // Smaller scale for mobile
         } else if (config.screenSize === 'tablet') {
-            snowballScale = 0.35; // Fixed scale for tablet
+            snowballScale = 0.5; // Fixed scale for tablet
         }
         
         this.setScale(snowballScale);
@@ -21,7 +21,7 @@ export default class PlayerSnowball extends Phaser.Physics.Arcade.Sprite {
     fire(x: number, y: number): void {
         if (this.body) {
             this.body.enable = true;
-            this.body.reset(x + 10, y - 44);
+            this.body.reset(x, y - 44);
         }
 
         this.setActive(true);

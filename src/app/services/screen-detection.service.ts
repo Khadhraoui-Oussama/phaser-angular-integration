@@ -13,7 +13,6 @@ export interface GameDimensions {
   height: number;
   assetScale: number;
   uiScale: number;
-  assetFolder: string;
   screenSize: ScreenSize;
 }
 
@@ -46,7 +45,6 @@ export class ScreenDetectionService {
       height: 768,
       assetScale: 1,
       uiScale: 1,
-      assetFolder: 'desktop',
       screenSize: ScreenSize.DESKTOP
     },
     tablet: {
@@ -54,7 +52,6 @@ export class ScreenDetectionService {
       height: 576,
       assetScale: 0.6,    // Reverted back from 0.45 to original 0.6
       uiScale: 0.7,       // Reverted back from 0.6 to original 0.7
-      assetFolder: 'tablet',
       screenSize: ScreenSize.TABLET
     },
     mobile: {
@@ -62,7 +59,6 @@ export class ScreenDetectionService {
       height: 320,        // Increased from 280 to make it more squared (375:320 ≈ 1.17:1)
       assetScale: 0.35,   
       uiScale: 0.5,       
-      assetFolder: 'mobile',
       screenSize: ScreenSize.MOBILE
     }
   };
@@ -120,7 +116,6 @@ export class ScreenDetectionService {
         height: 768,
         assetScale: 1,
         uiScale: 1,
-        assetFolder: 'desktop',
         screenSize: ScreenSize.DESKTOP
       };
     }
@@ -174,7 +169,6 @@ export class ScreenDetectionService {
       height: 768,
       assetScale: 1,
       uiScale: 1,
-      assetFolder: 'desktop',
       screenSize: ScreenSize.DESKTOP
     };
   }

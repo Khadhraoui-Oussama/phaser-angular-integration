@@ -29,9 +29,8 @@ export default class Preloader extends Phaser.Scene {
         this.loadText.setOrigin(0.5);
         this.loadText.setShadow(2, 2, '#2d2d2d', 4, true, false);
 
-        // Set responsive asset path
-        const assetFolder = this.responsiveConfig ? this.responsiveConfig.assetFolder : 'desktop';
-        this.load.setPath(`assets/games/snowmen-attack/${assetFolder}/`);
+        // Set asset path to main folder (no longer need device-specific folders)
+        this.load.setPath('assets/games/snowmen-attack/');
         
         //loading the question_ui with responsive assets
         this.load.image('question_ui_large',"question_ui_large.png")

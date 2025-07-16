@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { WrongAttempt } from '../models/Types';
-import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { languageManager } from '../utils/LanguageManager';
 
 export default class ReviewMistakesScene extends Phaser.Scene {
@@ -16,7 +16,7 @@ export default class ReviewMistakesScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height, centerX } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height, centerX } = ResponsiveGameUtils.getResponsiveConfig(this);
 
         this.cameras.main.setBackgroundColor('#1b1b1b');
 
@@ -28,32 +28,32 @@ export default class ReviewMistakesScene extends Phaser.Scene {
         this.updateTexts();
         
         // Setup mobile input
-        ResponsiveUtils.setupMobileInput(this);
+        ResponsiveGameUtils.setupMobileInput(this);
     }
     
     private updateTexts() {
         // Clear existing text objects
         this.children.removeAll(true);
         
-        const { width, height, centerX } = ResponsiveUtils.getResponsiveDimensions(this);
-        const padding = ResponsiveUtils.getResponsivePadding(40, this);
+        const { width, height, centerX } = ResponsiveGameUtils.getResponsiveConfig(this);
+        const padding = ResponsiveGameUtils.getResponsivePadding(40, this);
 
         this.add.text(centerX, padding, 'Erreurs à Revoir', 
-            ResponsiveUtils.getTextStyle(40, this, {
+            ResponsiveGameUtils.getTextStyle(40, this, {
                 color: '#ff6666'
             })
         ).setOrigin(0.5, 0);
 
         if (this.mistakes.size === 0) {
             this.add.text(centerX, height / 2, 'Aucune erreur, bien joué', 
-                ResponsiveUtils.getTextStyle(28, this, {
+                ResponsiveGameUtils.getTextStyle(28, this, {
                     color: '#00ff88'
                 })
             ).setOrigin(0.5);
         } else {
             const yStart = padding * 2.5;
-            const spacing = ResponsiveUtils.getSpacing(50, this);
-            const leftMargin = ResponsiveUtils.getResponsivePadding(50, this);
+            const spacing = ResponsiveGameUtils.getSpacing(50, this);
+            const leftMargin = ResponsiveGameUtils.getResponsivePadding(50, this);
             const rightMargin = width / 2;
             
             let i = 0;
@@ -65,10 +65,10 @@ export default class ReviewMistakesScene extends Phaser.Scene {
                     : `${attempt.attemptedAnswer}`;
 
                 this.add.text(leftMargin, y, `${q.operand1} x ${q.operand2} = ${q.answer}`, 
-                    ResponsiveUtils.getTextStyle(24, this)
+                    ResponsiveGameUtils.getTextStyle(24, this)
                 );
                 this.add.text(rightMargin, y, `Réponse donnée : ${wrongText}`, 
-                    ResponsiveUtils.getTextStyle(24, this, {
+                    ResponsiveGameUtils.getTextStyle(24, this, {
                         color: '#ff5555'
                     })
                 );
@@ -78,17 +78,17 @@ export default class ReviewMistakesScene extends Phaser.Scene {
         }
 
         // Add responsive back button
-        const buttonSize = ResponsiveUtils.getButtonSize(this);
+        const buttonSize = ResponsiveGameUtils.getButtonSize(this);
         const backButton = this.add.rectangle(
             centerX, 
-            height - ResponsiveUtils.getResponsivePadding(60, this), 
+            height - ResponsiveGameUtils.getResponsivePadding(60, this), 
             buttonSize.width, 
             buttonSize.height, 
             0x0066cc
         ).setInteractive();
 
         this.add.text(backButton.x, backButton.y, 'Retour', 
-            ResponsiveUtils.getTextStyle(20, this)
+            ResponsiveGameUtils.getTextStyle(20, this)
         ).setOrigin(0.5);
 
         backButton.on('pointerdown', () => {

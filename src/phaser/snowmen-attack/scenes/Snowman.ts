@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import Track from './Track';
 import MainGame from './Game';
-import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 
 const MAX_X_POSITION = 880;
 export default class Snowman extends Phaser.Physics.Arcade.Sprite {
@@ -22,15 +22,23 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         const frame = (size === 'Small') ? 'snowman-small-idle0' : 'snowman-big-idle0';
         
         // Get responsive positioning
-        const { width } = ResponsiveUtils.getResponsiveDimensions(scene);
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(scene);
         const startX = width * 0.08; // Start at 8% of screen width (was 80/1024)
         const x = (size === 'Small') ? startX : -100;
         
         super(scene, x, track.y, 'sprites', frame);
         this.setOrigin(0.5, 1);
         
-        // Scale snowman for smaller screens
-        const snowmanScale = ResponsiveUtils.isMobile(scene) ? 0.8 : 1;
+        // Use hardcoded scale values for different screen sizes
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(scene);
+        let snowmanScale = 1.0; // Default desktop scale
+        
+        if (config.screenSize === 'mobile') {
+            snowmanScale = 0.45; // Smaller scale for mobile
+        } else if (config.screenSize === 'tablet') {
+            snowmanScale = 0.7; // Fixed scale for tablet
+        }
+        
         this.setScale(snowmanScale);
         
         // Update MAX_X_POSITION based on screen width
@@ -62,13 +70,13 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         // Create responsive label
         if(option !== 0){
             this.label = scene.add.text(this.x, this.y, option.toString(), {
-                font: ResponsiveUtils.getResponsiveFontSize(18, scene) + ' Arial',
+                font: ResponsiveGameUtils.getResponsiveFontSize(18, scene) + ' Arial',
                 color: '#000000',
             }).setOrigin(0.5, 0.4);
             this.label.setDepth(this.depth);
         } else {
             this.label = scene.add.text(this.x, this.y, '', {
-                font: ResponsiveUtils.getResponsiveFontSize(18, scene) + ' Arial',
+                font: ResponsiveGameUtils.getResponsiveFontSize(18, scene) + ' Arial',
                 color: '#000000',
             }).setOrigin(0.5, 0.4);
             this.label.setDepth(this.depth);
@@ -76,7 +84,7 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
     }
     
     private updateMaxPosition(scene: Phaser.Scene): void {
-        const { width } = ResponsiveUtils.getResponsiveDimensions(scene);
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(scene);
         // Update the static MAX_X_POSITION based on screen width (was 880/1024)
         (this.constructor as any).MAX_X_POSITION = width * 0.86;
     }
@@ -213,7 +221,7 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         }
         
         // Use responsive max position
-        const { width } = ResponsiveUtils.getResponsiveDimensions(this.scene);
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
         const maxPosition = width * 0.86; // Same as updateMaxPosition
         
         if (this.x >= maxPosition && this.isAlive) {

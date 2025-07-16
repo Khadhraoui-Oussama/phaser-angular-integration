@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
-import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 
 export default class TableSelectScene extends Phaser.Scene {
     selectedTables: number[];
@@ -17,15 +17,15 @@ export default class TableSelectScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         // Improved responsive spacing and layout
-        const isMobile = ResponsiveUtils.isMobile(this);
-        const isTablet = ResponsiveUtils.isTablet(this);
+        const isMobile = ResponsiveGameUtils.isMobile(this);
+        const isTablet = ResponsiveGameUtils.isTablet(this);
         
         // Much closer spacing for table buttons (more compact grid)
-        const verticalSpacing = ResponsiveUtils.getSpacing(isMobile ? 12 : 18, this); // Much reduced from 25/35
-        const horizontalSpacing = ResponsiveUtils.getSpacing(isMobile ? 4 : 8, this); // Much reduced from 8/15
+        const verticalSpacing = ResponsiveGameUtils.getSpacing(isMobile ? 12 : 18, this); // Much reduced from 25/35
+        const horizontalSpacing = ResponsiveGameUtils.getSpacing(isMobile ? 4 : 8, this); // Much reduced from 8/15
         
         // Responsive button dimensions with better proportions
         const baseButtonWidth = isMobile ? width * 0.22 : isTablet ? width * 0.15 : width * 0.10; // Slightly smaller
@@ -44,16 +44,16 @@ export default class TableSelectScene extends Phaser.Scene {
         
         // Center the grid
         const gridStartX = centerX - totalGridWidth / 2 + buttonWidth / 2;
-        const gridStartY = centerY - totalGridHeight / 2 - ResponsiveUtils.getSpacing(80, this); // Move grid up more
+        const gridStartY = centerY - totalGridHeight / 2 - ResponsiveGameUtils.getSpacing(80, this); // Move grid up more
         
         const minTableau = 2;
         const maxTableau = 10;
 
         // Position elements with much better spacing between groups
-        this.drawTitle(centerX, gridStartY - ResponsiveUtils.getSpacing(60, this)); // More space above grid
+        this.drawTitle(centerX, gridStartY - ResponsiveGameUtils.getSpacing(60, this)); // More space above grid
         this.drawTableButtons(gridStartX, gridStartY, buttonWidth, buttonHeight, horizontalSpacing, verticalSpacing, columns, minTableau, maxTableau);
-        this.drawRandomButton(centerX, gridStartY + totalGridHeight + ResponsiveUtils.getSpacing(50, this), minTableau, maxTableau); // More space below grid
-        this.drawStartButton(centerX, gridStartY + totalGridHeight + ResponsiveUtils.getSpacing(120, this)); // Even more space for start button
+        this.drawRandomButton(centerX, gridStartY + totalGridHeight + ResponsiveGameUtils.getSpacing(50, this), minTableau, maxTableau); // More space below grid
+        this.drawStartButton(centerX, gridStartY + totalGridHeight + ResponsiveGameUtils.getSpacing(120, this)); // Even more space for start button
 
         // Subscribe to language changes
         this.languageChangeUnsubscribe = languageManager.onLanguageChange(() => {
@@ -69,11 +69,11 @@ export default class TableSelectScene extends Phaser.Scene {
         });
 
         // Setup mobile input
-        ResponsiveUtils.setupMobileInput(this);
+        ResponsiveGameUtils.setupMobileInput(this);
     }
 
     drawTitle(x: number, y: number) {
-        const titleStyle = ResponsiveUtils.getTextStyle(28, this, { fontFamily: 'times new roman' });
+        const titleStyle = ResponsiveGameUtils.getTextStyle(28, this, { fontFamily: 'times new roman' });
         this.titleText = this.add.text(x, y, languageManager.getText('table_selection_scene_title'), titleStyle).setOrigin(0.5);
     }
 
@@ -88,11 +88,11 @@ export default class TableSelectScene extends Phaser.Scene {
         minTableau: number,
         maxTableau: number
     ) {
-        const buttonStyle = ResponsiveUtils.getTextStyle(30, this, { 
+        const buttonStyle = ResponsiveGameUtils.getTextStyle(30, this, { 
             backgroundColor: '#b43e63',
             padding: { 
-                x: ResponsiveUtils.getResponsivePadding(18, this), 
-                y: ResponsiveUtils.getResponsivePadding(12, this)  
+                x: ResponsiveGameUtils.getResponsivePadding(18, this), 
+                y: ResponsiveGameUtils.getResponsivePadding(12, this)  
             },
             color: '#e2dede',
             align: 'center',
@@ -129,12 +129,12 @@ export default class TableSelectScene extends Phaser.Scene {
     }
 
     drawRandomButton(x: number, y: number, minTableau: number = 2, maxTableau: number = 10) {
-        const buttonStyle = ResponsiveUtils.getTextStyle(20, this, {
+        const buttonStyle = ResponsiveGameUtils.getTextStyle(20, this, {
             backgroundColor: '#b43e63',
             fontFamily: 'times new roman',
             padding: { 
-                x: ResponsiveUtils.getResponsivePadding(20, this), 
-                y: ResponsiveUtils.getResponsivePadding(10, this) 
+                x: ResponsiveGameUtils.getResponsivePadding(20, this), 
+                y: ResponsiveGameUtils.getResponsivePadding(10, this) 
             },
             color: '#ffffff',
         });
@@ -156,12 +156,12 @@ export default class TableSelectScene extends Phaser.Scene {
     }
 
     drawStartButton(x: number, y: number) {
-        const buttonStyle = ResponsiveUtils.getTextStyle(20, this, {
+        const buttonStyle = ResponsiveGameUtils.getTextStyle(20, this, {
             fontFamily: 'times new roman',
             backgroundColor: '#0a0',
             padding: { 
-                x: ResponsiveUtils.getResponsivePadding(30, this), 
-                y: ResponsiveUtils.getResponsivePadding(15, this) 
+                x: ResponsiveGameUtils.getResponsivePadding(30, this), 
+                y: ResponsiveGameUtils.getResponsivePadding(15, this) 
             },
             color: '#999999',
         });

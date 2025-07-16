@@ -9,12 +9,72 @@ import VictoryScene from './scenes/VictoryScene';
 import ReviewMistakesScene from './scenes/ReviewMistakesScene';
 import LanguageSelectionScene from './scenes/LanguageSelectionScene';
 
+// Import types for responsive configuration
+export interface GameDimensions {
+    width: number;
+    height: number;
+    assetScale: number;
+    uiScale: number;
+    assetFolder: string;
+    screenSize: string;
+}
+
+// Create responsive config function
+const createResponsiveConfig = (dimensions: GameDimensions, parent: string): Phaser.Types.Core.GameConfig => {
+    // Calculate appropriate min/max based on screen size
+    const minWidth = dimensions.screenSize === 'mobile' ? 
+        Math.max(320, Math.floor(dimensions.width * 0.8)) : // Support down to 320px for mobile
+        Math.floor(dimensions.width * 0.5);
+    
+    const minHeight = dimensions.screenSize === 'mobile' ? 
+        Math.max(240, Math.floor(dimensions.height * 0.8)) : // Support down to 240px for mobile
+        Math.floor(dimensions.height * 0.5);
+    
+    return {
+        type: AUTO,
+        width: dimensions.width,
+        height: dimensions.height,
+        scale: {
+            mode: Phaser.Scale.NONE, // Changed from FIT to keep in document flow
+            parent: parent,
+            width: dimensions.width,
+            height: dimensions.height,
+            min: {
+                width: minWidth,
+                height: minHeight
+            },
+            max: {
+                width: Math.floor(dimensions.width * 1.2),
+                height: Math.floor(dimensions.height * 1.2)
+            }
+        },
+        backgroundColor: '#3366b2',
+        scene: [Boot, Preloader, MainMenu, TableSelectScene, MainGame, VictoryScene, ReviewMistakesScene, LanguageSelectionScene],
+        physics: {
+            default: 'arcade',
+            arcade: {
+                debug: false
+            }
+        },
+        // Pass responsive data to scenes
+        callbacks: {
+            preBoot: (game: Phaser.Game) => {
+                // Store responsive config in game registry for scenes to access
+                game.registry.set('responsiveConfig', dimensions);
+            }
+        }
+    };
+};
+
+// Legacy config for backward compatibility
 const config: Phaser.Types.Core.GameConfig = {
     type: AUTO,
     width: 1024,
     height: 768,
     scale: {
         mode: Phaser.Scale.FIT,
+        // autoCenter: Phaser.Scale.CENTER_VERTICALLY, 
+        // autoCenter: Phaser.Scale.CENTER_BOTH, 
         autoCenter: Phaser.Scale.CENTER_HORIZONTALLY, // works the best for now 
         //this removes the canvas from the document flow, to return it be must phaser.scale.none or make the gamecontainer have a relative postion but that removes responsiveness so must compromise
         parent: 'game-container',
@@ -25,8 +85,10 @@ const config: Phaser.Types.Core.GameConfig = {
             height: 240
         },
         max: {
-            width: 1920,
-            height: 1080
+            // width: 800,
+            // height: 600
+            width: 800,
+            height: 600
         }
     },
     backgroundColor: '#3366b2',
@@ -39,10 +101,17 @@ const config: Phaser.Types.Core.GameConfig = {
     }
 };
 
-const StartSnowmenAttackGame = (parent: string) => {
-
-    return new Game({ ...config, parent });
-
+// New responsive game initialization function
+const StartSnowmenAttackGameResponsive = (parent: string, dimensions: GameDimensions) => {
+    const responsiveConfig = createResponsiveConfig(dimensions, parent);
+    return new Game(responsiveConfig);
 }
+
+// Legacy function for backward compatibility
+const StartSnowmenAttackGame = (parent: string) => {
+    return new Game({ ...config, parent });
+}
+
+export { StartSnowmenAttackGameResponsive };
 export default StartSnowmenAttackGame;
 

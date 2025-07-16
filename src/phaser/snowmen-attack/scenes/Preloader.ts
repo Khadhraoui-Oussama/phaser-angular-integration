@@ -1,33 +1,40 @@
 import Phaser from 'phaser';
-import { ResponsiveUtils } from '../utils/ResponsiveUtils';
 
 export default class Preloader extends Phaser.Scene {
     private loadText!: Phaser.GameObjects.Text;
+    private responsiveConfig: any;
 
     constructor() {
         super('Preloader');
     }
 
     preload(): void {
-        const { centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        // Get responsive config from game registry
+        this.responsiveConfig = this.game.registry.get('responsiveConfig');
+        const centerX = this.scale.width / 2;
+        const centerY = this.scale.height / 2;
         
         // Create responsive loading text
-        this.loadText = this.add.text(centerX, centerY, 'Loading ...', 
-            ResponsiveUtils.getTextStyle(74, this, {
-                color: '#e3f2ed',
-                stroke: '#203c5b',
-                strokeThickness: 6
-            })
-        );
+        const fontSize = this.responsiveConfig ? 
+            Math.max(24, 74 * this.responsiveConfig.uiScale) : 74;
+            
+        this.loadText = this.add.text(centerX, centerY, 'Loading ...', {
+            fontSize: `${fontSize}px`,
+            fontFamily: 'Arial',
+            color: '#e3f2ed',
+            stroke: '#203c5b',
+            strokeThickness: 6,
+            align: 'center'
+        });
         this.loadText.setOrigin(0.5);
         this.loadText.setShadow(2, 2, '#2d2d2d', 4, true, false);
 
-        this.load.setPath('assets/games/snowmen-attack/');
+        // Set responsive asset path
+        const assetFolder = this.responsiveConfig ? this.responsiveConfig.assetFolder : 'desktop';
+        this.load.setPath(`assets/games/snowmen-attack/${assetFolder}/`);
         
-        //loading the question_ui
-        //312px width
+        //loading the question_ui with responsive assets
         this.load.image('question_ui_large',"question_ui_large.png")
-        //246px width
         this.load.image('question_ui',"question_ui.png")
         this.load.image('question_ui_no_top',"question_ui_no_top.png")
         this.load.image('question_ui_large_short_on_top',"question_ui_large_short_on_top.png")
@@ -37,14 +44,18 @@ export default class Preloader extends Phaser.Scene {
         this.load.image('gameover',"gameover.png");
         this.load.image('title',"title.png");
         this.load.atlas('sprites', 'sprites.png', 'sprites.json');
-        this.load.glsl('snow', 'snow.glsl.js');
-
+        
+        // Load sounds from main folder (shared across all devices)
         this.load.setPath('assets/games/snowmen-attack/sounds/');
         this.load.audio('music', ['music.ogg', 'music.m4a', 'music.mp3']);
         this.load.audio('throw', ['throw.ogg', 'throw.m4a', 'throw.mp3']);
         this.load.audio('move', ['move.ogg', 'move.m4a', 'move.mp3']);
         this.load.audio('hit-snowman', ['hit-snowman.ogg', 'hit-snowman.m4a', 'hit-snowman.mp3']);
         this.load.audio('gameover', ['gameover.ogg', 'gameover.m4a', 'gameover.mp3']);
+        
+        // Load shader from main folder
+        this.load.setPath('assets/games/snowmen-attack/');
+        this.load.glsl('snow', 'snow.glsl.js');
     }
 
     create(): void {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import MainGame from "./Game";
 import Track from './Track';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import MainGame from './Game';
 
 export default class EnemySnowball extends Phaser.Physics.Arcade.Sprite {
     track!: Track;
@@ -11,7 +12,17 @@ export default class EnemySnowball extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.setScale(0.5);
+        // Use hardcoded scale values for different screen sizes
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(scene);
+        let snowballScale = 0.8; // Default desktop scale
+        
+        if (config.screenSize === 'mobile') {
+            snowballScale = 0.3; // Smaller scale for mobile
+        } else if (config.screenSize === 'tablet') {
+            snowballScale = 0.5; // Fixed scale for tablet
+        }
+        
+        this.setScale(snowballScale);
     }
 
     fire(x: number, y: number): void {
@@ -39,11 +50,15 @@ export default class EnemySnowball extends Phaser.Physics.Arcade.Sprite {
     override preUpdate(time: number, delta: number): void {
         super.preUpdate(time, delta);
 
-        if (this.x >= 970) {
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        // Calculate nest position dynamically (same as in Track.ts: width)
+        const nestPosition = width;
+        
+        // Check if snowball has reached the nest position
+        if (this.x >= nestPosition- 40) {
             this.stop();
 
             const mainScene = this.scene as MainGame;
-
             const snowman = this.track.snowmanSmall;
             const answer = parseInt(snowman.label.text);
 

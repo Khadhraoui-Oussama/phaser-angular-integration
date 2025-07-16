@@ -1,6 +1,15 @@
-<main style=" display: flex; flex-direction: column;align-items: center;  border: red solid 3px; width: 100vh;width: 100vw;" id="app">
-    <p>You are playing Snowmen Attack: </p>
-    <a routerLink="/" style="display: inline-block;">Go Back Home</a>
-    <phaser-game  [startGame]="startGameFn"></phaser-game>
-   
+<main class="game-container">
+    <div class="game-info">
+        <p>You are playing Snowmen Attack (Responsive): </p>
+    </div>
+    
+    <div class="game-wrapper">
+        <phaser-game [startGameResponsive]="startGameResponsiveFn"></phaser-game>
+    </div>
+    
+    <div class="navigation">
+        <a routerLink="/" class="nav-link">Go Back Home</a>
+        <p>Next Lesson</p>
+        <p>Next Exercise</p>
+    </div>
 </main>

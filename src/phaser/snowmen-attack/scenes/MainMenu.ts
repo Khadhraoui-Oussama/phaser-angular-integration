@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
-import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 
 export default class MainMenu extends Phaser.Scene {
     private startText!: Phaser.GameObjects.Text;
@@ -15,13 +15,13 @@ export default class MainMenu extends Phaser.Scene {
     create(): void {
         this.sound.play('music', { loop: true, delay: 2 });
 
-        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
 
         // Add responsive snow effect
         this.add.shader('snow', centerX, centerY, width, height);
 
         // Setup responsive input for mobile
-        ResponsiveUtils.setupMobileInput(this);
+        ResponsiveGameUtils.setupMobileInput(this);
 
         // Intro snowball fight - made responsive
         this.createResponsiveIntro();
@@ -55,7 +55,7 @@ export default class MainMenu extends Phaser.Scene {
     }
 
     private createResponsiveIntro() {
-        const { width, height, centerX, centerY, minScale } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height, centerX, centerY, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         // Responsive positions for snowballs
         const ball1StartX = -64 * minScale;
@@ -66,10 +66,19 @@ export default class MainMenu extends Phaser.Scene {
         const ballY2 = height * 0.47;
         const ballY3 = height * 0.42;
 
-        // Intro snowball fight
-        const ball1 = this.add.image(ball1StartX, ballY1, 'sprites', 'snowball1');
-        const ball2 = this.add.image(ball2StartX, ballY2, 'sprites', 'snowball1');
-        const ball3 = this.add.image(ball3StartX, ballY3, 'sprites', 'snowball1');
+        // Intro snowball fight with responsive scaling
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(this);
+        let snowballScale = 1.0; // Default desktop scale
+        
+        if (config.screenSize === 'mobile') {
+            snowballScale = 0.45; // Smaller scale for mobile
+        } else if (config.screenSize === 'tablet') {
+            snowballScale = 0.7; // Fixed scale for tablet
+        }
+        
+        const ball1 = this.add.image(ball1StartX, ballY1, 'sprites', 'snowball1').setScale(snowballScale);
+        const ball2 = this.add.image(ball2StartX, ballY2, 'sprites', 'snowball1').setScale(snowballScale);
+        const ball3 = this.add.image(ball3StartX, ballY3, 'sprites', 'snowball1').setScale(snowballScale);
         
         // Logo starts completely off-screen to the right and slides in
         this.logo = this.add.image(width + 400, centerY, 'title'); // Increased offset to ensure completely hidden
@@ -149,12 +158,12 @@ export default class MainMenu extends Phaser.Scene {
     }
 
     private createStartText() {
-        const { width, height } = ResponsiveUtils.getResponsiveDimensions(this);
-        const textStyle = ResponsiveUtils.getTextStyle(24, this);
+        const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this);
+        const textStyle = ResponsiveGameUtils.getTextStyle(24, this);
         
         this.startText = this.add.text(
             width / 2,
-            height - ResponsiveUtils.getSpacing(100, this),
+            height - ResponsiveGameUtils.getSpacing(100, this),
             languageManager.getText('main_menu_click_to_start'),
             textStyle
         ).setOrigin(0.5);
@@ -184,10 +193,10 @@ export default class MainMenu extends Phaser.Scene {
     }
 
     private createLanguageButton() {
-        const { width } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(this);
         const currentLang = languageManager.getCurrentLanguage().toUpperCase();
-        const buttonSize = ResponsiveUtils.getButtonSize(this);
-        const spacing = ResponsiveUtils.getSpacing(50, this);
+        const buttonSize = ResponsiveGameUtils.getButtonSize(this);
+        const spacing = ResponsiveGameUtils.getSpacing(50, this);
         
         this.languageButton = this.add.text(
             width - spacing,
@@ -199,8 +208,8 @@ export default class MainMenu extends Phaser.Scene {
                 color: '#ffffff',
                 backgroundColor: '#333333',
                 padding: { 
-                    x: ResponsiveUtils.getResponsivePadding(10, this), 
-                    y: ResponsiveUtils.getResponsivePadding(5, this) 
+                    x: ResponsiveGameUtils.getResponsivePadding(10, this), 
+                    y: ResponsiveGameUtils.getResponsivePadding(5, this) 
                 }
             }
         ).setOrigin(0.5);

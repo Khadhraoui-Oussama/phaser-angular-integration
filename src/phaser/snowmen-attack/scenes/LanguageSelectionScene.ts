@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { languageManager, SupportedLanguage } from '../utils/LanguageManager';
-import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 
 export default class LanguageSelectionScene extends Phaser.Scene {
     private languageButtons: Map<SupportedLanguage, Phaser.GameObjects.Text> = new Map();
@@ -14,7 +14,7 @@ export default class LanguageSelectionScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         // Background
         this.add.rectangle(centerX, centerY, width, height, 0x000000, 0.7);
@@ -25,26 +25,26 @@ export default class LanguageSelectionScene extends Phaser.Scene {
         this.updateButtonStates();
         
         // Setup mobile input
-        ResponsiveUtils.setupMobileInput(this);
+        ResponsiveGameUtils.setupMobileInput(this);
     }
 
     private createTitle() {
-        const { centerX, height } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { centerX, height } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         this.titleText = this.add.text(
             centerX,
             height / 4,
             languageManager.getText('language_selection_title'),
-            ResponsiveUtils.getTextStyle(32, this, {
+            ResponsiveGameUtils.getTextStyle(32, this, {
                 align: 'center'
             })
         ).setOrigin(0.5);
     }
 
     private createLanguageButtons() {
-        const { centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         const languages: SupportedLanguage[] = ['en', 'fr', 'ar'];
-        const spacing = ResponsiveUtils.getSpacing(80, this);
+        const spacing = ResponsiveGameUtils.getSpacing(80, this);
         const startY = centerY - spacing;
 
         languages.forEach((language, index) => {
@@ -55,7 +55,7 @@ export default class LanguageSelectionScene extends Phaser.Scene {
                 centerX,
                 y,
                 displayName,
-                ResponsiveUtils.getTextStyle(24, this, {
+                ResponsiveGameUtils.getTextStyle(24, this, {
                     align: 'center'
                 })
             ).setOrigin(0.5).setInteractive();
@@ -81,13 +81,13 @@ export default class LanguageSelectionScene extends Phaser.Scene {
     }
 
     private createBackButton() {
-        const { width, height } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         this.backButton = this.add.text(
             100,
             height - 100,
             languageManager.getText('back'),
-            ResponsiveUtils.getTextStyle(20, this)
+            ResponsiveGameUtils.getTextStyle(20, this)
         ).setOrigin(0.5).setInteractive();
 
         this.backButton.on('pointerover', () => {

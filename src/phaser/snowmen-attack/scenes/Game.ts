@@ -5,7 +5,7 @@ import { EventBus } from '../EventBus';
 import {generateOptions, generatePossibleAnswersForTable, generateQuestionsForTables} from '../utils/QuestionGenerator';
 import { Question,  WrongAttempt } from '../models/Types';
 import Snowman from './Snowman';
-import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { LanguageManager } from '../utils/LanguageManager';
 
 export default class MainGame extends Phaser.Scene {
@@ -46,22 +46,30 @@ export default class MainGame extends Phaser.Scene {
             this.questionContainer.destroy();
         }
         
-        const { width, height, centerX } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height, centerX } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         this.questionContainer = this.add.container(centerX, 0).setDepth(1);
 
         // Use responsive background image
         const bgImage = this.add.image(0, 0, 'question_ui_large_short_on_top').setOrigin(0.5, 0);
         
-        // Scale background for smaller screens
-        const bgScale = ResponsiveUtils.isMobile(this) ? 0.8 : ResponsiveUtils.isTablet(this) ? 0.9 : 1;
+        // Scale background for smaller screens with consistent scaling
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(this);
+        let bgScale = 1.0; // Default desktop scale
+        
+        if (config.screenSize === 'mobile') {
+            bgScale = 0.45; // Smaller scale for mobile
+        } else if (config.screenSize === 'tablet') {
+            bgScale = 0.7; // Fixed scale for tablet
+        }
+        
         bgImage.setScale(bgScale);
         
         this.questionContainer.add(bgImage);
 
         // Create responsive question text
         this.questionText = this.add.text(0, bgImage.height * bgScale / 2, questionTextValue, 
-            ResponsiveUtils.getTextStyle(32, this, {
+            ResponsiveGameUtils.getTextStyle(32, this, {
                 align: 'center'
             })
         ).setOrigin(0.5, 0.5);
@@ -80,41 +88,50 @@ export default class MainGame extends Phaser.Scene {
         this.setupInputs();
         
         // Setup resize handling
-        ResponsiveUtils.setupResizeHandler(this, () => {
+        ResponsiveGameUtils.setupResizeHandler(this, () => {
             this.handleResize();
         });
     }
     
     private setupUI(): void {
-        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Add responsive background and overlay
+        // Add responsive background and overlay - these should always fill the screen
         this.add.image(centerX, centerY, 'background');
         this.add.image(0, 0, 'overlay').setOrigin(0);
         
-        // Add responsive score panels
-        const panelPadding = ResponsiveUtils.getResponsivePadding(16, this);
-        this.add.image(panelPadding, 0, 'sprites', 'panel-score').setOrigin(0);
-        this.add.image(width - panelPadding, 0, 'sprites', 'panel-best').setOrigin(1, 0);
+        // Add responsive score panels with scaling
+        const panelPadding = ResponsiveGameUtils.getResponsivePadding(16, this);
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(this);
+        let panelScale = 1.0; // Default desktop scale
         
-        this.infoPanel = this.add.image(centerX, centerY, 'sprites', 'controls');
+        if (config.screenSize === 'mobile') {
+            panelScale = 0.45; // Smaller scale for mobile
+        } else if (config.screenSize === 'tablet') {
+            panelScale = 0.7; // Fixed scale for tablet
+        }
+        
+        this.add.image(panelPadding, 0, 'sprites', 'panel-score').setOrigin(0).setScale(panelScale);
+        this.add.image(width - panelPadding, 0, 'sprites', 'panel-best').setOrigin(1, 0).setScale(panelScale);
+        
+        this.infoPanel = this.add.image(centerX, centerY, 'sprites', 'controls').setScale(panelScale);
 
         // Create responsive text
         this.scoreText = this.add.text(140 * (width / 1024), 2, this.score.toString(), 
-            ResponsiveUtils.getTextStyle(32, this)
+            ResponsiveGameUtils.getTextStyle(32, this)
         );
 
         this.highscoreText = this.add.text(820 * (width / 1024), 2, this.highscore.toString(), 
-            ResponsiveUtils.getTextStyle(32, this)
+            ResponsiveGameUtils.getTextStyle(32, this)
         );
     }
     
     private setupTracks(): void {
         // Create responsive tracks based on screen height
-        const trackPositions = ResponsiveUtils.getTrackPositions(this, 4);
+        const trackPositions = ResponsiveGameUtils.getTrackPositions(this, 4);
         
         // Add extra spacing between tracks for better visibility
-        const { height } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { height } = ResponsiveGameUtils.getResponsiveConfig(this);
         const extraSpacing = height * 0.035; 
         
         this.tracks = trackPositions.map((trackY, index) => 
@@ -126,10 +143,10 @@ export default class MainGame extends Phaser.Scene {
     
     private setupInputs(): void {
         // Setup mobile input support
-        ResponsiveUtils.setupMobileInput(this);
+        ResponsiveGameUtils.setupMobileInput(this);
         
         // Add touch controls for mobile
-        if (ResponsiveUtils.isMobile(this)) {
+        if (ResponsiveGameUtils.isMobile(this)) {
             this.setupMobileControls();
         }
 
@@ -140,15 +157,18 @@ export default class MainGame extends Phaser.Scene {
     
     private handleResize(): void {
         // Reposition UI elements on resize
-        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Update background position
+        // Update background position - backgrounds should always fill the screen
         const backgrounds = this.children.list.filter(child => 
             (child as any).texture?.key === 'background' || (child as any).texture?.key === 'overlay'
         );
         backgrounds.forEach(bg => {
+            const bgImage = bg as Phaser.GameObjects.Image;
             if ((bg as any).texture?.key === 'background') {
-                (bg as Phaser.GameObjects.Image).setPosition(centerX, centerY);
+                bgImage.setPosition(centerX, centerY);
+            } else if ((bg as any).texture?.key === 'overlay') {
+                bgImage.setPosition(0, 0);
             }
         });
         
@@ -164,7 +184,7 @@ export default class MainGame extends Phaser.Scene {
         
         // Update track positions with better spacing
         if (this.tracks) {
-            const trackPositions = ResponsiveUtils.getTrackPositions(this, 4);
+            const trackPositions = ResponsiveGameUtils.getTrackPositions(this, 4);
             this.tracks.forEach((track, index) => {
                 track.updateTrackPosition(trackPositions[index]);
             });
@@ -176,7 +196,7 @@ export default class MainGame extends Phaser.Scene {
         }
         
         // Update mobile controls if they exist
-        if (this.mobileControls && ResponsiveUtils.isMobile(this)) {
+        if (this.mobileControls && ResponsiveGameUtils.isMobile(this)) {
             this.destroyMobileControls();
             this.setupMobileControls();
         }
@@ -304,7 +324,7 @@ export default class MainGame extends Phaser.Scene {
         }
         this.input.keyboard!.removeAllListeners();
 
-        const { height } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { height } = ResponsiveGameUtils.getResponsiveConfig(this);
 
         this.tweens.add({
             targets: this.infoPanel,
@@ -334,7 +354,7 @@ export default class MainGame extends Phaser.Scene {
     }
 
     public gameOver(): void {
-        const { centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         this.infoPanel.setTexture('gameover');
 
@@ -410,51 +430,18 @@ export default class MainGame extends Phaser.Scene {
     }
 
     setupMobileControls(): void {
-        const { width, height } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         // Create virtual controls for mobile
-        const buttonSize = ResponsiveUtils.getButtonSize(this);
-        const padding = ResponsiveUtils.getResponsivePadding(20, this);
+        const buttonSize = ResponsiveGameUtils.getButtonSize(this);
+        const padding = ResponsiveGameUtils.getResponsivePadding(20, this);
         
-        // Up button
-        const upButton = this.add.rectangle(
-            padding + buttonSize.width / 2, 
-            height - padding - buttonSize.height * 3, 
-            buttonSize.width, 
-            buttonSize.height, 
-            0x0066cc, 
-            0.7
-        ).setInteractive();
-        
-        const upText = this.add.text(
-            upButton.x, 
-            upButton.y, 
-            '↑', 
-            ResponsiveUtils.getTextStyle(24, this)
-        ).setOrigin(0.5);
-        
-        // Down button
-        const downButton = this.add.rectangle(
-            padding + buttonSize.width / 2, 
-            height - padding - buttonSize.height, 
-            buttonSize.width, 
-            buttonSize.height, 
-            0x0066cc, 
-            0.7
-        ).setInteractive();
-        
-        const downText = this.add.text(
-            downButton.x, 
-            downButton.y, 
-            '↓', 
-            ResponsiveUtils.getTextStyle(24, this)
-        ).setOrigin(0.5);
-        
-        // Throw button
+        // Only show throw button for mobile, remove up/down buttons
+        // Throw button (centered horizontally, positioned at bottom)
         const throwButton = this.add.rectangle(
-            width - padding - buttonSize.width / 2, 
-            height - padding - buttonSize.height * 2, 
-            buttonSize.width, 
+            width / 2,  // Center horizontally
+            height - padding - buttonSize.height, 
+            buttonSize.width * 1.2,  // Make it slightly wider
             buttonSize.height, 
             0xcc0066, 
             0.7
@@ -464,31 +451,49 @@ export default class MainGame extends Phaser.Scene {
             throwButton.x, 
             throwButton.y, 
             'THROW', 
-            ResponsiveUtils.getTextStyle(16, this)
+            ResponsiveGameUtils.getTextStyle(18, this)  // Slightly larger text
+        ).setOrigin(0.5);
+        
+        // Add instruction text for mobile players
+        const instructionText = this.add.text(
+            width / 2,
+            height - padding - buttonSize.height * 2.5,
+            'Tap upper/lower screen to move • Tap button to throw',
+            ResponsiveGameUtils.getTextStyle(12, this, { 
+                color: '#ffffff',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                padding: { x: 10, y: 5 }
+            })
         ).setOrigin(0.5);
         
         // Add touch handlers
-        upButton.on('pointerdown', () => {
-            if (this.player && this.player.isAlive) {
-                this.player.moveUp();
-            }
-        });
-        
-        downButton.on('pointerdown', () => {
-            if (this.player && this.player.isAlive) {
-                this.player.moveDown();
-            }
-        });
-        
         throwButton.on('pointerdown', () => {
             if (this.player && this.player.isAlive && !this.player.isThrowing) {
                 this.player.throw();
             }
         });
         
+        // Add screen tap for movement (tap to move up/down)
+        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            // Don't move if clicking the throw button
+            if (throwButton.getBounds().contains(pointer.x, pointer.y)) {
+                return;
+            }
+            
+            if (this.player && this.player.isAlive) {
+                // Simple tap control: tap upper half = move up, tap lower half = move down
+                const centerY = height / 2;
+                if (pointer.y < centerY) {
+                    this.player.moveUp();
+                } else {
+                    this.player.moveDown();
+                }
+            }
+        });
+        
         // Store references for cleanup
         this.mobileControls = {
-            upButton, upText, downButton, downText, throwButton, throwText
+            throwButton, throwText, instructionText
         };
     }
 

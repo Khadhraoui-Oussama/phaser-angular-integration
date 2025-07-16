@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { WrongAttempt } from '../models/Types';
 import { languageManager } from '../utils/LanguageManager';
-import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 
 export default class VictoryScene extends Phaser.Scene {
     private score: number = 0;
@@ -25,7 +25,7 @@ export default class VictoryScene extends Phaser.Scene {
     }
 
     create() {
-        const { width, height, centerX, centerY } = ResponsiveUtils.getResponsiveDimensions(this);
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
 
         this.cameras.main.setBackgroundColor('#1a1a1a');
 
@@ -37,26 +37,26 @@ export default class VictoryScene extends Phaser.Scene {
         this.createUI();
         
         // Setup mobile input
-        ResponsiveUtils.setupMobileInput(this);
+        ResponsiveGameUtils.setupMobileInput(this);
         
         // Setup resize handling
-        ResponsiveUtils.setupResizeHandler(this, () => {
+        ResponsiveGameUtils.setupResizeHandler(this, () => {
             this.handleResize();
         });
     }
     
     private createUI(): void {
-        const { width, height, centerX } = ResponsiveUtils.getResponsiveDimensions(this);
-        const buttonSize = ResponsiveUtils.getButtonSize(this);
-        const spacing = ResponsiveUtils.getSpacing(60, this);
+        const { width, height, centerX } = ResponsiveGameUtils.getResponsiveConfig(this);
+        const buttonSize = ResponsiveGameUtils.getButtonSize(this);
+        const spacing = ResponsiveGameUtils.getSpacing(60, this);
 
         this.titleText = this.add.text(centerX, height / 4, 'Victory!', 
-            ResponsiveUtils.getTextStyle(48, this)
+            ResponsiveGameUtils.getTextStyle(48, this)
         ).setOrigin(0.5);
 
         this.scoreText = this.add.text(centerX, height / 2.7, 
             `Score: ${this.score}`, 
-            ResponsiveUtils.getTextStyle(32, this, {
+            ResponsiveGameUtils.getTextStyle(32, this, {
                 color: '#00ffcc'
             })
         ).setOrigin(0.5);
@@ -66,7 +66,7 @@ export default class VictoryScene extends Phaser.Scene {
             .setInteractive();
         
         this.replayBtnText = this.add.text(centerX, height / 2, 'Play Again',
-            ResponsiveUtils.getTextStyle(20, this)
+            ResponsiveGameUtils.getTextStyle(20, this)
         ).setOrigin(0.5);
 
         this.replayBtn.on('pointerdown', () => {
@@ -89,7 +89,7 @@ export default class VictoryScene extends Phaser.Scene {
                 .setInteractive();
             
             this.reviewBtnText = this.add.text(centerX, height / 2 + spacing, 'Review Mistakes',
-                ResponsiveUtils.getTextStyle(20, this)
+                ResponsiveGameUtils.getTextStyle(20, this)
             ).setOrigin(0.5);
 
             this.reviewBtn.on('pointerdown', () => {

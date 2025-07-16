@@ -3,7 +3,7 @@ import PlayerSnowball from './PlayerSnowball';
 import EnemySnowball from './EnemySnowball';
 import Phaser from 'phaser';
 import MainGame from './Game';
-import { ResponsiveUtils } from '../utils/ResponsiveUtils';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 
 export default class Track {
     scene: Phaser.Scene;
@@ -29,14 +29,41 @@ export default class Track {
         this.snowmenLabel = 0;
         
         // Get responsive dimensions for proper positioning
-        const { width } = ResponsiveUtils.getResponsiveDimensions(scene);
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(scene);
         
-        // Position nest responsively based on screen width
-        this.nest = scene.physics.add.image(width - 32, trackY - 10, 'sprites', 'nest').setOrigin(1, 1);
-
-        // Scale nest for smaller screens
-        const nestScale = ResponsiveUtils.isMobile(scene) ? 0.8 : 1;
+        // Use hardcoded scale values for different screen sizes
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(scene);
+        let nestScale = 1.0; // Default desktop scale
+        
+        if (config.screenSize === 'mobile') {
+            nestScale = 0.45; // Smaller scale for mobile
+        } else if (config.screenSize === 'tablet') {
+            nestScale = 0.7; // Fixed scale for tablet
+        }
+        
+        // Calculate the exact position where we want the nest to appear visually
+        const nestX = width ;
+        const nestY = trackY -20;
+        
+        // Create the physics image directly
+        this.nest = scene.physics.add.image(nestX, nestY, 'sprites', 'nest').setOrigin(1, 1);
         this.nest.setScale(nestScale);
+        
+        // Now set the collision body to match exactly where the sprite appears
+        if (this.nest.body) {
+            const body = this.nest.body as Phaser.Physics.Arcade.Body;
+            
+            // Get the actual dimensions after scaling
+            const scaledWidth = this.nest.width * nestScale;
+            const scaledHeight = this.nest.height * nestScale;
+            
+            // Set body size to match the scaled sprite
+            body.setSize(scaledWidth, scaledHeight);
+            
+            // With origin (1,1), the offset should be negative to move the body 
+            // from the bottom-right origin to cover the actual sprite area
+            body.setOffset(-scaledWidth, -scaledHeight);
+        }
 
         // this.snowmanBig = new Snowman(scene, this, 'Big',25);
         this.snowmanSmall = new Snowman(scene, this, 'Small',this.snowmenLabel);
@@ -73,13 +100,7 @@ export default class Track {
             undefined,
             this
         );
-        // this.snowmanBigCollider = scene.physics.add.overlap(
-        //     this.snowmanBig,
-        //     this.playerSnowballs,
-        //     this.hitSnowman as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-        //     undefined,
-        //     this
-        // );
+       
     }
     setSnowmenLabel(newLabel: number) {
         this.replaceSnowmanWithLabel(newLabel);
@@ -198,7 +219,7 @@ export default class Track {
         
         // Update nest position
         if (this.nest) {
-            this.nest.y = newY - 10;
+            this.nest.y = newY ;
         }
         
         // Update snowman position

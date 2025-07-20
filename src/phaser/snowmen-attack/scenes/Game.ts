@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import Track from './Track';
 import Player from './Player';
+import PlayerSnowball from './PlayerSnowball';
+import EnemySnowball from './EnemySnowball';
 import { EventBus } from '../EventBus';
-import {generateOptions, generatePossibleAnswersForTable, generateQuestionsForTables} from '../utils/QuestionGenerator';
+import {generateOptions, generatePossibleAnswersForTable, generateQuestionsForTables, shuffle} from '../utils/QuestionGenerator';
 import { Question,  WrongAttempt } from '../models/Types';
 import Snowman from './Snowman';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
@@ -235,14 +237,15 @@ export default class MainGame extends Phaser.Scene {
             this.score--;
             this.scoreText.setText(this.score.toString());
         }
-        const possibleAnswersForTable = generatePossibleAnswersForTable(this.currentQuestion.operand1);
 
         if (!this.questionsToRetry.has(this.currentQuestion)) {
             this.questionsToRetry.add(this.currentQuestion);
         }
 
+        // Update options for each question in retry set with their respective table's possible answers
         this.questionsToRetry.forEach(q => {
-            q.options = generateOptions(q.answer, possibleAnswersForTable);
+            const possibleAnswersForThisQuestion = generatePossibleAnswersForTable(q.operand1);
+            q.options = generateOptions(q.answer, possibleAnswersForThisQuestion);
         });
 
         const alreadyRegistered = Array.from(this.wrongAttempts).some(
@@ -269,6 +272,54 @@ export default class MainGame extends Phaser.Scene {
         track.snowmanSmall.start();
     }
 
+    onEggHit(track: Track): void {
+        // Use the comprehensive egg crack sequence function
+        this.handleEggCrackSequence(track);
+    }
+
+    private pauseGameForEggAnimation(): void {
+        // Pause physics to stop all movement
+        this.physics.pause();
+        
+        // Stop all tracks and snowmen
+        this.tracks.forEach(track => {
+            track.stop();
+        });
+        
+        // Stop all player snowballs and hide them
+        this.tracks.forEach(track => {
+            (track.playerSnowballs.getChildren() as Phaser.Physics.Arcade.Sprite[]).forEach(snowball => {
+                if (snowball.active) {
+                    snowball.stop();
+                    snowball.setVisible(false);
+                    snowball.setActive(false);
+                }
+            });
+        });
+        
+        // Stop all enemy snowballs
+        this.stopAllEnemySnowballs();
+        
+        // Stop player movement and disable input
+        this.player.stop();
+        this.player.spacebar.enabled = false;
+        this.player.up.enabled = false;
+        this.player.down.enabled = false;
+    }
+
+    private resumeGameAndLoadNext(): void {
+        // Resume physics
+        this.physics.resume();
+        
+        // Re-enable player input
+        this.player.spacebar.enabled = true;
+        this.player.up.enabled = true;
+        this.player.down.enabled = true;
+        
+        // Load next question
+        this.loadNextQuestion();
+    }
+
     loadNextQuestion(): void {
         if (!this.questions || this.questions.length === 0) {
             console.error("Questions not initialized correctly:", this.questions);
@@ -277,21 +328,44 @@ export default class MainGame extends Phaser.Scene {
         this.stopAllEnemySnowballs()
         this.questionOrder++;
         console.log("question order : ",this.questionOrder)
+        console.log("questions.length : ",this.questions.length)
+        console.log("questionsToRetry.size : ",this.questionsToRetry.size)
+        
         if (this.questionOrder >= this.questions.length) {//acount for 0-index
             if (this.questionsToRetry.size > 0) {
                 console.log('Switching to retry questions...');
-                this.questions = [...this.questionsToRetry];
-                console.log("this.questions : ",this.questions)
+                console.log('Questions to retry:', [...this.questionsToRetry]);
+                
+                // Convert to array and shuffle options for each retry question
+                this.questions = [...this.questionsToRetry].map(question => {
+                    // Generate fresh options for the question
+                    const possibleAnswersForThisQuestion = generatePossibleAnswersForTable(question.operand1);
+                    const shuffledOptions = generateOptions(question.answer, possibleAnswersForThisQuestion);
+                    
+                    // Actually shuffle the options array to randomize positions
+                    shuffle(shuffledOptions);
+                    
+                    console.log(`Shuffled options for ${question.operand1} x ${question.operand2}:`, shuffledOptions);
+                    
+                    return {
+                        ...question,
+                        options: shuffledOptions
+                    };
+                });
+                
+                console.log("this.questions after switch with shuffled options: ", this.questions)
                 this.questionsToRetry.clear();
                 this.questionOrder = 0;
+                console.log('Reset questionOrder to 0, starting retry round with shuffled options');
             } else {
-                console.log('All questions done!');
+                console.log('All questions done! No more retries available.');
                 this.gameOver();
                 return;
             }
         }
 
         this.currentQuestion = this.questions[this.questionOrder];
+        console.log('Loading question:', this.currentQuestion);
 
         this.createQuestionUI(`${this.currentQuestion.operand1} x ${this.currentQuestion.operand2}= ?`);
         this.tracks[0].setSnowmenLabel(this.currentQuestion.options[0]);
@@ -299,9 +373,17 @@ export default class MainGame extends Phaser.Scene {
         this.tracks[2].setSnowmenLabel(this.currentQuestion.options[2]);
         this.tracks[3].setSnowmenLabel(this.currentQuestion.options[3]);
 
-        // Restart snowmen
+        // Restart snowmen with responsive speed
         this.tracks.forEach(track => {
-            track.snowmanSmall.speed = 50;
+            // Set responsive speed based on screen size
+            const { config } = ResponsiveGameUtils.getResponsiveConfig(this);
+            let baseSpeed = 50; // Default desktop speed
+            if (config.screenSize === 'mobile') {
+                baseSpeed = 25; // Slower speed for mobile devices
+            } else if (config.screenSize === 'tablet') {
+                baseSpeed = 35; // Medium speed for tablets
+            }
+            track.snowmanSmall.speed = baseSpeed;
             track.snowmanSmall.start();
         });
     }
@@ -354,6 +436,11 @@ export default class MainGame extends Phaser.Scene {
     }
 
     public gameOver(): void {
+        console.log('=== GAME OVER ===');
+        console.log('Final questionsToRetry.size:', this.questionsToRetry.size);
+        console.log('Final wrongAttempts.size:', this.wrongAttempts.size);
+        console.log('All questions completed including retries!');
+        
         const { centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         this.infoPanel.setTexture('gameover');
@@ -400,15 +487,16 @@ export default class MainGame extends Phaser.Scene {
         if (correct) {
             console.log('Snowman with correct answer reached end: counted as wrong.');
 
-            const possibleAnswersForTable = generatePossibleAnswersForTable(this.currentQuestion.operand1);
-
             if (!this.questionsToRetry.has(this.currentQuestion)) {
                 this.questionsToRetry.add(this.currentQuestion);
             }
 
+            // Update options for each question in retry set with their respective table's possible answers
             this.questionsToRetry.forEach(q => {
-                q.options = generateOptions(q.answer, possibleAnswersForTable);
+                const possibleAnswersForThisQuestion = generatePossibleAnswersForTable(q.operand1);
+                q.options = generateOptions(q.answer, possibleAnswersForThisQuestion);
             });
+            
             const alreadyRegistered = Array.from(this.wrongAttempts).some(
                 attempt => attempt.question === this.currentQuestion && attempt.attemptedAnswer === -1
             );
@@ -495,6 +583,131 @@ export default class MainGame extends Phaser.Scene {
         this.mobileControls = {
             throwButton, throwText, 
         };
+    }
+
+    /**
+     * Handles the complete egg crack sequence:
+     * 1. Stops all snowmen from moving
+     * 2. Stops all snowballs from advancing
+     * 3. Plays egg crack animation
+     * 4. Loads next question after animation completes
+     */
+    handleEggCrackSequence(track: Track): void {
+        // 1. Stop all snowmen movement
+        this.tracks.forEach(t => {
+            if (t.snowmanSmall) {
+                t.snowmanSmall.stop();
+            }
+        });
+
+        // 2. Stop all snowballs from advancing
+        this.stopAllSnowballs();
+
+        // 3. Pause physics to ensure everything stops
+        this.physics.pause();
+
+        // 4. Disable player input during animation
+        this.player.spacebar.enabled = false;
+        this.player.up.enabled = false;
+        this.player.down.enabled = false;
+
+        // 5. Play egg crack animation with callback
+        track.triggerEggCrack(() => {
+            // 6. After animation completes, load next question
+            this.time.delayedCall(500, () => {
+                // Resume physics
+                this.physics.resume();
+                
+                // Re-enable player input
+                this.player.spacebar.enabled = true;
+                this.player.up.enabled = true;
+                this.player.down.enabled = true;
+                
+                // Load next question
+                this.loadNextQuestion();
+            });
+        });
+    }
+
+    /**
+     * Stops all snowballs (both player and enemy) from advancing
+     */
+    private stopAllSnowballs(): void {
+        this.tracks.forEach(track => {
+            // Stop all player snowballs
+            (track.playerSnowballs.getChildren() as PlayerSnowball[]).forEach(snowball => {
+                if (snowball.active) {
+                    snowball.stop();
+                    snowball.setVisible(false);
+                    snowball.setActive(false);
+                }
+            });
+
+            // Stop all enemy snowballs
+            (track.enemySnowballs.getChildren() as EnemySnowball[]).forEach(snowball => {
+                if (snowball.active) {
+                    snowball.stop();
+                    snowball.setVisible(false);
+                    snowball.setActive(false);
+                }
+            });
+        });
+    }
+
+    onEggHitAsWrongAnswer(track: Track): void {
+        console.log('Egg hit - treating as wrong answer!');
+        
+        // Get the correct answer for this question
+        const correctAnswer = this.currentQuestion.answer;
+        
+        // Handle this as a wrong answer with the correct answer as the "attempted" answer
+        // This represents that the player failed to hit the correct snowman in time
+        this.handleWrongAnswerForEggHit(correctAnswer, track);
+        
+        // Then trigger the egg crack sequence and move to next question
+        this.handleEggCrackSequence(track);
+    }
+
+    handleWrongAnswerForEggHit(correctAnswer: number, track: Track): void {
+        console.log('Handling egg hit as wrong answer...');
+        
+        // Decrease score for wrong answer
+        if(this.score >= 1){
+            this.score--;
+            this.scoreText.setText(this.score.toString());
+        }
+
+        // Add current question to retry set if not already there
+        if (!this.questionsToRetry.has(this.currentQuestion)) {
+            this.questionsToRetry.add(this.currentQuestion);
+        }
+
+        // Update options for each question in retry set with their respective table's possible answers
+        this.questionsToRetry.forEach(q => {
+            const possibleAnswersForThisQuestion = generatePossibleAnswersForTable(q.operand1);
+            q.options = generateOptions(q.answer, possibleAnswersForThisQuestion);
+        });
+
+        // Add to wrong attempts - using correctAnswer to indicate player failed to hit correct target
+        const alreadyRegistered = Array.from(this.wrongAttempts).some(
+            attempt => attempt.question === this.currentQuestion && attempt.attemptedAnswer === correctAnswer
+        );
+
+        if (!alreadyRegistered) {
+            this.wrongAttempts.add({
+                orderOfAppearance: this.questionOrder,
+                question: this.currentQuestion,
+                attemptedAnswer: correctAnswer, // The answer they should have hit but didn't
+            });
+        }
+
+        console.log("wrongAttempts after egg hit: ", this.wrongAttempts);
+        console.log("questionsToRetry after egg hit: ", this.questionsToRetry);
+
+        // Speed up all snowmen
+        this.tracks.forEach(track => {
+            track.snowmanSmall.speed += 10;
+        });
     }
 
 }

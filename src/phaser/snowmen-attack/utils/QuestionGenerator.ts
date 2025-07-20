@@ -30,7 +30,7 @@ function generateQuestionsForTables(selectedTables: number[]): Question[] {
     console.log(questions)
     return questions;
 }
-export {generateQuestionsForTables,generatePossibleAnswersForTable,generateOptions};
+export {generateQuestionsForTables,generatePossibleAnswersForTable,generateOptions,shuffle};
 
 
 function generateOptions(correctAnswer: number, possibleAnswers: number[], count = 4): number[] {

@@ -42,6 +42,7 @@ export default class Preloader extends Phaser.Scene {
         this.load.image('overlay',"overlay.png");
         this.load.image('gameover',"gameover.png");
         this.load.image('title',"title.png");
+        this.load.spritesheet('eggs_crack', 'eggs_crack.png', { frameWidth: 125, frameHeight: 125 });
         this.load.atlas('sprites', 'sprites.png', 'sprites.json');
         
         // Load sounds from main folder (shared across all devices)

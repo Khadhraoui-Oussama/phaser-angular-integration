@@ -62,7 +62,16 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
         this.isAlive = true;
         this.isThrowing = false;
         this.size = size;
-        this.speed = 50;
+        
+        // Set responsive speed based on screen size
+        let baseSpeed = 50; // Default desktop speed
+        if (config.screenSize === 'mobile') {
+            baseSpeed = 25; // Slower speed for mobile devices
+        } else if (config.screenSize === 'tablet') {
+            baseSpeed = 35; // Medium speed for tablets
+        }
+        this.speed = baseSpeed;
+        
         this.previousAction = 0;
         this.currentTrack = track;
         this.play('snowmanIdle' + this.size);

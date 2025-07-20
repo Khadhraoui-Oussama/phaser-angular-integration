@@ -34,7 +34,16 @@ export default class EnemySnowball extends Phaser.Physics.Arcade.Sprite {
         this.setActive(true);
         this.setVisible(true);
 
-        this.setVelocityX(200);
+        // Set responsive speed based on screen size
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        let snowballSpeed = 200; // Default desktop speed
+        if (config.screenSize === 'mobile') {
+            snowballSpeed = 100; // Slower speed for mobile devices
+        } else if (config.screenSize === 'tablet') {
+            snowballSpeed = 140; // Medium speed for tablets
+        }
+
+        this.setVelocityX(snowballSpeed);
     }
 
     override stop(): this {

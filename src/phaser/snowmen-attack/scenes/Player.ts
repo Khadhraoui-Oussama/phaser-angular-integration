@@ -85,12 +85,14 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     throw(): void {
+        console.log(`Player throwing from track ${this.currentTrack.id} at position y:${this.y}`);
         this.isThrowing = true;
         this.play('throwStart');
         this.sound.play('throw');
     }
 
     releaseSnowball(): void {
+        console.log(`Player releasing snowball from track ${this.currentTrack.id}`);
         this.play('throwEnd');
         this.currentTrack.throwPlayerSnowball(this.x);
     }

@@ -10,12 +10,14 @@ export default class Track {
     id: number;
     y: number;
     nest: Phaser.Physics.Arcade.Image;
+    eggCrackSprite: Phaser.GameObjects.Sprite;
     // snowmanBig: Snowman;
     snowmanSmall: Snowman;
     playerSnowballs: Phaser.Physics.Arcade.Group;
     enemySnowballs: Phaser.Physics.Arcade.Group;
     snowBallCollider: Phaser.Physics.Arcade.Collider;
     snowmanSmallCollider: Phaser.Physics.Arcade.Collider;
+    nestCollider: Phaser.Physics.Arcade.Collider;
     // snowmanBigCollider: Phaser.Physics.Arcade.Collider;
     releaseTimerSmall: Phaser.Time.TimerEvent;
     // releaseTimerBig: Phaser.Time.TimerEvent;
@@ -48,6 +50,21 @@ export default class Track {
         // Create the physics image directly
         this.nest = scene.physics.add.image(nestX, nestY, 'sprites', 'nest').setOrigin(1, 1);
         this.nest.setScale(nestScale);
+        
+        // Create the egg crack animation sprite (initially hidden)
+        this.eggCrackSprite = scene.add.sprite(nestX, nestY, 'eggs_crack').setOrigin(1, 1);
+        this.eggCrackSprite.setScale(nestScale);
+        this.eggCrackSprite.setVisible(false);
+        
+        // Create the egg crack animation if it doesn't exist
+        if (!scene.anims.exists('egg_crack')) {
+            scene.anims.create({
+                key: 'egg_crack',
+                frames: scene.anims.generateFrameNumbers('eggs_crack', { start: 0, end: 5 }),
+                frameRate: 6,
+                repeat: 0
+            });
+        }
         
         // Now set the collision body to match exactly where the sprite appears
         if (this.nest.body) {
@@ -100,6 +117,14 @@ export default class Track {
             undefined,
             this
         );
+
+        this.nestCollider = scene.physics.add.overlap(
+            this.nest,
+            this.enemySnowballs,
+            this.hitNest as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+            undefined,
+            this
+        );
        
     }
     setSnowmenLabel(newLabel: number) {
@@ -127,6 +152,19 @@ export default class Track {
             this.snowmanSmall,
             this.playerSnowballs,
             this.hitSnowman as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+            undefined,
+            this
+        );
+
+        // Recreate nest collider to ensure it works with the new snowball group
+        if (this.nestCollider) {
+            this.nestCollider.destroy();
+        }
+
+        this.nestCollider = this.scene.physics.add.overlap(
+            this.nest,
+            this.enemySnowballs,
+            this.hitNest as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
             undefined,
             this
         );
@@ -194,12 +232,79 @@ export default class Track {
         }
     }
 
-    throwPlayerSnowball(x: number): void {
-        let snowball = this.playerSnowballs.getFirstDead(false) as PlayerSnowball;
+    hitNest(
+        nest: Phaser.GameObjects.GameObject,
+        ball: Phaser.GameObjects.GameObject
+    ): void {
+        if (nest instanceof Phaser.Physics.Arcade.Image && ball instanceof EnemySnowball) {
+            // Stop and destroy the snowball that hit the nest
+            ball.stop();
+            ball.destroy();
+            
+            // Remove all player snowballs that are currently in flight
+            (this.scene as MainGame).tracks.forEach(track => {
+                (track.playerSnowballs.getChildren() as PlayerSnowball[]).forEach(snowball => {
+                    if (snowball.active) {
+                        snowball.stop();
+                        snowball.disableBody(true, true); // Disable physics body and hide
+                    }
+                });
+            });
+            
+            // Treat this as a wrong answer since the player failed to hit the correct snowman
+            // before the enemy snowball reached the nest
+            (this.scene as MainGame).onEggHitAsWrongAnswer(this);
+        }
+    }
 
-        if (snowball)
-        {
+    throwPlayerSnowball(x: number): void {
+        console.log(`=== TRACK ${this.id} SNOWBALL THROW DEBUG ===`);
+        console.log(`Total snowballs in pool: ${this.playerSnowballs.children.entries.length}`);
+        console.log(`Active snowballs: ${this.playerSnowballs.countActive(true)}`);
+        console.log(`Inactive snowballs: ${this.playerSnowballs.countActive(false)}`);
+        
+        // Debug all snowballs in pool
+        this.playerSnowballs.children.entries.forEach((snowball: any, index) => {
+            console.log(`Snowball ${index}: active=${snowball.active}, visible=${snowball.visible}, x=${snowball.x}, y=${snowball.y}`);
+        });
+
+        let snowball = this.playerSnowballs.getFirstDead(false) as PlayerSnowball;
+        console.log(`getFirstDead result:`, snowball);
+
+        if (snowball) {
+            console.log(`Firing snowball from track ${this.id} at x:${x}, y:${this.y}`);
             snowball.fire(x, this.y);
+        } else {
+            // No available snowball in pool - this could be the bug!
+            console.warn(`No available player snowball in track ${this.id} pool. Active snowballs:`, 
+                this.playerSnowballs.countActive(true));
+            
+            // Force cleanup of any snowballs that might be stuck
+            this.playerSnowballs.children.entries.forEach((snowball: any) => {
+                if (snowball.active && (snowball.x < -100 || snowball.x > 1200)) {
+                    console.warn('Cleaning up stuck snowball at x:', snowball.x);
+                    snowball.stop();
+                    snowball.disableBody(true, true);
+                }
+            });
+            
+            // Try again after cleanup
+            snowball = this.playerSnowballs.getFirstDead(false) as PlayerSnowball;
+            if (snowball) {
+                console.log('Successfully fired snowball after cleanup');
+                snowball.fire(x, this.y);
+            } else {
+                console.error('Still no available snowball after cleanup!');
+                console.error('Attempting to create emergency snowball...');
+                
+                // Emergency: manually create a snowball if none available
+                const emergencySnowball = new PlayerSnowball(this.scene, 0, 0, 'sprites', 'snowball2');
+                this.scene.add.existing(emergencySnowball);
+                this.scene.physics.add.existing(emergencySnowball);
+                this.playerSnowballs.add(emergencySnowball);
+                emergencySnowball.fire(x, this.y);
+                console.log('Emergency snowball created and fired!');
+            }
         }
     }
 
@@ -222,6 +327,11 @@ export default class Track {
             this.nest.y = newY ;
         }
         
+        // Update egg crack sprite position
+        if (this.eggCrackSprite) {
+            this.eggCrackSprite.y = newY;
+        }
+        
         // Update snowman position
         if (this.snowmanSmall) {
             this.snowmanSmall.y = newY;
@@ -231,6 +341,47 @@ export default class Track {
         // Update label position if it exists
         if (this.snowmanSmall && this.snowmanSmall.label) {
             this.snowmanSmall.label.y = this.snowmanSmall.y + 10;
+        }
+    }
+
+    triggerEggCrack(onComplete?: () => void): void {
+        // Hide the original nest and show the animated egg crack sprite
+        if (this.nest) {
+            this.nest.setVisible(false);
+        }
+        
+        if (this.eggCrackSprite) {
+            this.eggCrackSprite.setVisible(true);
+            
+            // Play the egg crack animation
+            this.eggCrackSprite.play('egg_crack');
+            
+            // Listen for animation complete event
+            this.eggCrackSprite.once('animationcomplete', () => {
+                // Hide the crack sprite and show the original nest again
+                this.eggCrackSprite.setVisible(false);
+                if (this.nest) {
+                    this.nest.setVisible(true);
+                }
+                
+                // Clean up any remaining player snowballs that might have escaped the initial check
+                (this.scene as MainGame).tracks.forEach(track => {
+                    (track.playerSnowballs.getChildren() as PlayerSnowball[]).forEach(snowball => {
+                        if (snowball.active) {
+                            snowball.stop();
+                            snowball.disableBody(true, true);
+                        }
+                    });
+                });
+                
+                // Call the callback if provided
+                if (onComplete) {
+                    onComplete();
+                }
+            });
+        } else if (onComplete) {
+            // If no egg crack sprite, call the callback immediately
+            onComplete();
         }
     }
 }

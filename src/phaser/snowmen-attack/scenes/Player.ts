@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import Track from './Track';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { SkinManager } from '../utils/SkinManager';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
     isAlive: boolean;
@@ -17,7 +18,27 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         const { width } = ResponsiveGameUtils.getResponsiveConfig(scene);
         const playerX = width * 0.88; // 88% of screen width (was 900/1024)
         
-        super(scene, playerX, track.y, 'sprites', 'idle000');
+        // Get initial frame based on registry skin choice
+        const selectedSkin = scene.game.registry.get('selectedSkin') || 'classic';
+        const currentSkin = SkinManager.getCurrentSkin(); // Keep this for later use
+        let textureKey: string;
+        let frameKey: string;
+        
+        if (selectedSkin === 'classic') {
+            // Classic winter: player = penguin
+            textureKey = SkinManager.getTextureKey('sprites');
+            frameKey = 'idle000';
+        } else if (selectedSkin === 'wizard') {
+            // Wizard: player = ice wizard
+            textureKey = SkinManager.getPlayerFrame();
+            frameKey = '';
+        } else {
+            // Fallback - assume classic
+            textureKey = SkinManager.getTextureKey('sprites');
+            frameKey = 'idle000';
+        }
+        
+        super(scene, playerX, track.y, textureKey, frameKey);
 
         this.setOrigin(0.5, 1);
         
@@ -29,6 +50,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
             playerScale = 0.45; // Smaller scale for mobile
         } else if (config.screenSize === 'tablet') {
             playerScale = 0.7; // Fixed scale for tablet
+        }
+        
+        // Make wizard players smaller and flip them to face left
+        if (currentSkin.type === 'individual') {
+            playerScale *= 0.25; // Make wizards 75% smaller
+            this.setFlipX(true); // Flip wizard player to face left
         }
         
         this.setScale(playerScale);
@@ -46,7 +73,16 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.up = this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
         this.down = this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
 
-        this.play('idle');
+        // Only play animation if it's an atlas-based skin or if animations are ready
+        if (currentSkin.type === 'atlas') {
+            this.playAnimationSafe('idle');
+        }
+        // For individual frame skins, the texture is already set to the idle frame
+    }
+    
+    private playAnimationSafe(animationKey: string, ignoreIfPlaying?: boolean): void {
+        // Both atlas and individual frame skins now support animations
+        this.play(animationKey, ignoreIfPlaying);
     }
 
     start(): void {
@@ -59,7 +95,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.on('animationcomplete-throwStart', this.releaseSnowball, this);
         this.on('animationcomplete-throwEnd', this.throwComplete, this);
 
-        this.play('idle', true);
+        this.playAnimationSafe('idle', true);
     }
 
     moveUp(): void {
@@ -87,19 +123,19 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     throw(): void {
         console.log(`Player throwing from track ${this.currentTrack.id} at position y:${this.y}`);
         this.isThrowing = true;
-        this.play('throwStart');
+        this.playAnimationSafe('throwStart');
         this.sound.play('throw');
     }
 
     releaseSnowball(): void {
         console.log(`Player releasing snowball from track ${this.currentTrack.id}`);
-        this.play('throwEnd');
+        this.playAnimationSafe('throwEnd');
         this.currentTrack.throwPlayerSnowball(this.x);
     }
 
     throwComplete(): void {
         this.isThrowing = false;
-        this.play('idle');
+        this.playAnimationSafe('idle');
     }
 
     override stop(): this {
@@ -107,7 +143,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.body) {
             this.body.stop();
         }
-        this.play('die');
+        this.playAnimationSafe('die');
         return this;
     }
 

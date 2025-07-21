@@ -9,6 +9,7 @@ import { Question,  WrongAttempt } from '../models/Types';
 import Snowman from './Snowman';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { LanguageManager } from '../utils/LanguageManager';
+import { SkinManager } from '../utils/SkinManager';
 
 export default class MainGame extends Phaser.Scene {
     private player!: Player;
@@ -25,6 +26,7 @@ export default class MainGame extends Phaser.Scene {
     private questionText!: Phaser.GameObjects.Text;
     private currentQuestion!: Question;
     private mobileControls?: any;
+    private gameStarted: boolean = false;
     
     constructor() {
         super('MainGame');
@@ -84,6 +86,7 @@ export default class MainGame extends Phaser.Scene {
         this.highscore = this.registry.get('highscore') as number;
         this.questionsToRetry = new Set<Question>
         this.wrongAttempts = new Set<WrongAttempt>
+        this.gameStarted = false; // Reset game started flag
         
         this.setupUI();
         this.setupTracks();
@@ -98,9 +101,9 @@ export default class MainGame extends Phaser.Scene {
     private setupUI(): void {
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Add responsive background and overlay - these should always fill the screen
-        this.add.image(centerX, centerY, 'background');
-        this.add.image(0, 0, 'overlay').setOrigin(0);
+        // Add responsive background and overlay using SkinManager - these should always fill the screen
+        this.add.image(centerX, centerY, SkinManager.getTextureKey('background'));
+        this.add.image(0, 0, SkinManager.getTextureKey('overlay')).setOrigin(0);
         
         // Add responsive score panels with scaling
         const panelPadding = ResponsiveGameUtils.getResponsivePadding(16, this);
@@ -113,10 +116,24 @@ export default class MainGame extends Phaser.Scene {
             panelScale = 0.7; // Fixed scale for tablet
         }
         
-        this.add.image(panelPadding, 0, 'sprites', 'panel-score').setOrigin(0).setScale(panelScale);
-        this.add.image(width - panelPadding, 0, 'sprites', 'panel-best').setOrigin(1, 0).setScale(panelScale);
+        // Use SkinManager for sprites or fallback to hardcoded names for panels
+        const currentSkin = SkinManager.getCurrentSkin();
+        let spritesKey: string;
+        let panelFrame: string | undefined;
         
-        this.infoPanel = this.add.image(centerX, centerY, 'sprites', 'controls').setScale(panelScale);
+        if (currentSkin.type === 'atlas') {
+            spritesKey = SkinManager.getTextureKey('sprites');
+            panelFrame = 'panel-score';
+        } else {
+            // For individual frame skins, fallback to classic for UI panels
+            spritesKey = 'classic_sprites';
+            panelFrame = 'panel-score';
+        }
+        
+        this.add.image(panelPadding, 0, spritesKey, panelFrame).setOrigin(0).setScale(panelScale);
+        this.add.image(width - panelPadding, 0, spritesKey, 'panel-best').setOrigin(1, 0).setScale(panelScale);
+        
+        this.infoPanel = this.add.image(centerX, centerY, spritesKey, 'controls').setScale(panelScale);
 
         // Create responsive text
         this.scoreText = this.add.text(140 * (width / 1024), 2, this.score.toString(), 
@@ -147,14 +164,15 @@ export default class MainGame extends Phaser.Scene {
         // Setup mobile input support
         ResponsiveGameUtils.setupMobileInput(this);
         
-        // Add touch controls for mobile
-        if (ResponsiveGameUtils.isMobile(this)) {
+        // Add touch controls for mobile and tablet
+        if (ResponsiveGameUtils.needsTouchControls(this)) {
             this.setupMobileControls();
+        } else {
+            // Only set up keyboard controls for desktop
+            this.input.keyboard!.once('keydown-SPACE', this.start, this);
+            this.input.keyboard!.once('keydown-UP', this.start, this);
+            this.input.keyboard!.once('keydown-DOWN', this.start, this);
         }
-
-        this.input.keyboard!.once('keydown-SPACE', this.start, this);
-        this.input.keyboard!.once('keydown-UP', this.start, this);
-        this.input.keyboard!.once('keydown-DOWN', this.start, this);
     }
     
     private handleResize(): void {
@@ -163,13 +181,14 @@ export default class MainGame extends Phaser.Scene {
         
         // Update background position - backgrounds should always fill the screen
         const backgrounds = this.children.list.filter(child => 
-            (child as any).texture?.key === 'background' || (child as any).texture?.key === 'overlay'
+            (child as any).texture?.key === SkinManager.getTextureKey('background') || 
+            (child as any).texture?.key === SkinManager.getTextureKey('overlay')
         );
         backgrounds.forEach(bg => {
             const bgImage = bg as Phaser.GameObjects.Image;
-            if ((bg as any).texture?.key === 'background') {
+            if ((bg as any).texture?.key === SkinManager.getTextureKey('background')) {
                 bgImage.setPosition(centerX, centerY);
-            } else if ((bg as any).texture?.key === 'overlay') {
+            } else if ((bg as any).texture?.key === SkinManager.getTextureKey('overlay')) {
                 bgImage.setPosition(0, 0);
             }
         });
@@ -198,7 +217,7 @@ export default class MainGame extends Phaser.Scene {
         }
         
         // Update mobile controls if they exist
-        if (this.mobileControls && ResponsiveGameUtils.isMobile(this)) {
+        if (this.mobileControls && ResponsiveGameUtils.needsTouchControls(this)) {
             this.destroyMobileControls();
             this.setupMobileControls();
         }
@@ -404,6 +423,10 @@ export default class MainGame extends Phaser.Scene {
             console.error("Questions not initialized correctly:", this.questions);
             return;
         }
+        
+        // Mark game as started
+        this.gameStarted = true;
+        
         this.input.keyboard!.removeAllListeners();
 
         const { height } = ResponsiveGameUtils.getResponsiveConfig(this);
@@ -538,7 +561,7 @@ export default class MainGame extends Phaser.Scene {
         const throwText = this.add.text(
             throwButton.x, 
             throwButton.y, 
-            'THROW', 
+            this.gameStarted ? 'THROW' : 'START', 
             ResponsiveGameUtils.getTextStyle(18, this)  // Slightly larger text
         ).setOrigin(0.5);
         
@@ -556,19 +579,25 @@ export default class MainGame extends Phaser.Scene {
         
         // Add touch handlers
         throwButton.on('pointerdown', () => {
-            if (this.player && this.player.isAlive && !this.player.isThrowing) {
+            if (!this.gameStarted) {
+                // Use throw button to start the game on mobile/tablet
+                this.start();
+                // Update button text after starting
+                throwText.setText('THROW');
+            } else if (this.player && this.player.isAlive && !this.player.isThrowing) {
                 this.player.throw();
             }
         });
         
-        // Add screen tap for movement (tap to move up/down)
+        // Add screen tap for movement (tap to move up/down) - only after game starts
         this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
             // Don't move if clicking the throw button
             if (throwButton.getBounds().contains(pointer.x, pointer.y)) {
                 return;
             }
             
-            if (this.player && this.player.isAlive) {
+            // Only allow movement after game has started
+            if (this.gameStarted && this.player && this.player.isAlive) {
                 // Simple tap control: tap upper half = move up, tap lower half = move down
                 const centerY = height / 2;
                 if (pointer.y < centerY) {

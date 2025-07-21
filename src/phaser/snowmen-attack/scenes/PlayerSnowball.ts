@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { SkinManager } from '../utils/SkinManager';
 
 export default class PlayerSnowball extends Phaser.Physics.Arcade.Sprite {
     constructor(scene: Phaser.Scene, x: number, y: number, key: string, frame?: string | number) {
@@ -19,13 +20,17 @@ export default class PlayerSnowball extends Phaser.Physics.Arcade.Sprite {
     }
 
     fire(x: number, y: number): void {
+        console.log(`=== PLAYER SNOWBALL FIRE DEBUG ===`);
+        console.log(`Current skin: ${SkinManager.getCurrentSkinId()}`);
         console.log(`PlayerSnowball.fire called with x:${x}, y:${y}`);
+        console.log(`Snowball texture: ${this.texture.key}`);
         console.log(`Snowball body before fire:`, this.body);
         
         if (this.body) {
             this.body.enable = true;
             this.body.reset(x, y - 44);
             console.log(`Body reset to x:${x}, y:${y - 44}`);
+            console.log(`Body size: ${(this.body as Phaser.Physics.Arcade.Body).width}x${(this.body as Phaser.Physics.Arcade.Body).height}`);
         } else {
             console.error('PlayerSnowball has no body!');
         }
@@ -51,6 +56,7 @@ export default class PlayerSnowball extends Phaser.Physics.Arcade.Sprite {
         this.setAccelerationX(snowballAcceleration);
         console.log(`Snowball velocity set to ${snowballSpeed}, acceleration to ${snowballAcceleration}`);
         console.log(`Final snowball position: x:${this.x}, y:${this.y}, active:${this.active}, visible:${this.visible}`);
+        console.log(`=== END PLAYER SNOWBALL FIRE DEBUG ===`);
     }
 
     override stop(): this {

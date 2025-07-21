@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import Track from './Track';
 import MainGame from './Game';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { SkinManager } from '../utils/SkinManager';
 
 const MAX_X_POSITION = 880;
 export default class Snowman extends Phaser.Physics.Arcade.Sprite {
@@ -19,14 +20,31 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
     label: Phaser.GameObjects.Text;
 
     constructor(scene: Phaser.Scene, track: Track, size: 'Small' | 'Big', option: number) {
-        const frame = (size === 'Small') ? 'snowman-small-idle0' : 'snowman-big-idle0';
+        // Get frame based on registry skin choice
+        const selectedSkin = scene.game.registry.get('selectedSkin') || 'classic';
+        let textureKey: string;
+        let frameKey: string;
+        
+        if (selectedSkin === 'classic') {
+            // Classic winter: enemies = snowmen (player = penguin)
+            textureKey = SkinManager.getTextureKey('sprites');
+            frameKey = (size === 'Small') ? 'snowman-small-idle0' : 'snowman-big-idle0';
+        } else if (selectedSkin === 'wizard') {
+            // Wizard: enemies = fire wizard (player = ice wizard)
+            textureKey = SkinManager.getEnemyFrame(size);
+            frameKey = '';
+        } else {
+            // Fallback
+            textureKey = SkinManager.getTextureKey('sprites');
+            frameKey = (size === 'Small') ? 'snowman-small-idle0' : 'snowman-big-idle0';
+        }
         
         // Get responsive positioning
         const { width } = ResponsiveGameUtils.getResponsiveConfig(scene);
         const startX = width * 0.08; // Start at 8% of screen width (was 80/1024)
         const x = (size === 'Small') ? startX : -100;
         
-        super(scene, x, track.y, 'sprites', frame);
+        super(scene, x, track.y, textureKey, frameKey);
         this.setOrigin(0.5, 1);
         
         // Use hardcoded scale values for different screen sizes
@@ -37,6 +55,11 @@ export default class Snowman extends Phaser.Physics.Arcade.Sprite {
             snowmanScale = 0.45; // Smaller scale for mobile
         } else if (config.screenSize === 'tablet') {
             snowmanScale = 0.7; // Fixed scale for tablet
+        }
+        
+        // Apply additional scaling for wizard enemies to make them smaller
+        if (selectedSkin === 'wizard') {
+            snowmanScale *= 0.3; // Make wizard enemies 60% of their normal size
         }
         
         this.setScale(snowmanScale);

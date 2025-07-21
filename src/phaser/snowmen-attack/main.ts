@@ -8,6 +8,7 @@ import TableSelectScene from './scenes/TableSelectScene';
 import VictoryScene from './scenes/VictoryScene';
 import ReviewMistakesScene from './scenes/ReviewMistakesScene';
 import LanguageSelectionScene from './scenes/LanguageSelectionScene';
+import SkinSelection from './scenes/SkinSelection';
 
 // Import types for responsive configuration
 export interface GameDimensions {
@@ -48,7 +49,7 @@ const createResponsiveConfig = (dimensions: GameDimensions, parent: string): Pha
             }
         },
         backgroundColor: '#3366b2',
-        scene: [Boot, Preloader, MainMenu, TableSelectScene, MainGame, VictoryScene, ReviewMistakesScene, LanguageSelectionScene],
+        scene: [Boot, Preloader, MainMenu, TableSelectScene, MainGame, VictoryScene, ReviewMistakesScene, LanguageSelectionScene, SkinSelection],
         physics: {
             default: 'arcade',
             arcade: {

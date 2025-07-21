@@ -4,6 +4,7 @@ import EnemySnowball from './EnemySnowball';
 import Phaser from 'phaser';
 import MainGame from './Game';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { SkinManager } from '../utils/SkinManager';
 
 export default class Track {
     scene: Phaser.Scene;
@@ -47,8 +48,8 @@ export default class Track {
         const nestX = width ;
         const nestY = trackY -20;
         
-        // Create the physics image directly
-        this.nest = scene.physics.add.image(nestX, nestY, 'sprites', 'nest').setOrigin(1, 1);
+        // Always use the classic nest from the classic sprites atlas for all skins
+        this.nest = scene.physics.add.image(nestX, nestY, 'classic_sprites', 'nest').setOrigin(1, 1);
         this.nest.setScale(nestScale);
         
         // Create the egg crack animation sprite (initially hidden)
@@ -66,7 +67,7 @@ export default class Track {
             });
         }
         
-        // Now set the collision body to match exactly where the sprite appears
+        // Now set the collision body to be smaller than the sprite for more precise collision
         if (this.nest.body) {
             const body = this.nest.body as Phaser.Physics.Arcade.Body;
             
@@ -74,12 +75,18 @@ export default class Track {
             const scaledWidth = this.nest.width * nestScale;
             const scaledHeight = this.nest.height * nestScale;
             
-            // Set body size to match the scaled sprite
-            body.setSize(scaledWidth, scaledHeight);
+            // Make collision area smaller (60% of sprite size) for more precise collision
+            const collisionWidth = scaledWidth * 0.3;
+            const collisionHeight = scaledHeight;
             
-            // With origin (1,1), the offset should be negative to move the body 
-            // from the bottom-right origin to cover the actual sprite area
-            body.setOffset(-scaledWidth, -scaledHeight);
+            // Set body size to be smaller than the scaled sprite
+            body.setSize(collisionWidth, collisionHeight);
+            
+            // Center the smaller collision body within the sprite
+            // With origin (1,1), offset from bottom-right, centering the smaller body
+            const offsetX = -scaledWidth + (scaledWidth - collisionWidth) / 2;
+            const offsetY = -scaledHeight + (scaledHeight - collisionHeight) / 2;
+            body.setOffset(offsetX, offsetY);
         }
 
         // this.snowmanBig = new Snowman(scene, this, 'Big',25);
@@ -87,8 +94,8 @@ export default class Track {
 
         this.playerSnowballs = scene.physics.add.group({
             frameQuantity: 8,
-            key: 'sprites',
-            frame: 'snowball2',
+            key: SkinManager.getTextureKey('playerSnowball'),
+            frame: SkinManager.getCurrentSkin().type === 'atlas' ? 'snowball2' : undefined,
             active: false,
             visible: false,
             classType: PlayerSnowball
@@ -96,8 +103,8 @@ export default class Track {
 
         this.enemySnowballs = scene.physics.add.group({
             frameQuantity: 8,
-            key: 'sprites',
-            frame: 'snowball3',
+            key: SkinManager.getTextureKey('enemySnowball'),
+            frame: SkinManager.getCurrentSkin().type === 'atlas' ? 'snowball3' : undefined,
             active: false,
             visible: false,
             classType: EnemySnowball
@@ -117,6 +124,20 @@ export default class Track {
             undefined,
             this
         );
+
+        console.log(`=== INITIAL COLLISION SETUP DEBUG ===`);
+        console.log(`Track ${id} collision setup for skin: ${SkinManager.getCurrentSkinId()}`);
+        console.log(`Snowman texture: ${this.snowmanSmall.texture.key}`);
+        console.log(`Player snowball texture: ${SkinManager.getTextureKey('playerSnowball')}`);
+        console.log(`Initial collision setup completed for track ${id}`);
+
+        // For wizard skin, add a manual collision check as backup
+        if (SkinManager.getCurrentSkin().type === 'individual') {
+            console.log(`Setting up wizard-specific collision monitoring for track ${id}`);
+            scene.physics.world.on('worldstep', () => {
+                this.checkWizardCollisions();
+            });
+        }
 
         this.nestCollider = scene.physics.add.overlap(
             this.nest,
@@ -148,6 +169,12 @@ export default class Track {
             this.snowmanSmallCollider.destroy();
         }
 
+        console.log(`=== COLLISION SETUP DEBUG ===`);
+        console.log(`Setting up collision for skin: ${SkinManager.getCurrentSkinId()}`);
+        console.log(`Snowman texture: ${this.snowmanSmall.texture.key}`);
+        console.log(`Player snowball texture: ${SkinManager.getTextureKey('playerSnowball')}`);
+        console.log(`Snowman body: ${(this.snowmanSmall.body as Phaser.Physics.Arcade.Body).width}x${(this.snowmanSmall.body as Phaser.Physics.Arcade.Body).height}`);
+
         this.snowmanSmallCollider = this.scene.physics.add.overlap(
             this.snowmanSmall,
             this.playerSnowballs,
@@ -155,6 +182,13 @@ export default class Track {
             undefined,
             this
         );
+
+        console.log(`Collision setup completed for track ${this.id}`);
+
+        // For wizard skin, add a manual collision check as backup
+        if (SkinManager.getCurrentSkin().type === 'individual') {
+            console.log(`Setting up wizard-specific collision monitoring for track ${this.id} (replace)`);
+        }
 
         // Recreate nest collider to ensure it works with the new snowball group
         if (this.nestCollider) {
@@ -224,6 +258,15 @@ export default class Track {
     ): void {
         if (snowman instanceof Snowman && ball instanceof PlayerSnowball) {
             if (snowman.isAlive && snowman.x > 0) {
+                console.log(`=== WIZARD COLLISION DEBUG ===`);
+                console.log(`Current skin: ${SkinManager.getCurrentSkinId()}`);
+                console.log(`Snowman texture: ${snowman.texture.key}`);
+                console.log(`Ball texture: ${ball.texture.key}`);
+                console.log(`Snowman position: x=${snowman.x}, y=${snowman.y}`);
+                console.log(`Ball position: x=${ball.x}, y=${ball.y}`);
+                console.log(`Snowman body size: ${(snowman.body as Phaser.Physics.Arcade.Body).width}x${(snowman.body as Phaser.Physics.Arcade.Body).height}`);
+                console.log(`Ball body size: ${(ball.body as Phaser.Physics.Arcade.Body).width}x${(ball.body as Phaser.Physics.Arcade.Body).height}`);
+                
                 ball.stop();
                 ball.destroy();
                 snowman.hit();
@@ -298,7 +341,11 @@ export default class Track {
                 console.error('Attempting to create emergency snowball...');
                 
                 // Emergency: manually create a snowball if none available
-                const emergencySnowball = new PlayerSnowball(this.scene, 0, 0, 'sprites', 'snowball2');
+                const currentSkin = SkinManager.getCurrentSkin();
+                const textureKey = SkinManager.getTextureKey('playerSnowball');
+                const frameKey = currentSkin.type === 'atlas' ? 'snowball2' : undefined;
+                
+                const emergencySnowball = new PlayerSnowball(this.scene, 0, 0, textureKey, frameKey);
                 this.scene.add.existing(emergencySnowball);
                 this.scene.physics.add.existing(emergencySnowball);
                 this.playerSnowballs.add(emergencySnowball);
@@ -382,6 +429,38 @@ export default class Track {
         } else if (onComplete) {
             // If no egg crack sprite, call the callback immediately
             onComplete();
+        }
+    }
+
+    checkWizardCollisions(): void {
+        // Only check if we have wizard skin and snowman is alive
+        if (SkinManager.getCurrentSkin().type !== 'individual' || !this.snowmanSmall?.isAlive) {
+            return;
+        }
+
+        // Get all active player snowballs
+        const activeSnowballs = (this.playerSnowballs.getChildren() as PlayerSnowball[]).filter(
+            snowball => snowball.active && snowball.visible
+        );
+
+        for (const snowball of activeSnowballs) {
+            // Manual collision detection using distance calculation
+            const distance = Phaser.Math.Distance.Between(
+                this.snowmanSmall.x, this.snowmanSmall.y,
+                snowball.x, snowball.y
+            );
+            
+            // Use a generous collision distance for wizard enemies (100 pixels)
+            if (distance < 100) {
+                console.log(`=== WIZARD MANUAL COLLISION DETECTED ===`);
+                console.log(`Distance: ${distance}`);
+                console.log(`Snowman pos: x=${this.snowmanSmall.x}, y=${this.snowmanSmall.y}`);
+                console.log(`Snowball pos: x=${snowball.x}, y=${snowball.y}`);
+                
+                // Trigger collision manually
+                this.hitSnowman(this.snowmanSmall, snowball);
+                break; // Only handle one collision per frame
+            }
         }
     }
 }

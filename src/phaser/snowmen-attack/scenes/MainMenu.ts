@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { SkinManager } from '../utils/SkinManager';
 
 export default class MainMenu extends Phaser.Scene {
     private startText!: Phaser.GameObjects.Text;
     private languageButton!: Phaser.GameObjects.Text;
+    private skinButton!: Phaser.GameObjects.Text;
     private languageChangeUnsubscribe?: () => void;
     private logo!: Phaser.GameObjects.Image;
     
@@ -31,6 +33,9 @@ export default class MainMenu extends Phaser.Scene {
         
         // Create language selection button
         this.createLanguageButton();
+        
+        // Create skin selection button
+        this.createSkinButton();
 
         // Subscribe to language changes
         this.languageChangeUnsubscribe = languageManager.onLanguageChange(() => {
@@ -76,9 +81,13 @@ export default class MainMenu extends Phaser.Scene {
             snowballScale = 0.7; // Fixed scale for tablet
         }
         
-        const ball1 = this.add.image(ball1StartX, ballY1, 'sprites', 'snowball1').setScale(snowballScale);
-        const ball2 = this.add.image(ball2StartX, ballY2, 'sprites', 'snowball1').setScale(snowballScale);
-        const ball3 = this.add.image(ball3StartX, ballY3, 'sprites', 'snowball1').setScale(snowballScale);
+        const currentSkin = SkinManager.getCurrentSkin();
+        const snowballTexture = SkinManager.getTextureKey('playerSnowball');
+        const snowballFrame = currentSkin.type === 'atlas' ? 'snowball1' : undefined;
+        
+        const ball1 = this.add.image(ball1StartX, ballY1, snowballTexture, snowballFrame).setScale(snowballScale);
+        const ball2 = this.add.image(ball2StartX, ballY2, snowballTexture, snowballFrame).setScale(snowballScale);
+        const ball3 = this.add.image(ball3StartX, ballY3, snowballTexture, snowballFrame).setScale(snowballScale);
         
         // Logo starts completely off-screen to the right and slides in
         this.logo = this.add.image(width + 400, centerY, 'title'); // Increased offset to ensure completely hidden
@@ -229,6 +238,43 @@ export default class MainMenu extends Phaser.Scene {
             this.scene.pause();
         });
     }
+    
+    private createSkinButton() {
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(this);
+        const currentSkin = SkinManager.getCurrentSkin().name;
+        const buttonSize = ResponsiveGameUtils.getButtonSize(this);
+        const spacing = ResponsiveGameUtils.getSpacing(50, this);
+        
+        this.skinButton = this.add.text(
+            spacing,  // Position on the left side
+            spacing,
+            `🎨 ${currentSkin}`,
+            {
+                fontSize: buttonSize.fontSize,
+                fontFamily: 'Arial',
+                color: '#ffffff',
+                backgroundColor: '#4a90e2',
+                padding: { 
+                    x: ResponsiveGameUtils.getResponsivePadding(10, this), 
+                    y: ResponsiveGameUtils.getResponsivePadding(5, this) 
+                }
+            }
+        ).setOrigin(0.5);
+
+        this.skinButton.setInteractive({ useHandCursor: true });
+        
+        this.skinButton.on('pointerover', () => {
+            this.skinButton.setStyle({ backgroundColor: '#357abd' });
+        });
+
+        this.skinButton.on('pointerout', () => {
+            this.skinButton.setStyle({ backgroundColor: '#4a90e2' });
+        });
+
+        this.skinButton.on('pointerdown', () => {
+            this.scene.start('SkinSelection');
+        });
+    }
 
     private updateTexts() {
         // Only update if scene is active and text objects exist
@@ -242,6 +288,11 @@ export default class MainMenu extends Phaser.Scene {
         if (this.languageButton && this.languageButton.active) {
             const currentLang = languageManager.getCurrentLanguage().toUpperCase();
             this.languageButton.setText(`🌐 ${currentLang}`);
+        }
+        
+        if (this.skinButton && this.skinButton.active) {
+            const currentSkin = SkinManager.getCurrentSkin().name;
+            this.skinButton.setText(`🎨 ${currentSkin}`);
         }
     }
 

@@ -162,10 +162,10 @@ export class ResponsiveGameUtils {
     }
 
     /**
-     * Setup responsive input for mobile devices
+     * Setup responsive input for mobile and tablet devices
      */
     static setupMobileInput(scene: Phaser.Scene) {
-        if (this.isMobile(scene)) {
+        if (this.needsTouchControls(scene)) {
             // Enable touch input
             scene.input.addPointer(2); // Allow up to 3 touch points
             
@@ -238,5 +238,12 @@ export class ResponsiveGameUtils {
         }
         
         return positions;
+    }
+
+    /**
+     * Check if the device needs touch controls (mobile or tablet)
+     */
+    static needsTouchControls(scene: Phaser.Scene): boolean {
+        return this.isMobile(scene) || this.isTablet(scene);
     }
 }

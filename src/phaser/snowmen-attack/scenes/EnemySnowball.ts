@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import Track from './Track';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import MainGame from './Game';
+import { SkinManager } from '../utils/SkinManager';
 
 export default class EnemySnowball extends Phaser.Physics.Arcade.Sprite {
     track!: Track;

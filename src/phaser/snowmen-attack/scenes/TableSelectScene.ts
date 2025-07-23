@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { WrongAttempt, Question } from '../models/Types';
 
 export default class TableSelectScene extends Phaser.Scene {
     selectedTables: number[];
@@ -174,6 +175,13 @@ export default class TableSelectScene extends Phaser.Scene {
         
         this.startButton.on('pointerdown', () => {
             if (this.selectedTables.length > 0) {
+                // TEMPORARY: Call ReviewMistakesScene with dummy data for testing
+                // const dummyMistakes = this.createDummyMistakes();
+                // this.scene.start('ReviewMistakesScene', {
+                //     mistakes: dummyMistakes
+                // });
+                
+                //Normal game start
                 this.scene.start('MainGame', {
                     selectedTables: Array.from(this.selectedTables),
                 });
@@ -271,5 +279,57 @@ export default class TableSelectScene extends Phaser.Scene {
 
     destroy() {
         this.cleanup();
+    }
+
+    // TEMPORARY: Method to create dummy mistakes for testing ReviewMistakesScene
+    private createDummyMistakes(): WrongAttempt[] {
+        const dummyQuestions: Question[] = [
+            { id: 1, operand1: 7, operand2: 8, answer: 56, options: [56, 48, 64, 42], speedMultiplier: 1.0 },
+            { id: 2, operand1: 9, operand2: 6, answer: 54, options: [54, 45, 63, 36], speedMultiplier: 1.0 },
+            { id: 3, operand1: 4, operand2: 7, answer: 28, options: [28, 24, 32, 35], speedMultiplier: 1.0 },
+            { id: 4, operand1: 8, operand2: 9, answer: 72, options: [72, 64, 81, 63], speedMultiplier: 1.0 },
+            { id: 5, operand1: 6, operand2: 7, answer: 42, options: [42, 36, 48, 49], speedMultiplier: 1.0 },
+            { id: 6, operand1: 5, operand2: 8, answer: 40, options: [40, 35, 45, 48], speedMultiplier: 1.0 },
+            { id: 7, operand1: 9, operand2: 7, answer: 63, options: [63, 56, 72, 54], speedMultiplier: 1.0 },
+            { id: 8, operand1: 8, operand2: 6, answer: 48, options: [48, 42, 54, 56], speedMultiplier: 1.0 },
+            { id: 9, operand1: 7, operand2: 9, answer: 63, options: [63, 54, 72, 56], speedMultiplier: 1.0 },
+            { id: 10, operand1: 6, operand2: 8, answer: 48, options: [48, 42, 54, 56], speedMultiplier: 1.0 },
+            { id: 11, operand1: 5, operand2: 9, answer: 45, options: [45, 40, 54, 36], speedMultiplier: 1.0 },
+            { id: 12, operand1: 7, operand2: 6, answer: 42, options: [42, 36, 48, 49], speedMultiplier: 1.0 },
+            { id: 13, operand1: 8, operand2: 7, answer: 56, options: [56, 48, 64, 49], speedMultiplier: 1.0 },
+            { id: 14, operand1: 9, operand2: 8, answer: 72, options: [72, 63, 81, 64], speedMultiplier: 1.0 },
+            { id: 15, operand1: 4, operand2: 9, answer: 36, options: [36, 32, 45, 28], speedMultiplier: 1.0 }
+        ];
+
+        const wrongAttempts: WrongAttempt[] = [];
+        
+        dummyQuestions.forEach((question, index) => {
+            // Create different types of wrong answers
+            let wrongAnswer: number;
+            
+            if (index % 4 === 0) {
+                // No answer (timeout)
+                wrongAnswer = -1;
+            } else if (index % 4 === 1) {
+                // Wrong option from the choices
+                wrongAnswer = question.options.find(opt => opt !== question.answer) || 0;
+            } else if (index % 4 === 2) {
+                // Completely random wrong answer
+                wrongAnswer = question.answer + 10;
+            } else {
+                // Another wrong option
+                wrongAnswer = question.options[question.options.length - 1] !== question.answer 
+                    ? question.options[question.options.length - 1] 
+                    : question.options[0];
+            }
+
+            wrongAttempts.push({
+                orderOfAppearance: index + 1,
+                question: question,
+                attemptedAnswer: wrongAnswer
+            });
+        });
+
+        return wrongAttempts;
     }
 }

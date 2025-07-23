@@ -49,6 +49,16 @@ export default class SkinSelection extends Phaser.Scene {
             SkinManager.setCurrentSkin(this.selectedSkin);
             this.registry.set('selectedSkin', this.selectedSkin);
             
+            // Stop all running scenes to prevent stacking, then restart from Preloader
+            this.scene.manager.scenes.forEach(scene => {
+                if (scene.scene.key !== 'Preloader' && scene.scene.isActive()) {
+                    scene.scene.stop();
+                }
+            });
+            
+            // Mark that we're coming from skin selection to ensure we go to MainMenu only
+            this.registry.set('fromSkinSelection', true);
+            
             // Restart from Preloader to reload animations for new skin
             this.scene.start('Preloader');
         });
@@ -82,15 +92,12 @@ export default class SkinSelection extends Phaser.Scene {
         const bg = this.add.rectangle(0, 0, width, height, 0x2c3e50, 0.8)
             .setStrokeStyle(4, 0x3498db);
         
-        // Preview image placeholder (you'll need to add actual preview loading)
-        const preview = this.add.rectangle(0, -height * 0.15, width * 0.8, height * 0.5, 0x34495e, 0.6);
-        
-        // Skin name
-        const nameText = this.add.text(0, height * 0.25, skin.name, 
+        // Skin name (centered vertically since no preview image)
+        const nameText = this.add.text(0, 0, skin.name, 
             ResponsiveGameUtils.getTextStyle(18, this, { align: 'center' })
         ).setOrigin(0.5);
 
-        card.add([bg, preview, nameText]);
+        card.add([bg, nameText]);
 
         // Make interactive
         bg.setInteractive({ useHandCursor: true })

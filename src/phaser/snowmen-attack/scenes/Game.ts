@@ -147,7 +147,10 @@ export default class MainGame extends Phaser.Scene {
         this.add.image(panelPadding, 0, spritesKey, panelFrame).setOrigin(0).setScale(panelScale);
         this.add.image(width - panelPadding, 0, spritesKey, 'panel-best').setOrigin(1, 0).setScale(panelScale);
         
-        this.infoPanel = this.add.image(centerX, centerY, spritesKey, 'controls').setScale(panelScale);
+        // Only show info panel on desktop (not mobile/tablet)
+        if (!ResponsiveGameUtils.needsTouchControls(this)) {
+            this.infoPanel = this.add.image(centerX, centerY, spritesKey, 'controls').setScale(panelScale);
+        }
 
         // Create responsive text
         this.scoreText = this.add.text(140 * (width / 1024), 2, this.score.toString(), 
@@ -210,7 +213,7 @@ export default class MainGame extends Phaser.Scene {
             }
         });
         
-        // Update info panel position
+        // Update info panel position (only if it exists - desktop only)
         if (this.infoPanel) {
             this.infoPanel.setPosition(centerX, centerY);
         }
@@ -267,7 +270,7 @@ export default class MainGame extends Phaser.Scene {
             this.score++;
             this.scoreText.setText(this.score.toString()); 
             
-            // Play success sound effect
+            // Play success sound effect with increased volume
             this.sound.play('success_sfx');
             
             // Create green glow effect on the snowman instead of destroying it

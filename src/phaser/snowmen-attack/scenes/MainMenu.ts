@@ -15,7 +15,17 @@ export default class MainMenu extends Phaser.Scene {
     }
     
     create(): void {
-        this.sound.play('music', { loop: true, delay: 2 });
+        // Ensure no other scenes are running (especially TableSelectScene) to prevent stacking
+        this.scene.manager.scenes.forEach(scene => {
+            if (scene.scene.key !== 'MainMenu' && scene.scene.isActive()) {
+                scene.scene.stop();
+            }
+        });
+        
+        // Only play music if it's not already playing to prevent double playback
+        if (!this.sound.get('music') || !this.sound.get('music').isPlaying) {
+            this.sound.play('music', { loop: true, delay: 2 });
+        }
 
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
 

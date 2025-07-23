@@ -110,10 +110,6 @@ export default class Preloader extends Phaser.Scene {
         // Load sounds from main folder (shared across all devices)
         this.load.setPath('assets/games/snowmen-attack/sounds/');
         this.load.audio('music', ['music.ogg', 'music.m4a', 'music.mp3']);
-        
-        // Load sounds from main folder (shared across all devices)
-        this.load.setPath('assets/games/snowmen-attack/sounds/');
-        this.load.audio('music', ['music.ogg', 'music.m4a', 'music.mp3']);
         this.load.audio('throw', ['throw.ogg', 'throw.m4a', 'throw.mp3']);
         this.load.audio('move', ['move.ogg', 'move.m4a', 'move.mp3']);
         this.load.audio('hit-snowman', ['hit-snowman.ogg', 'hit-snowman.m4a', 'hit-snowman.mp3']);
@@ -137,9 +133,13 @@ export default class Preloader extends Phaser.Scene {
         if (this.sound.locked) {
             this.loadText.setText('Click to Start');
             this.input.once('pointerdown', () => {
+                // Clear the skin selection flag and always go to MainMenu
+                this.registry.set('fromSkinSelection', false);
                 this.scene.start('MainMenu');
             });
         } else {
+            // Clear the skin selection flag and always go to MainMenu
+            this.registry.set('fromSkinSelection', false);
             this.scene.start('MainMenu');
         }
     }

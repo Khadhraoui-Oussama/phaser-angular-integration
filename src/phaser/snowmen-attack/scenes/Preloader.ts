@@ -118,6 +118,8 @@ export default class Preloader extends Phaser.Scene {
         this.load.audio('move', ['move.ogg', 'move.m4a', 'move.mp3']);
         this.load.audio('hit-snowman', ['hit-snowman.ogg', 'hit-snowman.m4a', 'hit-snowman.mp3']);
         this.load.audio('gameover', ['gameover.ogg', 'gameover.m4a', 'gameover.mp3']);
+        this.load.audio('success_sfx', 'success_sfx.mp3');
+        this.load.audio('error_sfx', 'error_sfx.mp3');
         
         // Load shader from main folder
         this.load.setPath('assets/games/snowmen-attack/');

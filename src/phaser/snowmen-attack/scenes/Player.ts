@@ -63,6 +63,14 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
+        // Set up collision body for better interception detection
+        if (this.body) {
+            const body = this.body as Phaser.Physics.Arcade.Body;
+            // Make the collision body slightly larger than the sprite for easier interception
+            body.setSize(this.width * 1.2, this.height * 1.2);
+            body.setOffset(-this.width * 0.1, -this.height * 0.1);
+        }
+
         this.isAlive = true;
         this.isThrowing = false;
 

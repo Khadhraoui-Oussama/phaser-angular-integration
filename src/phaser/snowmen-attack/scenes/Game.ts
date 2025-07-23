@@ -8,7 +8,7 @@ import {generateOptions, generatePossibleAnswersForTable, generateQuestionsForTa
 import { Question,  WrongAttempt } from '../models/Types';
 import Snowman from './Snowman';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
-import { LanguageManager } from '../utils/LanguageManager';
+import { LanguageManager, languageManager } from '../utils/LanguageManager';
 import { SkinManager } from '../utils/SkinManager';
 
 export default class MainGame extends Phaser.Scene {
@@ -24,9 +24,10 @@ export default class MainGame extends Phaser.Scene {
 
     private questionContainer!: Phaser.GameObjects.Container;
     private questionText!: Phaser.GameObjects.Text;
-    private currentQuestion!: Question;
+    public currentQuestion!: Question;
     private mobileControls?: any;
     private gameStarted: boolean = false;
+    private languageChangeUnsubscribe?: () => void;
     
     constructor() {
         super('MainGame');
@@ -96,6 +97,19 @@ export default class MainGame extends Phaser.Scene {
         ResponsiveGameUtils.setupResizeHandler(this, () => {
             this.handleResize();
         });
+        
+        // Subscribe to language changes
+        this.languageChangeUnsubscribe = languageManager.onLanguageChange(() => {
+            // Only update if this scene is active
+            if (this.scene && this.scene.manager && this.scene.isActive()) {
+                this.updateMobileControlTexts();
+            }
+        });
+
+        // Listen for scene shutdown to cleanup
+        this.events.on('shutdown', () => {
+            this.cleanup();
+        });
     }
     
     private setupUI(): void {
@@ -158,6 +172,9 @@ export default class MainGame extends Phaser.Scene {
         );
         
         this.player = new Player(this, this.tracks[0]);
+        
+        // Set up collision between player and enemy snowballs for interception
+        this.setupPlayerInterceptionCollisions();
     }
     
     private setupInputs(): void {
@@ -221,6 +238,11 @@ export default class MainGame extends Phaser.Scene {
             this.destroyMobileControls();
             this.setupMobileControls();
         }
+        
+        // Re-establish player interception collisions after resize
+        if (this.player && this.tracks) {
+            this.setupPlayerInterceptionCollisions();
+        }
     }
     
     private destroyMobileControls(): void {
@@ -241,12 +263,32 @@ export default class MainGame extends Phaser.Scene {
         if (correct) {
             console.log('Correct!');
             
+            // Update score immediately
             this.score++;
             this.scoreText.setText(this.score.toString()); 
             
-            this.loadNextQuestion();
+            // Play success sound effect
+            this.sound.play('success_sfx');
+            
+            // Create green glow effect on the snowman instead of destroying it
+            this.createSnowmanSuccessEffect(snowman);
+            
+            // Pause all game elements for 1 second before moving to next question
+            this.pauseGameForSuccess();
+            
+            // Load next question after 1 second delay
+            this.time.delayedCall(1000, () => {
+                this.resumeGameAndLoadNext();
+            });
         } else {
             console.log('Wrong!');
+            
+            // Play error sound effect for wrong answer
+            this.sound.play('error_sfx');
+            
+            // Create red glow effect on the snowman before it gets knocked back
+            this.createSnowmanErrorEffect(snowman);
+            
             this.handleWrongAnswer(answer,track);
         }
     }
@@ -427,6 +469,9 @@ export default class MainGame extends Phaser.Scene {
         // Mark game as started
         this.gameStarted = true;
         
+        // Update mobile control text if it exists
+        this.updateMobileControlTexts();
+        
         this.input.keyboard!.removeAllListeners();
 
         const { height } = ResponsiveGameUtils.getResponsiveConfig(this);
@@ -545,13 +590,12 @@ export default class MainGame extends Phaser.Scene {
         
         // Create virtual controls for mobile
         const buttonSize = ResponsiveGameUtils.getButtonSize(this);
-        const padding = ResponsiveGameUtils.getResponsivePadding(20, this);
         
         // Only show throw button for mobile, remove up/down buttons
-        // Throw button (centered horizontally, positioned at bottom)
+        // Throw button (centered horizontally, positioned at bottom with no gap)
         const throwButton = this.add.rectangle(
             width / 2,  // Center horizontally
-            height - padding - buttonSize.height, 
+            height - buttonSize.height / 2,  // Position at bottom with no gap
             buttonSize.width * 1.2,  // Make it slightly wider
             buttonSize.height, 
             0xcc0066, 
@@ -561,21 +605,9 @@ export default class MainGame extends Phaser.Scene {
         const throwText = this.add.text(
             throwButton.x, 
             throwButton.y, 
-            this.gameStarted ? 'THROW' : 'START', 
+            this.gameStarted ? languageManager.getText('game_throw_button') : languageManager.getText('game_start_button'), 
             ResponsiveGameUtils.getTextStyle(18, this)  // Slightly larger text
         ).setOrigin(0.5);
-        
-        // Add instruction text for mobile players
-        // const instructionText = this.add.text(
-        //     width / 2,
-        //     height - padding - buttonSize.height * 2.5,
-        //     'Tap upper/lower screen to move • Tap button to throw',
-        //     ResponsiveGameUtils.getTextStyle(12, this, { 
-        //         color: '#ffffff',
-        //         backgroundColor: 'rgba(0,0,0,0.5)',
-        //         padding: { x: 10, y: 5 }
-        //     })
-        // ).setOrigin(0.5);
         
         // Add touch handlers
         throwButton.on('pointerdown', () => {
@@ -583,7 +615,7 @@ export default class MainGame extends Phaser.Scene {
                 // Use throw button to start the game on mobile/tablet
                 this.start();
                 // Update button text after starting
-                throwText.setText('THROW');
+                throwText.setText(languageManager.getText('game_throw_button'));
             } else if (this.player && this.player.isAlive && !this.player.isThrowing) {
                 this.player.throw();
             }
@@ -737,6 +769,195 @@ export default class MainGame extends Phaser.Scene {
         this.tracks.forEach(track => {
             track.snowmanSmall.speed += 10;
         });
+    }
+
+    private updateMobileControlTexts(): void {
+        // Update mobile control text when language changes
+        if (this.mobileControls && this.mobileControls.throwText) {
+            const newText = this.gameStarted ? 
+                languageManager.getText('game_throw_button') : 
+                languageManager.getText('game_start_button');
+            this.mobileControls.throwText.setText(newText);
+        }
+    }
+
+    private cleanup(): void {
+        if (this.languageChangeUnsubscribe) {
+            this.languageChangeUnsubscribe();
+            this.languageChangeUnsubscribe = undefined;
+        }
+    }
+
+    private setupPlayerInterceptionCollisions(): void {
+        // Set up collision between player and enemy snowballs from all tracks
+        this.tracks.forEach((track, trackIndex) => {
+            this.physics.add.overlap(
+                this.player,
+                track.enemySnowballs,
+                this.onPlayerInterceptSnowball as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+                undefined,
+                this
+            );
+        });
+    }
+
+    private onPlayerInterceptSnowball(
+        player: Phaser.GameObjects.GameObject,
+        snowball: Phaser.GameObjects.GameObject
+    ): void {
+        if (player instanceof Player && snowball instanceof EnemySnowball) {
+            console.log('Player intercepted enemy snowball!');
+            
+            // Stop and destroy the intercepted snowball
+            snowball.stop();
+            snowball.destroy();
+            
+            // Play a sound effect for the interception
+            this.sound.play('hit-snowman'); // Reuse existing sound effect
+            
+            this.createInterceptionEffect(snowball.x, snowball.y);
+        }
+    }
+
+    private createInterceptionEffect(x: number, y: number): void {
+        // Create a simple visual effect for interception
+        const effect = this.add.circle(x, y, 15, 0x00ff00, 0.7);
+        
+        // Animate the effect
+        this.tweens.add({
+            targets: effect,
+            scaleX: 2,
+            scaleY: 2,
+            alpha: 0,
+            duration: 300,
+            ease: 'Power2',
+            onComplete: () => {
+                effect.destroy();
+            }
+        });
+    }
+
+    private createSnowmanSuccessEffect(snowman: Snowman): void {
+        // Don't destroy the snowman, instead make it glow green and grow bigger
+        
+        // Store original values
+        const originalScale = snowman.scaleX;
+        const originalTint = snowman.tint;
+        
+        // Apply green tint to make it glow
+        snowman.setTint(0x00ff00);
+        
+        // Make the snowman bigger (similar to egg crack animation)
+        this.tweens.add({
+            targets: snowman,
+            scaleX: originalScale * 1.3,
+            scaleY: originalScale * 1.3,
+            duration: 300,
+            ease: 'Power2',
+            yoyo: true,
+            repeat: 1,
+            onComplete: () => {
+                // Reset the snowman to original state after animation
+                snowman.setScale(originalScale);
+                snowman.setTint(originalTint);
+            }
+        });
+        
+        // Add floating "+1" text above the snowman
+        const successText = this.add.text(snowman.x, snowman.y - 60, '+1', {
+            fontSize: '32px',
+            fontFamily: 'Arial',
+            color: '#00ff00',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        // Animate the text
+        this.tweens.add({
+            targets: successText,
+            y: snowman.y - 100,
+            alpha: 0,
+            duration: 800,
+            ease: 'Power2',
+            onComplete: () => {
+                successText.destroy();
+            }
+        });
+    }
+
+    private createSnowmanErrorEffect(snowman: Snowman): void {
+        // Apply red glow effect on wrong answer before knockback
+        
+        // Store original values
+        const originalScale = snowman.scaleX;
+        const originalTint = snowman.tint;
+        
+        // Apply red tint to make it glow
+        snowman.setTint(0xff0000);
+        
+        // Make the snowman bigger briefly (similar to success but faster)
+        this.tweens.add({
+            targets: snowman,
+            scaleX: originalScale * 1.2,
+            scaleY: originalScale * 1.2,
+            duration: 200,
+            ease: 'Power2',
+            yoyo: true,
+            repeat: 1,
+            onComplete: () => {
+                // Reset the snowman to original state before knockback
+                snowman.setScale(originalScale);
+                snowman.setTint(originalTint);
+            }
+        });
+        
+        // Add floating "-1" text above the snowman
+        const errorText = this.add.text(snowman.x, snowman.y - 60, '-1', {
+            fontSize: '1.5rem',
+            fontFamily: 'Arial',
+            color: '#ff0000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        // Animate the text
+        this.tweens.add({
+            targets: errorText,
+            y: snowman.y - 100,
+            alpha: 0,
+            duration: 600,
+            ease: 'Power2',
+            onComplete: () => {
+                errorText.destroy();
+            }
+        });
+    }
+
+    private pauseGameForSuccess(): void {
+        // Pause physics to stop all movement
+        this.physics.pause();
+        
+        // Stop all tracks and snowmen
+        this.tracks.forEach(track => {
+            track.stop();
+        });
+        
+        // Stop all player snowballs
+        this.tracks.forEach(track => {
+            (track.playerSnowballs.getChildren() as Phaser.Physics.Arcade.Sprite[]).forEach(snowball => {
+                if (snowball.active) {
+                    snowball.stop();
+                    snowball.setVisible(false);
+                    snowball.setActive(false);
+                }
+            });
+        });
+        
+        // Stop all enemy snowballs
+        this.stopAllEnemySnowballs();
+        
+        // Disable player input during success pause
+        this.player.spacebar.enabled = false;
+        this.player.up.enabled = false;
+        this.player.down.enabled = false;
     }
 
 }

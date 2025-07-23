@@ -14,6 +14,8 @@ export interface TranslationKeys {
   game_question: string;
   game_paused: string;
   game_resume: string;
+  game_start_button: string;
+  game_throw_button: string;
   
   // Victory Scene
   victory_title: string;
@@ -57,6 +59,8 @@ export const translations: Record<string, TranslationKeys> = {
     game_question: 'Question',
     game_paused: 'Game Paused',
     game_resume: 'Press any key to resume',
+    game_start_button: 'START',
+    game_throw_button: 'THROW',
     
     victory_title: 'Victory!',
     victory_score: 'Your Score: {0}',
@@ -94,6 +98,8 @@ export const translations: Record<string, TranslationKeys> = {
     game_question: 'Question',
     game_paused: 'Jeu en Pause',
     game_resume: 'Appuyez sur une touche pour reprendre',
+    game_start_button: 'COMMENCER',
+    game_throw_button: 'LANCER',
     
     victory_title: 'Victoire !',
     victory_score: 'Votre Score : {0}',
@@ -131,6 +137,8 @@ export const translations: Record<string, TranslationKeys> = {
     game_question: 'السؤال',
     game_paused: 'اللعبة متوقفة',
     game_resume: 'اضغط أي مفتاح للمتابعة',
+    game_start_button: 'ابدأ',
+    game_throw_button: 'ارمي',
     
     victory_title: 'انتصار!',
     victory_score: 'نقاطك: {0}',

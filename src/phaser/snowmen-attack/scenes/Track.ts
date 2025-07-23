@@ -54,7 +54,9 @@ export default class Track {
         
         // Create the egg crack animation sprite (initially hidden)
         this.eggCrackSprite = scene.add.sprite(nestX, nestY, 'eggs_crack').setOrigin(1, 1);
-        this.eggCrackSprite.setScale(nestScale);
+        // Make egg crack animation smaller than the nest for better visual effect
+        const eggCrackScale = nestScale * 0.6; // 60% of nest size
+        this.eggCrackSprite.setScale(eggCrackScale);
         this.eggCrackSprite.setVisible(false);
         
         // Create the egg crack animation if it doesn't exist
@@ -269,8 +271,19 @@ export default class Track {
                 
                 ball.stop();
                 ball.destroy();
-                snowman.hit();
-                (this.scene as MainGame).onSnowmanHit(snowman,this)
+                
+                // Check if this is the correct answer before calling hit()
+                const answer = parseInt(snowman.label.text);
+                const currentQuestion = (this.scene as MainGame).currentQuestion;
+                const correct = currentQuestion && currentQuestion.answer === answer;
+                
+                // Only knock back the snowman if it's the wrong answer
+                if (!correct) {
+                    snowman.hit();
+                }
+                
+                // Always call onSnowmanHit to handle scoring and game flow
+                (this.scene as MainGame).onSnowmanHit(snowman, this);
             }
         }
     }

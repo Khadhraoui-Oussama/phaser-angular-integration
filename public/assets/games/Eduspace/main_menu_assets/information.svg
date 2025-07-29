@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 150 150">
+  <defs>
+    <style>
+      .cls-1 {
+        isolation: isolate;
+      }
+
+      .cls-2 {
+        fill: url(#_Безымянный_градиент_2);
+      }
+
+      .cls-3 {
+        fill: url(#_Безымянный_градиент_6);
+        mix-blend-mode: multiply;
+      }
+
+      .cls-4 {
+        fill: url(#_Безымянный_градиент_91-2);
+      }
+
+      .cls-5 {
+        fill: url(#_Безымянный_градиент_7);
+        fill-rule: evenodd;
+      }
+
+      .cls-6 {
+        fill: url(#_Безымянный_градиент_91);
+      }
+
+      .cls-7 {
+        opacity: .7;
+      }
+    </style>
+    <linearGradient id="_Безымянный_градиент_7" data-name="Безымянный градиент 7" x1="75" y1="137.07" x2="75" y2="-1.33" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#77d6d3"/>
+      <stop offset=".5" stop-color="#e2f4f3"/>
+      <stop offset="1" stop-color="#77d6d3"/>
+    </linearGradient>
+    <linearGradient id="_Безымянный_градиент_6" data-name="Безымянный градиент 6" x1="33.38" y1="123.9" x2="33.38" y2="-3.84" gradientTransform="translate(39.53 7.65) scale(1.06)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#08082d"/>
+      <stop offset="1" stop-color="#353772"/>
+    </linearGradient>
+    <linearGradient id="_Безымянный_градиент_2" data-name="Безымянный градиент 2" x1="75" y1="135.52" x2="75" y2="7.34" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2d2d51"/>
+      <stop offset=".5" stop-color="#466aaf"/>
+      <stop offset="1" stop-color="#2d2d51"/>
+    </linearGradient>
+    <linearGradient id="_Безымянный_градиент_91" data-name="Безымянный градиент 91" x1="75" y1="110.71" x2="75" y2="57.14" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e5f7f6"/>
+      <stop offset="1" stop-color="#e2f4f3"/>
+    </linearGradient>
+    <linearGradient id="_Безымянный_градиент_91-2" data-name="Безымянный градиент 91" y1="54.29" y2="32.14" xlink:href="#_Безымянный_градиент_91"/>
+  </defs>
+  <g class="cls-1">
+    <g id="Layer_2" data-name="Layer 2">
+      <g id="BTNs">
+        <g>
+          <g>
+            <image width="151" height="151" transform="translate(-.54 -.34)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJcAAACXCAYAAAAYn8l5AAAACXBIWXMAAAsSAAALEgHS3X78AAAIZklEQVR4nO2d63MUxxVHz4oVkkFCFivEYwVF+QFUUolTNsn//zmVcmKnkhKOnTg2wkGWEAKBeYnJh9vtGY1mdmd6uqVd7e9UqWZ2Xttiz957u3sY9ejGEFgDPqzY1+t47Uk5/13H60wT+8Au8Ag47HqxfodzvVhXgdWuDRGnyiXgGbDoXr8HHtPxixUqV1mse4V9vYr1qm1N1ifh2F1mgyHwDZCR/+5bXS4YIleVWGvApy2v0yZtZS2vLdrzHXAOEwwiCNZWriqxPgGuuMasV5xTJVGdWCmO9dte11xHwAHwMfAU+AiYc9s7CdZGriqxLmNirbtlmfKHHfN1ymtPetu2icsV4HvgPvAlcBuLYkVaC9ZUriGwAayQi7UK3HUNu4IVhYuFc7r21qqYlmumum4PeIt9wUe9V8gXYQ74D/A58BVwk44RrIlcQ/dTFGuFvNZaB5YxuVJ9UCItGXAdG374EfgD8DX2uT93x7QWbG7M/iFwAxvH8mJdAn4DDLBv0BImm8SaXnrY0MMcFrGWgN9jn7vPUquYC8M2F63Di+UvfM+96e+wWus6cNHtk1hng21sbOsQeIgNqj4AngCbwB5W9G/RIILVpcUhJk9RrIuYWKtu3wUk1lljHdjB6roN7LO9C3zr9m+6ZaMUWSXXELiGRScv1gUsTPrQuOj2S6yzxxoWqXqYCz1suMmXUF6wV25ZK1hZriFWRw2AW+71IvAZln9vAAuuARLr7HIZS4G+V+o/az88sVk6vlKwfmF51f2skfcQF4AvsN7gEDhPPmAqzjarWM21UdpejmCeY4L13cFXsXy7htVTtzCR7mNF/AYw746RWLPDCjYU4QVrFcH6WEQakI+033bb72NF/E3yyCaxZo9l4AXHBRsbwfrk41UD4I476Y+YWLcwS68hsWaZi8AvNItgR+RawYr1O26bj1gfYSlxCYkl4ANs8r8s2BNsRGGzsP8h5KHtAjYF8CdMrNtu+zLjR/HF7LCADbJuYGXUeWwcDCoCkBfnZWHbEvlckyKWKDNfWPd3IFd6Mioq6QY90QmlPBGLHqUIJrlEKKNujgQkl+jGyFvNVXOJWNT2FoXogtKiiMrYYSrJJWLRKi2q5hJNUVoU0QnuLQoxiuJzN44NoILkEglRzSViocglkqCCXkSlss5CBb1IgMa5RBKUFkVydD+XiMK4Z4DVylX1+Ekh6midFudH7BMC1FsUifGPFtcgqohG8P1cGoYQnVHkEjFQWhTRGZkaJZcIpW6ca2xvUTWXaIOmf8TJIrlELBoX9EqLYhx6VoRIiqZ/xImgcS6RhKo/76yaSwSjZ0WIE0HTPyI6mv4RJ4qmf0RnetgfNfDrx1DkErF4Vt4guUQyJJcIJXj6RzWXCMX/eWJFLpEOySVioN6iiIr+a5k4PRS5RAyUFsXJIrlEKBrnEieKHv4mTgbJJWKw65bvihsllwhF41zi9FDkEsmYA/pufXCaDRFnjzmUAkUYrWqurGZdiCBUc4lk1EUuITqjyCVC0TiXOD2UFkUylBZFMiSXCEXjXOL0UOQSyZBcIhlerksoLYp2BI1zLSRoiJhBquRS1BJR8HJlSCoRGU3/iFAa1VxeJAklolJMi0JERQW9SIamf0Qojce5JJOIjqZ/RDJ0s6AIJTgtSjTRGfUWRTI0/SOSoYJehKL/WiZOD6VFkYxy5OohyUQkNM4lQnjb5CCNc4lQtscdoIe/iWQoLYpk6K4IEcLYMS6on/6RbKIzSosiGUqLIhmaWxQhtKq5Mo7WWopkojO6n0skQwW9SIYKehFC8DgXSDYRAaVFkQylRZEM9RZFCK1rLj0rQkTF388lmUR0NP0jkqHeogihR+CzIvYK641uxBczRQb85NYP3LIHXCgfWE6LD4A3wM/AQ6APvE7TRjGFZMBzt/498AL4s3v90i1/jWh94Cn2hw02gXuYWP5CABvAL8AHqVospgIfsQ6B/2Ji/cXt+wbzaL94Qh/YKbzedMvDwgXBBHsBXIzeZDENZMD/MC9+II9Y74DvMIe2gV1gy5/UL75weMHeFy4MJthzYDl+28UEkwGPMZF+JI9Y77DUuI1lu5+xyPZr/d53yzrBqiLYPrASs/ViYskwed5iNfgBJtYbLIL9RB61HpMHJCCXC8ZHMM8G1qNc7d52McFkWDR6g7mxD/wV6+BtuZ8dTKqyO8BRuag4qC6CzQNPgMvhbRcTTIaJ8xp4hBXrXwGvMCf2sPqqViw4LheFgxfdshjBPnFvPCw0YK3DLyEmjwwLHK8wsfaAr7GhBi/WE6zArxULquWicJKPVMUIdtdt3yDPyesBv4SYPDJMnpdYPbUH/B0r4r1Ye27fSLFg/BD+ELiB1Ver2DjYh8BvgSXgJjYQew641vpXEZNEhqW/Aywq7QL/AJ5xVKxHNBALxk9cb5GHxj33Jk+xMHmAdU3fA1fR3OQ0k2EF+wFWR+0C/+SoWE9pIRbUp8Ui5RS5hUW0vwGfYV3Sc8B1jt++M+65X01ez1dsj0GqL8O0tNVf8zwm0XOsxNnBhNonF2ufvIfYmCZywXHB3mMp8Uvgc+Dfblvsf4R1jk6ex5C17nXKa09y29YxufxA6APyLLWHRbIdWooFDW9XLTDEaqsBFqluY+Z/gU0NLbVtwAzh/zB91Rew6bYUxy5g5Y0f1/qWCGJB88jlqYpgd7D5pY+xXoVIR5tg0CaL9IB/kafEzmJBe7nguGCHmGBjn5F5Rhi4ZV3aqlqfhGNHnTfAivhoYkGYXLg39w3ruUYtY7lbTB8rWNEeTSxoX3MVOYeNgQ2YrYls/4Xs2nmZtPP97VdRxIJucvnz/VSQOMpi6XWbortue8prLGBTPlHEEkKI6eT/hKz1GyGjXTYAAAAASUVORK5CYII="/>
+            <path class="cls-5" d="M130.71,142.86H19.29c-6.14-6.14-9.58-9.58-15.71-15.71V15.71C9.71,9.58,13.15,6.14,19.29,0h111.43c6.14,6.14,9.58,9.58,15.71,15.71v111.43c-6.14,6.14-9.58,9.58-15.71,15.71Z"/>
+            <polygon class="cls-3" points="128.34 3.57 21.66 3.57 14.4 10.83 7.14 18.09 7.14 124.77 14.4 132.03 21.66 139.29 128.34 139.29 135.6 132.03 142.86 124.77 142.86 18.09 135.6 10.83 128.34 3.57"/>
+            <polygon class="cls-2" points="125.38 7.34 24.62 7.34 17.77 14.2 10.91 21.05 10.91 121.8 17.77 128.66 24.62 135.52 125.38 135.52 132.23 128.66 139.09 121.8 139.09 21.05 132.23 14.2 125.38 7.34"/>
+          </g>
+          <g>
+            <g class="cls-7">
+              <path d="M79.21,59.29h-8.41c-1.07,0-2.09.38-2.85,1.05l-4.26,3.77c-.76.67-1.18,1.58-1.18,2.53v38.88c0,.95.42,1.86,1.18,2.53l4.26,3.77c.76.67,1.78,1.05,2.85,1.05h8.41c1.07,0,2.1-.38,2.85-1.05l4.26-3.77c.76-.67,1.18-1.58,1.18-2.53v-38.88c0-.95-.42-1.86-1.18-2.53l-4.26-3.77c-.76-.67-1.78-1.05-2.85-1.05Z"/>
+              <path d="M79.21,34.29h-8.41c-1.07,0-2.09.38-2.85,1.05l-4.26,3.77c-.76.67-1.18,1.58-1.18,2.53v7.45c0,.95.42,1.86,1.18,2.53l4.26,3.77c.76.67,1.78,1.05,2.85,1.05h8.41c1.07,0,2.1-.38,2.85-1.05l4.26-3.77c.76-.67,1.18-1.58,1.18-2.53v-7.45c0-.95-.42-1.86-1.18-2.53l-4.26-3.77c-.76-.67-1.78-1.05-2.85-1.05Z"/>
+            </g>
+            <g>
+              <path class="cls-6" d="M78.73,57.14h-7.45c-.95,0-1.86.38-2.53,1.05l-3.77,3.77c-.67.67-1.05,1.58-1.05,2.53v38.88c0,.95.38,1.86,1.05,2.53l3.77,3.77c.67.67,1.58,1.05,2.53,1.05h7.45c.95,0,1.86-.38,2.53-1.05l3.77-3.77c.67-.67,1.05-1.58,1.05-2.53v-38.88c0-.95-.38-1.86-1.05-2.53l-3.77-3.77c-.67-.67-1.58-1.05-2.53-1.05Z"/>
+              <path class="cls-4" d="M78.73,32.14h-7.45c-.95,0-1.86.38-2.53,1.05l-3.77,3.77c-.67.67-1.05,1.58-1.05,2.53v7.45c0,.95.38,1.86,1.05,2.53l3.77,3.77c.67.67,1.58,1.05,2.53,1.05h7.45c.95,0,1.86-.38,2.53-1.05l3.77-3.77c.67-.67,1.05-1.58,1.05-2.53v-7.45c0-.95-.38-1.86-1.05-2.53l-3.77-3.77c-.67-.67-1.58-1.05-2.53-1.05Z"/>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

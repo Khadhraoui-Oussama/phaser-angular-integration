@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { LevelProgress } from './Boot';
 
 export default class LevelSelectScene extends Phaser.Scene {
     private titleText!: Phaser.GameObjects.Text;
@@ -8,6 +9,7 @@ export default class LevelSelectScene extends Phaser.Scene {
     private backButton!: Phaser.GameObjects.Container;
     private background!: Phaser.GameObjects.Image;
     private languageChangeUnsubscribe?: () => void;
+    private levelProgress!: LevelProgress;
 
     constructor() {
         super('LevelSelectScene');
@@ -20,6 +22,9 @@ export default class LevelSelectScene extends Phaser.Scene {
                 scene.scene.stop();
             }
         });
+
+        // Load level progress from registry/localStorage
+        this.loadLevelProgress();
 
         // Continue playing menu music if available
         if (!this.sound.get('menu_music') || !this.sound.get('menu_music').isPlaying) {
@@ -133,6 +138,9 @@ export default class LevelSelectScene extends Phaser.Scene {
         const isMobile = ResponsiveGameUtils.isMobile(this);
         const mobileScale = isMobile ? 0.7 : 1.0; // 70% size for mobile
         
+        // Check if level is unlocked
+        const isUnlocked = this.levelProgress[level]?.unlocked || false;
+        
         // Button background using the large UI element
         const buttonBg = this.add.image(0, 0, 'ui_element_large');
         buttonBg.setDisplaySize(width, height);
@@ -142,43 +150,50 @@ export default class LevelSelectScene extends Phaser.Scene {
             buttonBg.setScale(0.5);
         }
         
-        // Make the button background interactive instead of the container
-        buttonBg.setInteractive();
+        // Apply visual effects based on unlock status
+        if (isUnlocked) {
+            // Make the button background interactive for unlocked levels
+            buttonBg.setInteractive();
+            
+            // Add hover effects for unlocked buttons
+            buttonBg.on('pointerover', () => {
+                container.setScale(1.05);
+                buttonBg.setTint(0xcccccc);
+            });
+            
+            buttonBg.on('pointerout', () => {
+                container.setScale(1.0);
+                buttonBg.clearTint();
+            });
+            
+            buttonBg.on('pointerdown', () => {
+                this.sound.play('shoot_laser');
+                // Stop menu music before starting the level
+                if (this.sound.get('menu_music')) {
+                    this.sound.get('menu_music').stop();
+                }
+                
+                // Start the game with the selected level
+                this.scene.start('LanguageSelectionScene', { selectedLevel: level });
+            });
+        } else {
+            // Locked level - apply darker tint and no interaction
+            buttonBg.setTint(0x666666); // Dark gray tint for locked levels
+            buttonBg.setAlpha(0.6); // Make it semi-transparent
+        }
         
         // Button text
-        const buttonText = this.add.text(0, 0, text, {
+        const buttonText = this.add.text(0, 0, isUnlocked ? text : '🔒', {
             fontSize: `${fontSize}px`,
             fontFamily: 'Arial',
-            color: '#ffffff',
-            stroke: '#2d5aa0',
+            color: isUnlocked ? '#ffffff' : '#999999',
+            stroke: isUnlocked ? '#2d5aa0' : '#444444',
             strokeThickness: 2,
             align: 'center'
         });
         buttonText.setOrigin(0.5);
         
         container.add([buttonBg, buttonText]);
-        
-        // Add hover effects to the button background
-        buttonBg.on('pointerover', () => {
-            container.setScale(1.05);
-            buttonBg.setTint(0xcccccc);
-        });
-        
-        buttonBg.on('pointerout', () => {
-            container.setScale(1.0);
-            buttonBg.clearTint();
-        });
-        
-        buttonBg.on('pointerdown', () => {
-            this.sound.play('shoot_laser');
-            // Stop menu music before starting the level
-            if (this.sound.get('menu_music')) {
-                this.sound.get('menu_music').stop();
-            }
-            
-            // Start the game with the selected level
-            this.scene.start('LanguageSelectionScene', { selectedLevel: level });
-        });
         
         return container;
     }
@@ -269,7 +284,9 @@ export default class LevelSelectScene extends Phaser.Scene {
             const level = index + 1;
             const textObject = button.list[1] as Phaser.GameObjects.Text;
             if (textObject) {
-                textObject.setText(`${languageManager.getText('level')} ${level}`);
+                const isUnlocked = this.levelProgress[level]?.unlocked || false;
+                const buttonText = isUnlocked ? `${languageManager.getText('level')} ${level}` : '🔒';
+                textObject.setText(buttonText);
             }
         });
         
@@ -287,5 +304,103 @@ export default class LevelSelectScene extends Phaser.Scene {
             this.languageChangeUnsubscribe();
             this.languageChangeUnsubscribe = undefined;
         }
+    }
+
+    private loadLevelProgress(): void {
+        // Get level progress from registry (set in Boot scene)
+        this.levelProgress = this.registry.get('levelProgress') as LevelProgress;
+        
+        // If not found in registry, try localStorage as fallback
+        if (!this.levelProgress) {
+            const storedProgress = localStorage.getItem('levelProgress');
+            if (storedProgress) {
+                try {
+                    this.levelProgress = JSON.parse(storedProgress);
+                } catch (error) {
+                    console.error('Error parsing level progress:', error);
+                    // Create default progress if parsing fails
+                    this.levelProgress = this.createDefaultProgress();
+                }
+            } else {
+                this.levelProgress = this.createDefaultProgress();
+            }
+        }
+    }
+
+    private createDefaultProgress(): LevelProgress {
+        const defaultProgress: LevelProgress = {};
+        
+        // Initialize 6 levels - only first level unlocked
+        for (let i = 1; i <= 6; i++) {
+            defaultProgress[i] = {
+                unlocked: i === 1, // Only level 1 is unlocked by default
+                completed: false,
+                highScore: 0
+            };
+        }
+        
+        return defaultProgress;
+    }
+
+    // Static method to unlock a level - can be called from other scenes
+    static unlockLevel(scene: Phaser.Scene, level: number, score?: number): void {
+        const levelProgress = scene.registry.get('levelProgress') as LevelProgress;
+        
+        if (levelProgress) {
+            // Unlock the current level
+            if (levelProgress[level]) {
+                levelProgress[level].completed = true;
+                if (score !== undefined && (levelProgress[level].highScore || 0) < score) {
+                    levelProgress[level].highScore = score;
+                }
+            }
+            
+            // Unlock the next level
+            const nextLevel = level + 1;
+            if (levelProgress[nextLevel]) {
+                levelProgress[nextLevel].unlocked = true;
+            }
+            
+            // Update registry and localStorage
+            scene.registry.set('levelProgress', levelProgress);
+            localStorage.setItem('levelProgress', JSON.stringify(levelProgress));
+        }
+    }
+
+    // Method to refresh level buttons after progress changes
+    public refreshLevelButtons(): void {
+        // Reload progress
+        this.loadLevelProgress();
+        
+        // Update button states
+        this.levelButtons.forEach((button, index) => {
+            const level = index + 1;
+            const isUnlocked = this.levelProgress[level]?.unlocked || false;
+            
+            const buttonBg = button.list[0] as Phaser.GameObjects.Image;
+            const buttonText = button.list[1] as Phaser.GameObjects.Text;
+            
+            if (isUnlocked) {
+                // Unlock visual state
+                buttonBg.clearTint();
+                buttonBg.setAlpha(1);
+                buttonBg.setInteractive();
+                buttonText.setStyle({ 
+                    color: '#ffffff', 
+                    stroke: '#2d5aa0' 
+                });
+                buttonText.setText(`${languageManager.getText('level')} ${level}`);
+            } else {
+                // Lock visual state
+                buttonBg.setTint(0x666666);
+                buttonBg.setAlpha(0.6);
+                buttonBg.removeInteractive();
+                buttonText.setStyle({ 
+                    color: '#999999', 
+                    stroke: '#444444' 
+                });
+                buttonText.setText('🔒');
+            }
+        });
     }
 }

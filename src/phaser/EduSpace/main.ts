@@ -4,7 +4,7 @@ import {Boot} from './scenes/Boot';
 import Preloader from './scenes/Preloader';
 import MainMenu from './scenes/MainMenu';
 import MainGame from './scenes/Game'; // make sure Game.js was renamed to MainGame.ts
-import TableSelectScene from './scenes/TableSelectScene';
+import LevelSelectScene from './scenes/LevelSelectScene';
 import VictoryScene from './scenes/VictoryScene';
 import ReviewMistakesScene from './scenes/ReviewMistakesScene';
 import LanguageSelectionScene from './scenes/LanguageSelectionScene';
@@ -49,7 +49,7 @@ const createResponsiveConfig = (dimensions: GameDimensions, parent: string): Pha
             }
         },
         backgroundColor: '#3366b2',
-        scene: [Boot, Preloader, MainMenu, TableSelectScene, MainGame, VictoryScene, ReviewMistakesScene, LanguageSelectionScene, SkinSelection],
+        scene: [Boot, Preloader, MainMenu, LevelSelectScene, MainGame, VictoryScene, ReviewMistakesScene, LanguageSelectionScene, SkinSelection],
         physics: {
             default: 'arcade',
             arcade: {

@@ -134,11 +134,11 @@ export default class MainMenu extends Phaser.Scene {
             fontSize,
             () => {
                 this.sound.play('shoot_laser');
-                // Stop menu music before going to table selection
+                // Stop menu music before going to level selection
                 if (this.sound.get('menu_music')) {
                     this.sound.get('menu_music').stop();
                 }
-                this.scene.start('TableSelectScene');
+                this.scene.start('LevelSelectScene');
             }
         );
 
@@ -169,6 +169,9 @@ export default class MainMenu extends Phaser.Scene {
         const buttonBg = this.add.image(0, 0, 'ui_element_large');
         buttonBg.setDisplaySize(width, height);
         
+        // Make the button background interactive instead of the container
+        buttonBg.setInteractive();
+        
         // Button text
         const buttonText = this.add.text(0, 0, text, {
             fontSize: `${fontSize}px`,
@@ -181,21 +184,19 @@ export default class MainMenu extends Phaser.Scene {
         buttonText.setOrigin(0.5);
         
         container.add([buttonBg, buttonText]);
-        container.setSize(width, height);
-        container.setInteractive(new Phaser.Geom.Rectangle(-width/2, -height/2, width, height), Phaser.Geom.Rectangle.Contains);
         
-        // Add hover effects
-        container.on('pointerover', () => {
+        // Add hover effects to the button background
+        buttonBg.on('pointerover', () => {
             container.setScale(1.05);
             buttonBg.setTint(0xcccccc);
         });
         
-        container.on('pointerout', () => {
+        buttonBg.on('pointerout', () => {
             container.setScale(1.0);
             buttonBg.clearTint();
         });
         
-        container.on('pointerdown', callback);
+        buttonBg.on('pointerdown', callback);
         
         return container;
     }

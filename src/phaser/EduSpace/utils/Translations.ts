@@ -18,6 +18,7 @@ export interface TranslationKeys {
   
   // General
   back: string;
+  level: string;
 }
 
 export const translations: Record<string, TranslationKeys> = {
@@ -35,7 +36,8 @@ export const translations: Record<string, TranslationKeys> = {
     
     language_selection_title: 'Select Language',
     
-    back: 'Back'
+    back: 'Back',
+    level: 'Level'
   },
   fr: {
     table_selection_scene_title: 'Choisissez les tables à réviser',
@@ -51,7 +53,8 @@ export const translations: Record<string, TranslationKeys> = {
     
     language_selection_title: 'Sélectionner la langue',
     
-    back: 'Retour'
+    back: 'Retour',
+    level: 'Niveau'
   },
   ar: {
     table_selection_scene_title: 'اختر الجداول للمراجعة',
@@ -67,6 +70,7 @@ export const translations: Record<string, TranslationKeys> = {
     
     language_selection_title: 'اختر اللغة',
     
-    back: 'رجوع'
+    back: 'رجوع',
+    level: 'مستوى'
   }
 };

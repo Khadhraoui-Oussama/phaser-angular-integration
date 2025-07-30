@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { ParallaxManager } from '../utils/ParallaxManager';
 
 export default class MainMenu extends Phaser.Scene {
     private titleText!: Phaser.GameObjects.Text;
@@ -13,6 +14,7 @@ export default class MainMenu extends Phaser.Scene {
     private skinChangeButton!: Phaser.GameObjects.Image;
     private languageText!: Phaser.GameObjects.Text;
     private background!: Phaser.GameObjects.Image;
+    private parallaxManager!: ParallaxManager;
     private languageChangeUnsubscribe?: () => void;
     
     constructor() {
@@ -39,6 +41,9 @@ export default class MainMenu extends Phaser.Scene {
 
         // Create background
         this.createBackground();
+
+        // Create parallax effect
+        this.createParallaxEffect();
 
         // Create title
         this.createTitle();
@@ -80,6 +85,18 @@ export default class MainMenu extends Phaser.Scene {
         // Add background
         this.background = this.add.image(centerX, centerY, 'bg');
         this.background.setDisplaySize(width, height);
+        
+        // Add overlay on top of background
+        const overlay = this.add.image(centerX, centerY, 'overlay');
+        overlay.setDisplaySize(width, height);
+        overlay.setDepth(10); // Above background but below parallax objects
+    }
+
+    private createParallaxEffect(): void {
+        // Create parallax manager with depth range behind UI elements
+        this.parallaxManager = new ParallaxManager(this);
+        // Set depth range to be well behind UI elements (UI is at depth 100)
+        this.parallaxManager.setDepthRange(1, 50);
     }
 
     private createTitle(): void {
@@ -96,6 +113,7 @@ export default class MainMenu extends Phaser.Scene {
         });
         this.titleText.setOrigin(0.5);
         this.titleText.setShadow(2, 2, '#000000', 6, true, false);
+        this.titleText.setDepth(100); // Ensure title is above parallax objects
     }
 
     private createMainButtons(): void {
@@ -115,11 +133,10 @@ export default class MainMenu extends Phaser.Scene {
             languageManager.getText('main_menu_play'),
             fontSize,
             () => {
-                this.sound.play('shoot_laser');
                 // Stop menu music before starting the game
-                if (this.sound.get('menu_music')) {
-                    this.sound.get('menu_music').stop();
-                }
+                this.sound.stopAll()
+                this.sound.play('shoot_laser');
+
                 this.scene.start('LanguageSelectionScene');
             }
         );
@@ -133,11 +150,9 @@ export default class MainMenu extends Phaser.Scene {
             languageManager.getText('main_menu_select_level'),
             fontSize,
             () => {
-                this.sound.play('shoot_laser');
                 // Stop menu music before going to level selection
-                if (this.sound.get('menu_music')) {
-                    this.sound.get('menu_music').stop();
-                }
+                this.sound.stopAll()
+                this.sound.play('shoot_laser');
                 this.scene.start('LevelSelectScene');
             }
         );
@@ -151,11 +166,11 @@ export default class MainMenu extends Phaser.Scene {
             languageManager.getText('main_menu_quit'),
             fontSize,
             () => {
-                this.sound.play('shoot_laser');
                 // Stop menu music before quitting
-                if (this.sound.get('menu_music')) {
-                    this.sound.get('menu_music').stop();
-                }
+                this.sound.stopAll()
+                
+                this.sound.play('shoot_laser');
+
                 // Send message to Angular to handle quit
                 this.game.events.emit('quit-game');
             }
@@ -185,6 +200,9 @@ export default class MainMenu extends Phaser.Scene {
         
         container.add([buttonBg, buttonText]);
         
+        // Set high depth to ensure buttons are above parallax objects
+        container.setDepth(100);
+        
         // Add hover effects to the button background
         buttonBg.on('pointerover', () => {
             container.setScale(1.05);
@@ -211,6 +229,7 @@ export default class MainMenu extends Phaser.Scene {
         this.informationButton = this.add.image(margin + buttonSize/2, margin + buttonSize/2, 'information');
         this.informationButton.setDisplaySize(buttonSize, buttonSize);
         this.informationButton.setInteractive();
+        this.informationButton.setDepth(100); // Above parallax objects
         this.setupCornerButtonEffects(this.informationButton, () => {
             this.sound.play('shoot_laser');
             // Show information popup or navigate to info scene
@@ -221,6 +240,7 @@ export default class MainMenu extends Phaser.Scene {
         this.settingsButton = this.add.image(width - margin - buttonSize/2, margin + buttonSize/2, 'settings');
         this.settingsButton.setDisplaySize(buttonSize, buttonSize);
         this.settingsButton.setInteractive();
+        this.settingsButton.setDepth(100); // Above parallax objects
         this.setupCornerButtonEffects(this.settingsButton, () => {
             this.sound.play('shoot_laser');
             // Open settings menu
@@ -246,6 +266,7 @@ export default class MainMenu extends Phaser.Scene {
         this.languageButton.add([langButtonBg, this.languageText]);
         this.languageButton.setSize(buttonSize, buttonSize);
         this.languageButton.setInteractive(new Phaser.Geom.Rectangle(-buttonSize/2, -buttonSize/2, buttonSize, buttonSize), Phaser.Geom.Rectangle.Contains);
+        this.languageButton.setDepth(100); // Above parallax objects
         
         this.setupCornerButtonEffects(this.languageButton, () => {
             this.sound.play('shoot_laser');
@@ -257,6 +278,7 @@ export default class MainMenu extends Phaser.Scene {
         this.skinChangeButton = this.add.image(width - margin - buttonSize/2, height - margin - buttonSize/2, 'skin_change');
         this.skinChangeButton.setDisplaySize(buttonSize, buttonSize);
         this.skinChangeButton.setInteractive();
+        this.skinChangeButton.setDepth(100); // Above parallax objects
         this.setupCornerButtonEffects(this.skinChangeButton, () => {
             this.sound.play('shoot_laser');
             this.scene.start('SkinSelection');
@@ -352,10 +374,20 @@ export default class MainMenu extends Phaser.Scene {
         }
     }
 
+    override update(): void {
+        if (this.parallaxManager) {
+            this.parallaxManager.update();
+        }
+    }
+
     private cleanup(): void {
         if (this.languageChangeUnsubscribe) {
             this.languageChangeUnsubscribe();
             this.languageChangeUnsubscribe = undefined;
+        }
+        
+        if (this.parallaxManager) {
+            this.parallaxManager.destroy();
         }
         
         // Stop menu music when leaving the main menu

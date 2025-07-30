@@ -100,6 +100,17 @@ export default class Preloader extends Phaser.Scene {
         this.load.image('bg', 'bg.png');
         this.load.image('overlay', 'overlay.png');
         
+        // Load parallax objects
+        this.load.setPath('assets/games/Eduspace/objects/');
+        this.load.image('asteroid', 'asteroid.png');
+        this.load.image('baren', 'Baren.png');
+        this.load.image('ice', 'Ice.png');
+        this.load.image('lava', 'Lava.png');
+        this.load.image('terran', 'Terran.png');
+        this.load.image('blue_planet', 'blue_planet.png');
+        this.load.image('green_nebula', 'green_nebula.png');
+        this.load.image('orange_planet', 'orange_planet.png');
+        
         // Load main menu UI assets
         this.load.setPath('assets/games/Eduspace/main_menu_assets/');
         this.load.svg('information', 'information.svg');

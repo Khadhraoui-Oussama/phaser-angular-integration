@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { ParallaxManager } from '../utils/ParallaxManager';
 import { LevelProgress } from './Boot';
 
 export default class LevelSelectScene extends Phaser.Scene {
@@ -8,6 +9,7 @@ export default class LevelSelectScene extends Phaser.Scene {
     private levelButtons: Phaser.GameObjects.Container[] = [];
     private backButton!: Phaser.GameObjects.Container;
     private background!: Phaser.GameObjects.Image;
+    private parallaxManager!: ParallaxManager;
     private languageChangeUnsubscribe?: () => void;
     private levelProgress!: LevelProgress;
 
@@ -39,6 +41,9 @@ export default class LevelSelectScene extends Phaser.Scene {
         // Create background
         this.createBackground();
 
+        // Create parallax effect
+        this.createParallaxEffect();
+
         // Create title
         this.createTitle();
 
@@ -67,6 +72,18 @@ export default class LevelSelectScene extends Phaser.Scene {
         // Create the same background as the main menu
         this.background = this.add.image(centerX, centerY, 'bg');
         this.background.setDisplaySize(width, height);
+        
+        // Add overlay on top of background
+        const overlay = this.add.image(centerX, centerY, 'overlay');
+        overlay.setDisplaySize(width, height);
+        overlay.setDepth(10); // Above background but below parallax objects
+    }
+
+    private createParallaxEffect(): void {
+        // Create parallax manager with depth range behind UI elements
+        this.parallaxManager = new ParallaxManager(this);
+        // Set depth range to be well behind UI elements (UI is at depth 100)
+        this.parallaxManager.setDepthRange(1, 50);
     }
 
     private createTitle(): void {
@@ -84,6 +101,7 @@ export default class LevelSelectScene extends Phaser.Scene {
             align: 'center'
         });
         this.titleText.setOrigin(0.5);
+        this.titleText.setDepth(100); // Ensure title is above parallax objects
     }
 
     private createLevelButtons(): void {
@@ -167,14 +185,16 @@ export default class LevelSelectScene extends Phaser.Scene {
             });
             
             buttonBg.on('pointerdown', () => {
-                this.sound.play('shoot_laser');
+                
                 // Stop menu music before starting the level
                 if (this.sound.get('menu_music')) {
                     this.sound.get('menu_music').stop();
                 }
                 
                 // Start the game with the selected level
-                this.scene.start('LanguageSelectionScene', { selectedLevel: level });
+                this.sound.stopAll()
+                this.sound.play('shoot_laser');
+                this.scene.start('MainMenu', { selectedLevel: level });
             });
         } else {
             // Locked level - apply darker tint and no interaction
@@ -194,6 +214,9 @@ export default class LevelSelectScene extends Phaser.Scene {
         buttonText.setOrigin(0.5);
         
         container.add([buttonBg, buttonText]);
+        
+        // Set high depth to ensure buttons are above parallax objects
+        container.setDepth(100);
         
         return container;
     }
@@ -220,6 +243,7 @@ export default class LevelSelectScene extends Phaser.Scene {
             languageManager.getText('back'),
             fontSize,
             () => {
+                this.sound.stopAll()
                 this.sound.play('shoot_laser');
                 this.scene.start('MainMenu');
             }
@@ -257,6 +281,9 @@ export default class LevelSelectScene extends Phaser.Scene {
         buttonText.setOrigin(0.5);
         
         container.add([buttonBg, buttonText]);
+        
+        // Set high depth to ensure buttons are above parallax objects
+        container.setDepth(100);
         
         // Add hover effects to the button background
         buttonBg.on('pointerover', () => {
@@ -299,10 +326,20 @@ export default class LevelSelectScene extends Phaser.Scene {
         }
     }
 
+    override update(): void {
+        if (this.parallaxManager) {
+            this.parallaxManager.update();
+        }
+    }
+
     private cleanup(): void {
         if (this.languageChangeUnsubscribe) {
             this.languageChangeUnsubscribe();
             this.languageChangeUnsubscribe = undefined;
+        }
+        
+        if (this.parallaxManager) {
+            this.parallaxManager.destroy();
         }
     }
 

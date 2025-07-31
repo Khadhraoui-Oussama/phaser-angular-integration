@@ -17,6 +17,8 @@ export default class MainMenu extends Phaser.Scene {
     private background!: Phaser.GameObjects.Image;
     private parallaxManager!: ParallaxManager;
     private languageChangeUnsubscribe?: () => void;
+    private fullscreenEventHandlers: Array<{ event: string; handler: () => void }> = [];
+    private originalDimensions: { width: number; height: number } | null = null;
     
     constructor() {
         super('MainMenu');
@@ -64,6 +66,9 @@ export default class MainMenu extends Phaser.Scene {
         // Set up input handlers
         this.setupInputHandlers();
 
+        // Set up fullscreen change detection
+        this.setupFullscreenDetection();
+
         // Listen for scene resume events
         this.events.on('resume', () => {
             this.setupInputHandlers();
@@ -77,6 +82,11 @@ export default class MainMenu extends Phaser.Scene {
 
         // Listen for scene stop to cleanup
         this.events.on('destroy', () => {
+            this.cleanup();
+        });
+
+        // Listen for scene restart to cleanup
+        this.events.on('restart', () => {
             this.cleanup();
         });
     }
@@ -285,8 +295,12 @@ export default class MainMenu extends Phaser.Scene {
         this.fullscreenToggleButton.setDepth(100); // Above parallax objects
         this.setupCornerButtonEffects(this.fullscreenToggleButton, () => {
             this.sound.play('shoot_laser');
-            // TODO: Implement fullscreen toggle functionality
-            console.log('Fullscreen toggle button clicked');
+            // Only enable fullscreen functionality on desktop (not mobile)
+            if (!ResponsiveGameUtils.isMobile(this)) {
+                this.toggleFullscreen();
+            } else {
+                console.log('Fullscreen not available on mobile devices');
+            }
         });
     }
 
@@ -315,6 +329,87 @@ export default class MainMenu extends Phaser.Scene {
                 (button as any).clearTint();
             }
             callback();
+        });
+    }
+
+    private toggleFullscreen(): void {
+        if (this.scale.isFullscreen) {
+            // Exit fullscreen
+            this.scale.stopFullscreen();
+        } else {
+            // Store current dimensions before going fullscreen
+            this.originalDimensions = {
+                width: this.scale.width,
+                height: this.scale.height
+            };
+            console.log('Stored original dimensions:', this.originalDimensions);
+            
+            // Enter fullscreen
+            this.scale.startFullscreen();
+        }
+    }
+
+    private setupFullscreenDetection(): void {
+        // Listen for fullscreen change events
+        this.scale.on('fullscreenchange', () => {
+            console.log('Fullscreen change detected');
+            this.handleFullscreenChange();
+        });
+
+        // Also listen for browser's native fullscreen change events as fallback
+        const fullscreenChangeEvents = [
+            'fullscreenchange',
+            'webkitfullscreenchange',
+            'mozfullscreenchange',
+            'MSFullscreenChange'
+        ];
+
+        fullscreenChangeEvents.forEach(eventName => {
+            const handler = () => {
+                console.log('Browser fullscreen change detected');
+                this.handleFullscreenChange();
+            };
+            
+            document.addEventListener(eventName, handler);
+            // Store the handler for cleanup
+            this.fullscreenEventHandlers.push({ event: eventName, handler });
+        });
+    }
+
+    private handleFullscreenChange(): void {
+        console.log('Handling fullscreen change - isFullscreen:', this.scale.isFullscreen);
+        
+        // Small delay to ensure the browser has finished the fullscreen transition
+        this.time.delayedCall(100, () => {
+            let newWidth: number;
+            let newHeight: number;
+            
+            if (this.scale.isFullscreen) {
+                // Going to fullscreen - use screen dimensions
+                newWidth = window.innerWidth;
+                newHeight = window.innerHeight;
+                console.log('Going fullscreen with dimensions:', newWidth, 'x', newHeight);
+            } else {
+                // Exiting fullscreen - restore original dimensions if available
+                if (this.originalDimensions) {
+                    newWidth = this.originalDimensions.width;
+                    newHeight = this.originalDimensions.height;
+                    console.log('Exiting fullscreen, restoring original dimensions:', newWidth, 'x', newHeight);
+                    // Clear stored dimensions
+                    this.originalDimensions = null;
+                } else {
+                    // Fallback to current window dimensions if no stored dimensions
+                    newWidth = window.innerWidth;
+                    newHeight = window.innerHeight;
+                    console.log('Exiting fullscreen, using fallback dimensions:', newWidth, 'x', newHeight);
+                }
+            }
+            
+            // Update the game scale to match the new dimensions
+            this.scale.resize(newWidth, newHeight);
+            
+            // Restart the current scene to reload with new dimensions
+            this.scene.restart();
         });
     }
 
@@ -395,20 +490,31 @@ export default class MainMenu extends Phaser.Scene {
             this.parallaxManager.destroy();
         }
         
-        // Stop menu music when leaving the main menu
-        if (this.sound.get('menu_music')) {
-            this.sound.get('menu_music').stop();
-        }
+        // Remove fullscreen event listeners
+        this.fullscreenEventHandlers.forEach(({ event, handler }) => {
+            document.removeEventListener(event, handler);
+        });
+        this.fullscreenEventHandlers = [];
+        
+        // Remove Phaser scale event listeners
+        this.scale.off('fullscreenchange');
+        
+        // Stop menu music when leaving the main menu or scene is being destroyed/restarted
+        this.stopAllMusic();
     }
 
     private stopAllMusic(): void {
         // Stop any existing music to prevent conflicts
         const musicKeys = ['music', 'menu_music'];
         musicKeys.forEach(key => {
-            if (this.sound.get(key)) {
-                this.sound.get(key).stop();
+            const sound = this.sound.get(key);
+            if (sound && sound.isPlaying) {
+                sound.stop();
             }
         });
+        
+        // Also use stopAll as a safety measure
+        this.sound.stopAll();
     }
 
     private getLastUnlockedLevel(): number {

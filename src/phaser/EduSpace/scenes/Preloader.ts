@@ -121,11 +121,22 @@ export default class Preloader extends Phaser.Scene {
         this.load.svg('ui_element_small', 'ui_element_small.svg');
         this.load.svg('ui_element_large', 'ui_elemeny_large.svg');
         
+        // Load player ships
+        this.load.setPath('assets/games/Eduspace/player_ships/Ship6/');
+        console.log('Loading ship frames from: assets/games/Eduspace/player_ships/Ship6/');
+        for (let i = 0; i < 8; i++) {
+            const frameNumber = i.toString().padStart(3, '0');
+            const frameKey = `ship_6_move_${frameNumber}`;
+            this.load.image(frameKey, `ship_6_move_${frameNumber}.png`);
+            console.log(`Loading frame: ${frameKey}`);
+        }
+        
         // Load sounds from EduSpace sounds folder
         this.load.setPath('assets/games/Eduspace/sounds/');
         this.load.audio('menu_music', 'menu_music.mp3');
         this.load.audio('main_music', 'bg_music.mp3');
         this.load.audio('shoot_laser', 'shoot_laser.mp3');
+        this.load.audio('hit', 'hit.mp3'); // Add hit sound for player damage
         
         // For now, fallback to snowmen-attack assets for missing ones
         this.load.setPath('assets/games/snowmen-attack/');

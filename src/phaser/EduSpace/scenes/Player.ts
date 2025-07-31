@@ -1,171 +1,424 @@
 import Phaser from 'phaser';
-import Track from './Track';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
-import { SkinManager } from '../utils/SkinManager';
 
-export default class Player extends Phaser.Physics.Arcade.Sprite {
-    isAlive: boolean;
-    isThrowing: boolean;
-    currentTrack: Track;
-    sound: Phaser.Sound.BaseSoundManager;
-
-    spacebar: Phaser.Input.Keyboard.Key;
-    up: Phaser.Input.Keyboard.Key;
-    down: Phaser.Input.Keyboard.Key;
-
-    constructor(scene: Phaser.Scene & { tracks: Track[] }, track: Track) {
-        // Position player responsively
-        const { width } = ResponsiveGameUtils.getResponsiveConfig(scene);
-        const playerX = width * 0.88; // 88% of screen width (was 900/1024)
+export class Player extends Phaser.GameObjects.Container {
+    private ship!: Phaser.GameObjects.Sprite;
+    private lives: number = 3;
+    private energy: number = 100;
+    private maxEnergy: number = 100;
+    private maxLives: number = 3;
+    private speed: number = 300;
+    private shootCooldown: number = 0;
+    private shootDelay: number = 250; // milliseconds between shots
+    private isInvulnerable: boolean = false;
+    private invulnerabilityTime: number = 2000; // 2 seconds of invulnerability after hit
+    
+    // Input handling - NOTE: Player movement is restricted to Y-axis only
+    // X position is fixed at window width / 4
+    private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
+    private wasdKeys?: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
+    private spaceKey?: Phaser.Input.Keyboard.Key;
+    
+    // Mobile touch controls - only vertical movement allowed
+    private touchStartX: number = 0;
+    private touchStartY: number = 0;
+    private isDragging: boolean = false;
+    
+    // Mouse/cursor dragging controls
+    private isMouseDragging: boolean = false;
+    private mouseStartY: number = 0;
+    
+    constructor(scene: Phaser.Scene, x: number, y: number) {
+        super(scene, x, y);
         
-        // Get initial frame based on registry skin choice
-        const selectedSkin = scene.game.registry.get('selectedSkin') || 'classic';
-        const currentSkin = SkinManager.getCurrentSkin(); // Keep this for later use
-        let textureKey: string;
-        let frameKey: string;
+        this.scene.add.existing(this);
+        this.scene.physics.add.existing(this);
         
-        if (selectedSkin === 'classic') {
-            // Classic winter: player = penguin
-            textureKey = SkinManager.getTextureKey('sprites');
-            frameKey = 'idle000';
-        } else if (selectedSkin === 'wizard') {
-            // Wizard: player = ice wizard
-            textureKey = SkinManager.getPlayerFrame();
-            frameKey = '';
-        } else {
-            // Fallback - assume classic
-            textureKey = SkinManager.getTextureKey('sprites');
-            frameKey = 'idle000';
-        }
+        // Set up physics body
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setCollideWorldBounds(true);
         
-        super(scene, playerX, track.y, textureKey, frameKey);
-
-        this.setOrigin(0.5, 1);
+        // Fix X position to width/4
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        this.x = width / 8;
         
-        // Use hardcoded scale values for different screen sizes
-        const { config } = ResponsiveGameUtils.getResponsiveConfig(scene);
-        let playerScale = 1.0; // Default desktop scale
+        this.createShip();
+        this.setupInput();
+        this.setupTouchControls();
         
-        if (config.screenSize === 'mobile') {
-            playerScale = 0.45; // Smaller scale for mobile
-        } else if (config.screenSize === 'tablet') {
-            playerScale = 0.7; // Fixed scale for tablet
-        }
-        
-        // Make wizard players smaller and flip them to face left
-        if (currentSkin.type === 'individual') {
-            playerScale *= 0.25; // Make wizards 75% smaller
-            this.setFlipX(true); // Flip wizard player to face left
-        }
-        
-        this.setScale(playerScale);
-
-        scene.add.existing(this);
-        scene.physics.add.existing(this);
-
-        // Set up collision body for better interception detection
-        if (this.body) {
-            const body = this.body as Phaser.Physics.Arcade.Body;
-            // Make the collision body slightly larger than the sprite for easier interception
-            body.setSize(this.width * 1.2, this.height * 1.2);
-            body.setOffset(-this.width * 0.1, -this.height * 0.1);
-        }
-
-        this.isAlive = true;
-        this.isThrowing = false;
-
-        this.sound = scene.sound;
-        this.currentTrack = track;
-
-        this.spacebar = this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-        this.up = this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
-        this.down = this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
-
-        // Only play animation if it's an atlas-based skin or if animations are ready
-        if (currentSkin.type === 'atlas') {
-            this.playAnimationSafe('idle');
-        }
-        // For individual frame skins, the texture is already set to the idle frame
+        // Set depth to ensure player is above other game objects
+        this.setDepth(50);
     }
     
-    private playAnimationSafe(animationKey: string, ignoreIfPlaying?: boolean): void {
-        // Both atlas and individual frame skins now support animations
-        this.play(animationKey, ignoreIfPlaying);
+    private createShip(): void {
+        // Check if ship frames are loaded, use fallback if not
+        let shipTexture = 'ship_6_move_000';
+        if (!this.scene.textures.exists(shipTexture)) {
+            // Fallback to a basic texture if ship frames aren't loaded
+            console.warn('Ship texture not found, using fallback');
+            // You can use any existing texture as fallback, or create a simple rectangle
+            shipTexture = this.createFallbackShipTexture();
+        }
+        
+        // Create the ship sprite with the first frame or fallback
+        this.ship = this.scene.add.sprite(0, 0, shipTexture);
+        
+        // Scale the ship appropriately for the game
+        const { minScale } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        const shipScale = Math.max(0.5, 0.8 * minScale);
+        this.ship.setScale(shipScale);
+        
+        // Add ship to this container
+        this.add(this.ship);
+        
+        // Set physics body size based on ship sprite
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setSize(
+            this.ship.width * shipScale * 0.8, // Slightly smaller hitbox
+            this.ship.height * shipScale * 0.8
+        );
+        
+        // Create ship movement animation
+        this.createShipAnimation();
     }
-
-    start(): void {
-        this.isAlive = true;
-        this.isThrowing = false;
-
-        this.currentTrack = (this.scene as any).tracks[0];
-        this.y = this.currentTrack.y;
-
-        this.on('animationcomplete-throwStart', this.releaseSnowball, this);
-        this.on('animationcomplete-throwEnd', this.throwComplete, this);
-
-        this.playAnimationSafe('idle', true);
+    
+    private createFallbackShipTexture(): string {
+        // Create a simple fallback ship texture using graphics
+        const graphics = this.scene.add.graphics();
+        graphics.fillStyle(0x00ff00); // Green color
+        graphics.fillTriangle(0, 0, -20, 40, 20, 40); // Simple triangle shape
+        graphics.generateTexture('fallback_ship', 40, 40);
+        graphics.destroy();
+        return 'fallback_ship';
     }
-
-    moveUp(): void {
-        if (this.currentTrack.id === 0) {
-            this.currentTrack = (this.scene as any).tracks[3];
+    
+    private createShipAnimation(): void {
+        // Check if the first frame exists before creating animation
+        if (!this.scene.textures.exists('ship_6_move_000')) {
+            console.warn('Ship frames not loaded yet, using fallback');
+            return;
+        }
+        
+        // Create the animation using individual frame keys
+        if (!this.scene.anims.exists('ship_move')) {
+            const frames = [];
+            for (let i = 0; i < 8; i++) {
+                const frameNumber = i.toString().padStart(3, '0');
+                const frameKey = `ship_6_move_${frameNumber}`;
+                
+                // Only add frame if it exists
+                if (this.scene.textures.exists(frameKey)) {
+                    frames.push({ key: frameKey });
+                }
+            }
+            
+            // Only create animation if we have frames
+            if (frames.length > 0) {
+                this.scene.anims.create({
+                    key: 'ship_move',
+                    frames: frames,
+                    frameRate: 12,
+                    repeat: -1 // Loop infinitely
+                });
+                
+                // Start the animation
+                this.ship.play('ship_move');
+            } else {
+                console.warn('No ship frames found, animation not created');
+            }
         } else {
-            this.currentTrack = (this.scene as any).tracks[this.currentTrack.id - 1];
+            // Animation already exists, just play it
+            this.ship.play('ship_move');
         }
-
-        this.y = this.currentTrack.y;
-        this.sound.play('move');
     }
-
-    moveDown(): void {
-        if (this.currentTrack.id === 3) {
-            this.currentTrack = (this.scene as any).tracks[0];
+    
+    private setupInput(): void {
+        // Set up keyboard input - only up/down keys and shooting
+        if (this.scene.input.keyboard) {
+            this.cursors = this.scene.input.keyboard.createCursorKeys();
+            this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+            
+            // WASD keys as alternative - only W (up) and S (down)
+            this.wasdKeys = {
+                W: this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+                A: this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A), // Not used but kept for compatibility
+                S: this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+                D: this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)  // Not used but kept for compatibility
+            };
+        }
+    }
+    
+    private setupTouchControls(): void {
+        // Set up touch/mouse controls for mobile and desktop - only vertical movement
+        this.scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            this.touchStartX = pointer.x;
+            this.touchStartY = pointer.y;
+            this.mouseStartY = pointer.y;
+            
+            if (ResponsiveGameUtils.isMobile(this.scene)) {
+                this.isDragging = true;
+            } else {
+                // Desktop mouse dragging
+                this.isMouseDragging = true;
+            }
+        });
+        
+        this.scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+            // Mobile touch dragging
+            if (this.isDragging && ResponsiveGameUtils.isMobile(this.scene)) {
+                const deltaY = pointer.y - this.touchStartY;
+                
+                // Move player based on touch drag - only Y axis
+                this.y += deltaY * 0.5; // Dampen movement for better control
+                
+                // Keep player within screen bounds - only Y axis, X is fixed
+                const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+                this.x = width / 8; // Always keep X fixed at width/8
+                this.y = Phaser.Math.Clamp(this.y, 50, height - 50);
+                
+                this.touchStartY = pointer.y;
+            }
+            
+            // Desktop mouse dragging
+            if (this.isMouseDragging && !ResponsiveGameUtils.isMobile(this.scene)) {
+                const deltaY = pointer.y - this.mouseStartY;
+                
+                // Move player based on mouse drag - only Y axis
+                this.y += deltaY * 0.8; // Slightly less damping for desktop precision
+                
+                // Keep player within screen bounds - only Y axis, X is fixed
+                const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+                this.x = width / 8; // Always keep X fixed at width/8
+                this.y = Phaser.Math.Clamp(this.y, 50, height - 50);
+                
+                this.mouseStartY = pointer.y;
+            }
+        });
+        
+        this.scene.input.on('pointerup', () => {
+            this.isDragging = false;
+            this.isMouseDragging = false;
+        });
+        
+        // Tap/click to shoot
+        this.scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            // Only shoot if not starting a drag (small delay to differentiate)
+            this.scene.time.delayedCall(100, () => {
+                if (!this.isDragging && !this.isMouseDragging) {
+                    this.shoot();
+                }
+            });
+        });
+    }
+    
+    public override update(time: number, delta: number): void {
+        this.handleInput(delta);
+        this.updateShootCooldown(delta);
+        this.updateInvulnerability(delta);
+        this.regenerateEnergy(delta);
+        this.enforceFixedXPosition();
+    }
+    
+    private enforceFixedXPosition(): void {
+        // Always ensure X position remains at width/4
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        this.x = width / 8;
+    }
+    
+    private handleInput(delta: number): void {
+        if (!this.cursors && !this.wasdKeys) return;
+        
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        const moveSpeed = this.speed;
+        
+        // Reset velocity
+        body.setVelocity(0);
+        
+        // Ensure X position remains fixed
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        this.x = width / 8;
+        
+        // Handle vertical movement input only
+        let moving = false;
+        
+        if (this.cursors) {
+            // Only process up/down movement, ignore left/right
+            if (this.cursors.up.isDown || (this.wasdKeys && this.wasdKeys.W.isDown)) {
+                body.setVelocityY(-moveSpeed);
+                moving = true;
+            } else if (this.cursors.down.isDown || (this.wasdKeys && this.wasdKeys.S.isDown)) {
+                body.setVelocityY(moveSpeed);
+                moving = true;
+            }
+        }
+        
+        // Check if we're moving via mouse/touch dragging
+        if (this.isMouseDragging || this.isDragging) {
+            moving = true;
+        }
+        
+        // Handle shooting input
+        if (this.spaceKey && this.spaceKey.isDown) {
+            this.shoot();
+        }
+        
+        // Update ship animation based on movement
+        if (this.ship && this.ship.anims) {
+            if (moving) {
+                if (!this.ship.anims.isPlaying || this.ship.anims.currentAnim?.key !== 'ship_move') {
+                    if (this.scene.anims.exists('ship_move')) {
+                        this.ship.play('ship_move');
+                    }
+                }
+            } else {
+                // Could add idle animation here if available
+                if (!this.ship.anims.isPlaying && this.scene.anims.exists('ship_move')) {
+                    this.ship.play('ship_move');
+                }
+            }
+        }
+    }
+    
+    private updateShootCooldown(delta: number): void {
+        if (this.shootCooldown > 0) {
+            this.shootCooldown -= delta;
+        }
+    }
+    
+    private updateInvulnerability(delta: number): void {
+        if (this.isInvulnerable) {
+            // Flash effect during invulnerability
+            this.alpha = Math.sin(this.scene.time.now * 0.01) * 0.5 + 0.5;
         } else {
-            this.currentTrack = (this.scene as any).tracks[this.currentTrack.id + 1];
+            this.alpha = 1;
         }
-
-        this.y = this.currentTrack.y;
-        this.sound.play('move');
     }
-
-    throw(): void {
-        console.log(`Player throwing from track ${this.currentTrack.id} at position y:${this.y}`);
-        this.isThrowing = true;
-        this.playAnimationSafe('throwStart');
-        this.sound.play('throw');
-    }
-
-    releaseSnowball(): void {
-        console.log(`Player releasing snowball from track ${this.currentTrack.id}`);
-        this.playAnimationSafe('throwEnd');
-        this.currentTrack.throwPlayerSnowball(this.x);
-    }
-
-    throwComplete(): void {
-        this.isThrowing = false;
-        this.playAnimationSafe('idle');
-    }
-
-    override stop(): this {
-        this.isAlive = false;
-        if (this.body) {
-            this.body.stop();
+    
+    private regenerateEnergy(delta: number): void {
+        // Slowly regenerate energy over time
+        if (this.energy < this.maxEnergy) {
+            this.energy = Math.min(this.maxEnergy, this.energy + (delta * 0.02)); // Regenerate 20 energy per second
         }
-        this.playAnimationSafe('die');
-        return this;
     }
-
-    override preUpdate(time: number, delta: number): void {
-        super.preUpdate(time, delta);
-
-        if (!this.isAlive) return;
-
-        if (Phaser.Input.Keyboard.JustDown(this.up)) {
-            this.moveUp();
-        } else if (Phaser.Input.Keyboard.JustDown(this.down)) {
-            this.moveDown();
-        } else if (Phaser.Input.Keyboard.JustDown(this.spacebar) && !this.isThrowing) {
-            this.throw();
+    
+    public shoot(): boolean {
+        if (this.shootCooldown <= 0 && this.energy >= 10) {
+            this.shootCooldown = this.shootDelay;
+            this.energy = Math.max(0, this.energy - 10); // Shooting costs energy
+            
+            // Play shoot sound
+            this.scene.sound.play('shoot_laser', { volume: 0.3 });
+            
+            // Emit event for bullet creation (will be handled by the game scene)
+            this.scene.events.emit('player-shoot', {
+                x: this.x,
+                y: this.y - 30, // Shoot from front of ship
+                direction: { x: 0, y: -1 } // Shoot upward
+            });
+            
+            return true;
         }
+        return false;
+    }
+    
+    public takeDamage(damage: number = 20): boolean {
+        if (this.isInvulnerable) return false;
+        
+        this.energy = Math.max(0, this.energy - damage);
+        
+        // If energy is depleted, lose a life
+        if (this.energy <= 0) {
+            this.loseLife();
+            return true;
+        }
+        
+        // Start invulnerability period
+        this.startInvulnerability();
+        
+        // Play damage sound
+        this.scene.sound.play('hit', { volume: 0.4 });
+        
+        return false; // Didn't die
+    }
+    
+    private loseLife(): void {
+        this.lives--;
+        this.energy = this.maxEnergy; // Restore energy when losing a life
+        
+        if (this.lives <= 0) {
+            this.destroy();
+            this.scene.events.emit('player-destroyed');
+        } else {
+            this.startInvulnerability();
+            this.scene.events.emit('player-life-lost', this.lives);
+        }
+    }
+    
+    private startInvulnerability(): void {
+        this.isInvulnerable = true;
+        this.scene.time.delayedCall(this.invulnerabilityTime, () => {
+            this.isInvulnerable = false;
+        });
+    }
+    
+    public heal(amount: number): void {
+        this.energy = Math.min(this.maxEnergy, this.energy + amount);
+    }
+    
+    public addLife(): void {
+        if (this.lives < this.maxLives) {
+            this.lives++;
+        }
+    }
+    
+    public restoreEnergy(): void {
+        this.energy = this.maxEnergy;
+    }
+    
+    // Getters
+    public getLives(): number {
+        return this.lives;
+    }
+    
+    public getEnergy(): number {
+        return this.energy;
+    }
+    
+    public getMaxEnergy(): number {
+        return this.maxEnergy;
+    }
+    
+    public getEnergyPercentage(): number {
+        return (this.energy / this.maxEnergy) * 100;
+    }
+    
+    public isAlive(): boolean {
+        return this.lives > 0;
+    }
+    
+    public getIsInvulnerable(): boolean {
+        return this.isInvulnerable;
+    }
+    
+    public getIsDragging(): boolean {
+        return this.isDragging || this.isMouseDragging;
+    }
+    
+    // Setters
+    public setSpeed(speed: number): void {
+        this.speed = speed;
+    }
+    
+    public setShootDelay(delay: number): void {
+        this.shootDelay = delay;
+    }
+    
+    public override destroy(fromScene?: boolean): void {
+        // Clean up animations
+        if (this.ship) {
+            this.ship.destroy();
+        }
+        
+        super.destroy(fromScene);
     }
 }

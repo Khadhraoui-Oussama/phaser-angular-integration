@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { languageManager } from '../utils/LanguageManager';
+import { Player } from './Player';
 
 export default class MainGame extends Phaser.Scene {
     private background!: Phaser.GameObjects.Image;
@@ -8,6 +9,7 @@ export default class MainGame extends Phaser.Scene {
     private backButton!: Phaser.GameObjects.Container;
     private languageChangeUnsubscribe?: () => void;
     private selectedLevel?: number;
+    private player!: Player;
     
     constructor() {
         super('MainGame');
@@ -41,6 +43,8 @@ export default class MainGame extends Phaser.Scene {
         ResponsiveGameUtils.setupMobileInput(this);
 
         this.createBackground();
+
+        this.createPlayer();
 
         this.createTitle();
 
@@ -77,6 +81,29 @@ export default class MainGame extends Phaser.Scene {
         // Add overlay on top of background (same as main menu)
         const overlay = this.add.image(centerX, centerY, 'overlay');
         overlay.setDisplaySize(width, height);
+    }
+
+    private createPlayer(): void {
+        const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        // Create player at fixed X position (width/4) and bottom area of screen
+        this.player = new Player(this, width / 4, height * 0.8);
+        
+        // Listen for player events
+        this.events.on('player-shoot', (data: { x: number; y: number; direction: { x: number; y: number } }) => {
+            // Handle bullet creation here when PlayerBullet class is implemented
+            console.log('Player shot at:', data.x, data.y, 'Direction:', data.direction);
+        });
+        
+        this.events.on('player-destroyed', () => {
+            console.log('Player destroyed - Game Over');
+            // Handle game over logic here
+        });
+        
+        this.events.on('player-life-lost', (remainingLives: number) => {
+            console.log('Player lost a life. Remaining lives:', remainingLives);
+            // Handle life lost logic here
+        });
     }
 
     private createTitle(): void {
@@ -181,7 +208,12 @@ export default class MainGame extends Phaser.Scene {
         this.sound.stopAll();
     }
 
-    override update(): void {
-        // Game update logic can be added here later
+    override update(time: number, delta: number): void {
+        // Update player if it exists
+        if (this.player && this.player.active) {
+            this.player.update(time, delta);
+        }
+        
+        // Other game update logic can be added here later
     }
 }

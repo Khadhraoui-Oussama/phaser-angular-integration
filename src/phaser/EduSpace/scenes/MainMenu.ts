@@ -17,7 +17,7 @@ export default class MainMenu extends Phaser.Scene {
     private background!: Phaser.GameObjects.Image;
     private parallaxManager!: ParallaxManager;
     private languageChangeUnsubscribe?: () => void;
-    private fullscreenEventHandlers: Array<{ event: string; handler: () => void }> = [];
+    private eventHandlers: Array<{ event: string; handler: () => void }> = [];
     private originalDimensions: { width: number; height: number } | null = null;
     
     constructor() {
@@ -68,6 +68,9 @@ export default class MainMenu extends Phaser.Scene {
 
         // Set up fullscreen change detection
         this.setupFullscreenDetection();
+
+        // Set up orientation change detection for mobile devices
+        this.setupOrientationDetection();
 
         // Listen for scene resume events
         this.events.on('resume', () => {
@@ -295,11 +298,12 @@ export default class MainMenu extends Phaser.Scene {
         this.fullscreenToggleButton.setDepth(100); // Above parallax objects
         this.setupCornerButtonEffects(this.fullscreenToggleButton, () => {
             this.sound.play('shoot_laser');
-            // Only enable fullscreen functionality on desktop (not mobile)
             if (!ResponsiveGameUtils.isMobile(this)) {
+                // Desktop: use fullscreen API
                 this.toggleFullscreen();
             } else {
-                console.log('Fullscreen not available on mobile devices');
+                // Mobile/Tablet: toggle landscape orientation
+                this.toggleLandscapeOrientation();
             }
         });
     }
@@ -349,6 +353,48 @@ export default class MainMenu extends Phaser.Scene {
         }
     }
 
+    private async toggleLandscapeOrientation(): Promise<void> {
+        try {
+            // Check if screen orientation API is available
+            if ('screen' in window && 'orientation' in (screen as any)) {
+                const orientation = (screen as any).orientation;
+                
+                if (orientation.type.includes('portrait')) {
+                    // Currently in portrait, switch to landscape
+                    console.log('Switching to landscape orientation');
+                    await orientation.lock('landscape-primary');
+                } else {
+                    // Currently in landscape, switch to portrait
+                    console.log('Switching to portrait orientation');
+                    await orientation.lock('portrait-primary');
+                }
+                
+                // Wait a bit for the orientation change to take effect
+                setTimeout(() => {
+                    // Update game dimensions after orientation change
+                    const newWidth = window.innerWidth;
+                    const newHeight = window.innerHeight;
+                    console.log('Orientation changed, new dimensions:', newWidth, 'x', newHeight);
+                    
+                    // Resize the game to match new dimensions
+                    this.scale.resize(newWidth, newHeight);
+                    
+                    // Restart scene to apply new layout
+                    this.scene.restart();
+                }, 300);
+                
+            } else {
+                console.log('Screen Orientation API not supported on this device');
+                // Fallback: just restart the scene to adapt to current orientation
+                this.scene.restart();
+            }
+        } catch (error) {
+            console.warn('Could not change screen orientation:', error);
+            // Fallback: just restart the scene to adapt to current orientation
+            this.scene.restart();
+        }
+    }
+
     private setupFullscreenDetection(): void {
         // Listen for fullscreen change events
         this.scale.on('fullscreenchange', () => {
@@ -372,8 +418,44 @@ export default class MainMenu extends Phaser.Scene {
             
             document.addEventListener(eventName, handler);
             // Store the handler for cleanup
-            this.fullscreenEventHandlers.push({ event: eventName, handler });
+            this.eventHandlers.push({ event: eventName, handler });
         });
+    }
+
+    private setupOrientationDetection(): void {
+        // Only set up orientation detection on mobile devices
+        if (ResponsiveGameUtils.isMobile(this)) {
+            // Listen for orientation change events
+            const orientationChangeHandler = () => {
+                console.log('Orientation change detected');
+                // Small delay to ensure the browser has finished the orientation transition
+                setTimeout(() => {
+                    const newWidth = window.innerWidth;
+                    const newHeight = window.innerHeight;
+                    console.log('Orientation changed, new dimensions:', newWidth, 'x', newHeight);
+                    
+                    // Resize the game to match new dimensions
+                    this.scale.resize(newWidth, newHeight);
+                    
+                    // Restart scene to apply new layout
+                    this.scene.restart();
+                }, 300);
+            };
+
+            // Listen for both window resize and orientation change events
+            window.addEventListener('orientationchange', orientationChangeHandler);
+            window.addEventListener('resize', orientationChangeHandler);
+            
+            // Store handlers for cleanup
+            this.eventHandlers.push({ 
+                event: 'orientationchange', 
+                handler: orientationChangeHandler 
+            });
+            this.eventHandlers.push({ 
+                event: 'resize', 
+                handler: orientationChangeHandler 
+            });
+        }
     }
 
     private handleFullscreenChange(): void {
@@ -490,11 +572,15 @@ export default class MainMenu extends Phaser.Scene {
             this.parallaxManager.destroy();
         }
         
-        // Remove fullscreen event listeners
-        this.fullscreenEventHandlers.forEach(({ event, handler }) => {
-            document.removeEventListener(event, handler);
+        // Remove event listeners (fullscreen and orientation)
+        this.eventHandlers.forEach(({ event, handler }) => {
+            if (event === 'orientationchange' || event === 'resize') {
+                window.removeEventListener(event, handler);
+            } else {
+                document.removeEventListener(event, handler);
+            }
         });
-        this.fullscreenEventHandlers = [];
+        this.eventHandlers = [];
         
         // Remove Phaser scale event listeners
         this.scale.off('fullscreenchange');

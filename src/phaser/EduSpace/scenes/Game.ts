@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { languageManager } from '../utils/LanguageManager';
 import { Player } from './Player';
+import PlayerBullet from './PlayerBullet';
 
 export default class MainGame extends Phaser.Scene {
     private background!: Phaser.GameObjects.Image;
@@ -10,6 +11,7 @@ export default class MainGame extends Phaser.Scene {
     private languageChangeUnsubscribe?: () => void;
     private selectedLevel?: number;
     private player!: Player;
+    private playerBullets!: Phaser.Physics.Arcade.Group;
     
     constructor() {
         super('MainGame');
@@ -45,6 +47,10 @@ export default class MainGame extends Phaser.Scene {
         this.createBackground();
 
         this.createPlayer();
+        
+        this.createBulletGroups();
+
+        this.setupPhysicsWorldBounds();
 
         this.createTitle();
 
@@ -75,7 +81,7 @@ export default class MainGame extends Phaser.Scene {
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         // Add background (same as main menu)
-        this.background = this.add.image(centerX, centerY, 'bg');
+        this.background = this.add.image(centerX, centerY, 'bg2');
         this.background.setDisplaySize(width, height);
         
         // Add overlay on top of background (same as main menu)
@@ -86,13 +92,19 @@ export default class MainGame extends Phaser.Scene {
     private createPlayer(): void {
         const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Create player at fixed X position (width/4) and bottom area of screen
-        this.player = new Player(this, width / 4, height * 0.8);
+        // Create player at fixed X position (width/8) and center-left area of screen for horizontal shooting
+        this.player = new Player(this, width / 8, height * 0.5);
         
         // Listen for player events
         this.events.on('player-shoot', (data: { x: number; y: number; direction: { x: number; y: number } }) => {
-            // Handle bullet creation here when PlayerBullet class is implemented
-            console.log('Player shot at:', data.x, data.y, 'Direction:', data.direction);
+            // Create a new bullet from the pool
+            const bullet = this.playerBullets.get() as PlayerBullet;
+            if (bullet) {
+                bullet.fire(data.x, data.y, data.direction);
+                console.log('Player bullet created at:', data.x, data.y, 'Direction:', data.direction);
+            } else {
+                console.warn('Could not get bullet from pool (pool might be full)');
+            }
         });
         
         this.events.on('player-destroyed', () => {
@@ -104,6 +116,23 @@ export default class MainGame extends Phaser.Scene {
             console.log('Player lost a life. Remaining lives:', remainingLives);
             // Handle life lost logic here
         });
+    }
+    
+    private createBulletGroups(): void {
+        // Create physics group for player bullets
+        this.playerBullets = this.physics.add.group({
+            classType: PlayerBullet,
+            maxSize: 20, // Maximum number of bullets on screen
+            runChildUpdate: true // Important: this ensures bullets update properly
+        });
+    }
+    
+    private setupPhysicsWorldBounds(): void {
+        const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        // Set physics world bounds to match screen size
+        this.physics.world.setBounds(0, 0, width, height);
+        console.log(`Physics world bounds set to: ${width}x${height}`);
     }
 
     private createTitle(): void {
@@ -169,6 +198,15 @@ export default class MainGame extends Phaser.Scene {
         // Reposition UI elements on resize
         const { width, height, centerX, centerY, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
         
+        // Update physics world bounds to match new screen size
+        this.physics.world.setBounds(0, 0, width, height);
+        console.log(`Physics world bounds updated to: ${width}x${height} during resize`);
+        
+        // Update player's fixed X position for new screen size
+        if (this.player) {
+            this.player.updateForScreenResize();
+        }
+        
         // Update background position
         if (this.background) {
             this.background.setPosition(centerX, centerY);
@@ -204,6 +242,9 @@ export default class MainGame extends Phaser.Scene {
             this.languageChangeUnsubscribe = undefined;
         }
         
+        // Clean up bullets
+        this.cleanupBullets();
+        
         // Stop all audio when cleaning up the scene
         this.sound.stopAll();
     }
@@ -215,5 +256,30 @@ export default class MainGame extends Phaser.Scene {
         }
         
         // Other game update logic can be added here later
+    }
+    
+    // Utility method to get all active player bullets
+    public getPlayerBullets(): Phaser.Physics.Arcade.Group {
+        return this.playerBullets;
+    }
+    
+    // Method to clean up bullets (useful for scene transitions)
+    private cleanupBullets(): void {
+        if (this.playerBullets && this.playerBullets.children) {
+            this.playerBullets.clear(true, true);
+        }
+    }
+    
+    // Example method for handling bullet-enemy collisions (to be implemented later)
+    private handleBulletEnemyCollision(bullet: PlayerBullet, enemy: Phaser.GameObjects.GameObject): void {
+        // This will be called when a bullet hits an enemy
+        console.log('Bullet hit enemy!');
+        
+        // Explode the bullet
+        bullet.explode();
+        
+        // Handle enemy damage/destruction here
+        // enemy.takeDamage() or similar
+        // Note: Bullets now travel horizontally from left to right
     }
 }

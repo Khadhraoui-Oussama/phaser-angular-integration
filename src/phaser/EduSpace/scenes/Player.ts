@@ -7,7 +7,7 @@ export class Player extends Phaser.GameObjects.Container {
     private energy: number = 100;
     private maxEnergy: number = 100;
     private maxLives: number = 3;
-    private speed: number = 300;
+    private speed: number = 450; // Increased Y-axis movement speed
     private shootCooldown: number = 0;
     private shootDelay: number = 250; // milliseconds between shots
     private isInvulnerable: boolean = false;
@@ -19,6 +19,8 @@ export class Player extends Phaser.GameObjects.Container {
     private wasdKeys?: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
     private spaceKey?: Phaser.Input.Keyboard.Key;
     
+    // Mobile touch controls - only vertical movement allowed
+    private touchStartX: number = 0;
     private touchStartY: number = 0;
     private isDragging: boolean = false;
     
@@ -309,9 +311,9 @@ export class Player extends Phaser.GameObjects.Container {
             
             // Emit event for bullet creation (will be handled by the game scene)
             this.scene.events.emit('player-shoot', {
-                x: this.x,
-                y: this.y - 30, // Shoot from front of ship
-                direction: { x: 0, y: -1 } // Shoot upward
+                x: this.x + 30, // Shoot from right side of ship
+                y: this.y, // Same Y position as ship
+                direction: { x: 1, y: 0 } // Shoot to the right (positive X direction)
             });
             
             return true;
@@ -409,6 +411,18 @@ export class Player extends Phaser.GameObjects.Container {
     
     public setShootDelay(delay: number): void {
         this.shootDelay = delay;
+    }
+    
+    // Method to update player position and boundaries on screen resize
+    public updateForScreenResize(): void {
+        const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        
+        // Update fixed X position
+        this.x = width / 8;
+        
+        // The physics body collision bounds are automatically updated by Phaser
+        // when setCollideWorldBounds(true) is set, so no manual bounds update needed
+        console.log(`Player position updated for screen resize. New X: ${this.x}`);
     }
     
     public override destroy(fromScene?: boolean): void {

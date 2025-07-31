@@ -94,10 +94,12 @@ export default class Preloader extends Phaser.Scene {
 
     private loadSharedAssets(): void {
         // Set asset path to EduSpace folder for shared assets
-        this.load.setPath('assets/games/Eduspace/');
+        this.load.setPath('assets/games/Eduspace/bgs/');
         
         // Load main background and overlay
         this.load.image('bg', 'bg.png');
+        this.load.image('bg2', 'bg_2.png');
+        this.load.image('bg3', 'bg_3.png');
         this.load.image('overlay', 'overlay.png');
         
         // Load parallax objects
@@ -129,6 +131,18 @@ export default class Preloader extends Phaser.Scene {
             const frameKey = `ship_6_move_${frameNumber}`;
             this.load.image(frameKey, `ship_6_move_${frameNumber}.png`);
             console.log(`Loading frame: ${frameKey}`);
+        }
+        
+        // Load player bullet shots
+        this.load.setPath('assets/games/Eduspace/shots/Shot6/travel/');
+        for (let i = 1; i <= 4; i++) {
+            this.load.image(`shot_travel_${i}`, `shot_travel_${i}.png`);
+        }
+        
+        // Load bullet explosion frames
+        this.load.setPath('assets/games/Eduspace/shots/Shot6/explosion/');
+        for (let i = 1; i <= 10; i++) {
+            this.load.image(`shot6_exp${i}`, `shot6_exp${i}.png`);
         }
         
         // Load sounds from EduSpace sounds folder

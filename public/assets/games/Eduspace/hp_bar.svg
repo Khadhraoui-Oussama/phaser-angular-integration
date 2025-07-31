@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 174 70">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: url(#_Безымянный_градиент_12);
+      }
+
+      .cls-2 {
+        isolation: isolate;
+      }
+
+      .cls-3 {
+        fill: url(#_Безымянный_градиент_8-2);
+      }
+
+      .cls-4 {
+        fill: url(#_Безымянный_градиент_8);
+      }
+
+      .cls-5 {
+        fill: url(#_Безымянный_градиент_12-2);
+        fill-rule: evenodd;
+      }
+
+      .cls-6 {
+        fill: url(#_Безымянный_градиент_21);
+        mix-blend-mode: overlay;
+      }
+    </style>
+    <linearGradient id="_Безымянный_градиент_8" data-name="Безымянный градиент 8" x1="87" y1="3742" x2="87" y2="3812" gradientTransform="translate(0 3812) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#77d6d3"/>
+      <stop offset=".5" stop-color="#e2f4f3"/>
+      <stop offset="1" stop-color="#77d6d3"/>
+    </linearGradient>
+    <linearGradient id="_Безымянный_градиент_21" data-name="Безымянный градиент 21" x1="3" y1="3777" x2="171" y2="3777" gradientTransform="translate(0 3812) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8aaaa9"/>
+      <stop offset=".5" stop-color="#fff"/>
+      <stop offset="1" stop-color="#8aaaa9"/>
+    </linearGradient>
+    <radialGradient id="_Безымянный_градиент_12" data-name="Безымянный градиент 12" cx="46.86" cy="3777" fx="46.86" fy="3777" r="42.3" gradientTransform="translate(11.42 3812) scale(.99 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0e0e30"/>
+      <stop offset="1" stop-color="#000"/>
+    </radialGradient>
+    <radialGradient id="_Безымянный_градиент_12-2" data-name="Безымянный градиент 12" cx="93.67" cy="28.5" fx="93.67" fy="28.5" r="16.17" gradientTransform="translate(40.32 -7.69) scale(.98 1)" xlink:href="#_Безымянный_градиент_12"/>
+    <linearGradient id="_Безымянный_градиент_8-2" data-name="Безымянный градиент 8" x1="132.31" y1="34.29" x2="132.31" y2="7.2" gradientTransform="matrix(1,0,0,1,0,0)" xlink:href="#_Безымянный_градиент_8"/>
+  </defs>
+  <g class="cls-2">
+    <g id="Layer_2" data-name="Layer 2">
+      <g id="Decor">
+        <g>
+          <path class="cls-4" d="M0,70V0h174v10c-23.43,23.43-36.57,36.57-60,60H0Z"/>
+          <path class="cls-6" d="M3,67V3h168v7c-23.43,23.43-33.57,33.57-57,57H3Z"/>
+          <rect class="cls-1" x="6" y="6" width="104" height="58"/>
+          <g>
+            <path class="cls-5" d="M132.31,10.31c5.08-8.75,17-3.08,17,5.59,0,7.32-8.5,12.71-17,20.04-8.5-7.32-17-12.71-17-20.04,0-8.66,11.92-14.34,17-5.59Z"/>
+            <path class="cls-3" d="M139.41,7.2c-1.76,0-4.24.65-6.04,3.76l-1.06,1.83-1.06-1.83c-1.8-3.11-4.28-3.76-6.04-3.76-4.09,0-8.66,3.72-8.66,8.7,0,5.41,5.58,10,12.05,15.3,1.21,1,2.46,2.02,3.72,3.08,1.26-1.07,2.5-2.09,3.72-3.08,6.46-5.31,12.05-9.89,12.05-15.3,0-4.98-4.57-8.7-8.66-8.7Z"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

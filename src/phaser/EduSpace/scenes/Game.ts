@@ -157,10 +157,9 @@ export default class MainGame extends Phaser.Scene {
     private spawnAnswer(): void {
         // Sample answer data - replace with your actual question/answer logic
         const sampleAnswers: AnswerData[] = [
-            { content: "Apple", isCorrect: true, isImage: false },
+            { isUrl:true,content: "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh", isCorrect: true, isImage: true },
+            { isUrl:true,content: "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQK1dXQrVCbBvMdU4A83XdwM7Rtte8YFsWFI-y5JLABKyTRyUTBQko0SqyrqNJQf96aNdEqLNo5eZglqCIH2udWwuewokYR5-0QnjucNq4Y5Q", isCorrect: true, isImage: true },
             { content: "Car", isCorrect: false, isImage: false },
-            { content: "Tree", isCorrect: false, isImage: false },
-            { content: "House", isCorrect: true, isImage: false }
         ];
         
         // Get random answer data

@@ -2,9 +2,10 @@ import Phaser from 'phaser';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 
 export interface AnswerData {
-    content: string; // Text content or image key
+    content: string; // Text content, image key, or image URL
     isCorrect: boolean;
     isImage: boolean; // true for image, false for text
+    isUrl?: boolean; // true if content is a URL that needs to be loaded
 }
 
 export default class Answer extends Phaser.GameObjects.Container {
@@ -96,7 +97,7 @@ export default class Answer extends Phaser.GameObjects.Container {
         // Create portal animation if it doesn't exist
         if (!this.scene.anims.exists('portal_spin')) {
             const frames = [];
-            for (let i = 1; i <= 7; i++) {
+            for (let i = 1; i <= 6; i++) {
                 if (this.scene.textures.exists(`portal_frame_${i}`)) {
                     frames.push({ key: `portal_frame_${i}` });
                 }
@@ -118,41 +119,108 @@ export default class Answer extends Phaser.GameObjects.Container {
         const { config } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
         
         if (this.answerData.isImage) {
-            // Create image answer
-            if (this.scene.textures.exists(this.answerData.content)) {
-                this.answerContent = this.scene.add.image(0, 0, this.answerData.content);
-                
-                // Scale image to fit within cloud
-                let imageScale = 0.6;
-                if (config.screenSize === 'mobile') {
-                    imageScale = 0.4;
-                } else if (config.screenSize === 'tablet') {
-                    imageScale = 0.5;
-                }
-                
-                (this.answerContent as Phaser.GameObjects.Image).setScale(imageScale);
+            if (this.answerData.isUrl) {
+                // Load image from URL
+                this.loadImageFromUrl();
             } else {
-                console.warn(`Image texture '${this.answerData.content}' not found, creating text fallback`);
-                this.createTextContent();
+                // Create image from existing texture key
+                this.createImageFromTexture();
             }
         } else {
             // Create text answer
             this.createTextContent();
         }
+    }
+    
+    private loadImageFromUrl(): void {
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        const imageUrl = this.answerData.content;
         
-        if (this.answerContent) {
+        //could be changed from the questions json file
+        const imageKey = `url_image_${Date.now()}}`;
+        
+        console.log(`Loading image from URL: ${imageUrl}`);
+        
+        // Load the image from URL
+        this.scene.load.image(imageKey, imageUrl);
+        
+        // Start loading and handle completion
+        this.scene.load.once('complete', () => {
+            console.log(`Image loaded successfully: ${imageKey}`);
+            
+            if (this.scene.textures.exists(imageKey)) {
+                this.answerContent = this.scene.add.image(0, 0, imageKey);
+                
+                // Calculate scale to fit within portal while maintaining aspect ratio
+                const image = this.answerContent as Phaser.GameObjects.Image;
+                const imageWidth = image.width;
+                const imageHeight = image.height;
+                
+                // Target size based on portal size and screen type
+                let targetSize = 120; // Base size for desktop
+                if (config.screenSize === 'mobile') {
+                    targetSize = 80;
+                } else if (config.screenSize === 'tablet') {
+                    targetSize = 100;
+                }
+                
+                // Calculate scale to fit within target size while maintaining aspect ratio
+                const scaleX = targetSize / imageWidth;
+                const scaleY = targetSize / imageHeight;
+                const finalScale = Math.min(scaleX, scaleY);
+                
+                image.setScale(finalScale);
+                this.add(image);
+                
+                console.log(`Image scaled: original=${imageWidth}x${imageHeight}, scale=${finalScale}, final=${imageWidth*finalScale}x${imageHeight*finalScale}`);
+            } else {
+                console.error(`Failed to load image from URL: ${imageUrl}`);
+                this.createTextContent(); // Fallback to text
+            }
+        });
+        
+        // Handle loading errors
+        this.scene.load.once('loaderror', (file: any) => {
+            if (file.key === imageKey) {
+                console.error(`Failed to load image from URL: ${imageUrl}`, file);
+                this.createTextContent(); // Fallback to text
+            }
+        });
+        
+        // Start the loading process
+        this.scene.load.start();
+    }
+    
+    private createImageFromTexture(): void {
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        
+        if (this.scene.textures.exists(this.answerData.content)) {
+            this.answerContent = this.scene.add.image(0, 0, this.answerData.content);
+            
+            // Scale image to fit within portal
+            let imageScale = 0.6;
+            if (config.screenSize === 'mobile') {
+                imageScale = 0.4;
+            } else if (config.screenSize === 'tablet') {
+                imageScale = 0.5;
+            }
+            
+            (this.answerContent as Phaser.GameObjects.Image).setScale(imageScale);
             this.add(this.answerContent);
+        } else {
+            console.warn(`Image texture '${this.answerData.content}' not found, creating text fallback`);
+            this.createTextContent();
         }
     }
     
     private createTextContent(): void {
         const { config } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
         
-        let fontSize = 26;
+        let fontSize = 32;
         if (config.screenSize === 'mobile') {
-            fontSize = 16;
+            fontSize = 20;
         } else if (config.screenSize === 'tablet') {
-            fontSize = 18;
+            fontSize = 24;
         }
         
         this.answerContent = this.scene.add.text(0, 0, this.answerData.content, {
@@ -163,7 +231,7 @@ export default class Answer extends Phaser.GameObjects.Container {
             wordWrap: { width: 140, useAdvancedWrap: true }
         }).setOrigin(0.5);
         
-        (this.answerContent as Phaser.GameObjects.Text).setOrigin(0.5);
+        this.add(this.answerContent);
     }
     
     private startMovement(): void {

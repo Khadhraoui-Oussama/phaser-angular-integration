@@ -3,6 +3,7 @@ import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { languageManager } from '../utils/LanguageManager';
 import { Player } from './Player';
 import PlayerBullet from './PlayerBullet';
+import Answer, { AnswerData } from './Answer';
 
 export default class MainGame extends Phaser.Scene {
     private background!: Phaser.GameObjects.Image;
@@ -12,6 +13,8 @@ export default class MainGame extends Phaser.Scene {
     private selectedLevel?: number;
     private player!: Player;
     private playerBullets!: Phaser.Physics.Arcade.Group;
+    private answers: Answer[] = [];
+    private answerSpawnTimer?: Phaser.Time.TimerEvent;
     
     constructor() {
         super('MainGame');
@@ -51,6 +54,10 @@ export default class MainGame extends Phaser.Scene {
         this.createBulletGroups();
 
         this.setupPhysicsWorldBounds();
+
+        this.createAnswerSpawner();
+
+        this.setupCollisionDetection();
 
         this.createTitle();
 
@@ -134,6 +141,90 @@ export default class MainGame extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, width, height);
         console.log(`Physics world bounds set to: ${width}x${height}`);
     }
+    
+    private createAnswerSpawner(): void {
+        // Create timer to spawn answers every 3-5 seconds
+        this.answerSpawnTimer = this.time.addEvent({
+            delay: Phaser.Math.Between(3000, 5000), // Random delay between 3-5 seconds
+            callback: this.spawnAnswer,
+            callbackScope: this,
+            loop: true
+        });
+        
+        console.log('Answer spawner created');
+    }
+    
+    private spawnAnswer(): void {
+        // Sample answer data - replace with your actual question/answer logic
+        const sampleAnswers: AnswerData[] = [
+            { content: "Apple", isCorrect: true, isImage: false },
+            { content: "Car", isCorrect: false, isImage: false },
+            { content: "Tree", isCorrect: false, isImage: false },
+            { content: "House", isCorrect: true, isImage: false }
+        ];
+        
+        // Get random answer data
+        const randomAnswerData = sampleAnswers[Math.floor(Math.random() * sampleAnswers.length)];
+        
+        // Get random Y position
+        const yPosition = Answer.getRandomYPosition(this);
+        
+        // Create new answer
+        const answer = new Answer(this, randomAnswerData, yPosition);
+        this.answers.push(answer);
+        
+        console.log(`Answer spawned: "${randomAnswerData.content}" at Y: ${yPosition}`);
+        
+        // Set next spawn delay
+        if (this.answerSpawnTimer) {
+            this.answerSpawnTimer.reset({
+                delay: Phaser.Math.Between(3000, 5000),
+                callback: this.spawnAnswer,
+                callbackScope: this,
+                loop: false
+            });
+        }
+    }
+    
+    private setupCollisionDetection(): void {
+        // Listen for answer collision events
+        this.events.on('answer-collision', (data: { answer: Answer; isCorrect: boolean; content: string }) => {
+            console.log(`Answer collision detected: "${data.content}", correct: ${data.isCorrect}`);
+            
+            if (data.isCorrect) {
+                // Handle correct answer
+                this.handleCorrectAnswer(data.answer);
+            } else {
+                // Handle wrong answer
+                this.handleWrongAnswer(data.answer);
+            }
+            
+            // Remove answer from tracking array
+            const index = this.answers.indexOf(data.answer);
+            if (index > -1) {
+                this.answers.splice(index, 1);
+            }
+        });
+    }
+    
+    private handleCorrectAnswer(answer: Answer): void {
+        console.log('Correct answer selected!');
+        // Add score, play success sound, show effect, etc.
+        this.sound.play('hit_correct', { volume: 0.5 });
+        
+        // TODO: Add scoring logic, visual effects, etc.
+    }
+    
+    private handleWrongAnswer(answer: Answer): void {
+        console.log('Wrong answer selected!');
+        // Reduce player health/lives, play error sound, show effect, etc.
+        this.sound.play('shoot_laser', { volume: 0.3 }); // Using available sound as placeholder
+        
+        if (this.player) {
+            // TODO: Reduce player lives or energy
+            console.log('Player should lose health/energy for wrong answer');
+        }
+    }
 
     private createTitle(): void {
         const { width, height, centerX, centerY, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
@@ -207,6 +298,13 @@ export default class MainGame extends Phaser.Scene {
             this.player.updateForScreenResize();
         }
         
+        // Update all active answers for new screen size
+        this.answers.forEach(answer => {
+            if (answer && answer.active) {
+                answer.updateForScreenResize();
+            }
+        });
+        
         // Update background position
         if (this.background) {
             this.background.setPosition(centerX, centerY);
@@ -245,6 +343,15 @@ export default class MainGame extends Phaser.Scene {
         // Clean up bullets
         this.cleanupBullets();
         
+        // Clean up answers
+        this.cleanupAnswers();
+        
+        // Clean up answer spawner
+        if (this.answerSpawnTimer) {
+            this.answerSpawnTimer.destroy();
+            this.answerSpawnTimer = undefined;
+        }
+        
         // Stop all audio when cleaning up the scene
         this.sound.stopAll();
     }
@@ -255,7 +362,38 @@ export default class MainGame extends Phaser.Scene {
             this.player.update(time, delta);
         }
         
+        // Update all active answers
+        this.answers.forEach(answer => {
+            if (answer && answer.active) {
+                answer.update(time, delta);
+            }
+        });
+        
+        // Check for collisions between player and answers
+        this.checkPlayerAnswerCollisions();
+        
         // Other game update logic can be added here later
+    }
+    
+    private checkPlayerAnswerCollisions(): void {
+        if (!this.player || !this.player.active) return;
+        
+        this.answers.forEach(answer => {
+            if (answer && answer.active) {
+                // Simple distance-based collision detection
+                const distance = Phaser.Math.Distance.Between(
+                    this.player.x, this.player.y,
+                    answer.x, answer.y
+                );
+                
+                // Collision threshold (adjust as needed)
+                const collisionThreshold = 60;
+                
+                if (distance < collisionThreshold) {
+                    answer.onPlayerCollision();
+                }
+            }
+        });
     }
     
     // Utility method to get all active player bullets
@@ -268,6 +406,16 @@ export default class MainGame extends Phaser.Scene {
         if (this.playerBullets && this.playerBullets.children) {
             this.playerBullets.clear(true, true);
         }
+    }
+    
+    // Method to clean up answers (useful for scene transitions)
+    private cleanupAnswers(): void {
+        this.answers.forEach(answer => {
+            if (answer && answer.active) {
+                answer.destroy();
+            }
+        });
+        this.answers = [];
     }
     
     // Example method for handling bullet-enemy collisions (to be implemented later)

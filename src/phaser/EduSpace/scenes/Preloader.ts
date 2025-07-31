@@ -123,6 +123,15 @@ export default class Preloader extends Phaser.Scene {
         this.load.svg('ui_element_small', 'ui_element_small.svg');
         this.load.svg('ui_element_large', 'ui_elemeny_large.svg');
         
+
+        // Load the answer object portal frames
+        this.load.setPath('assets/games/Eduspace/answer_object/portal/');
+        for (let i = 1; i <= 7; i++) {
+            this.load.image(`portal_frame_${i}`, `portal1_frame_${i}.png`);
+            console.log(`Loading portal frame: portal_frame_${i}`);
+        }
+
+
         // Load player ships
         this.load.setPath('assets/games/Eduspace/player_ships/Ship6/');
         console.log('Loading ship frames from: assets/games/Eduspace/player_ships/Ship6/');
@@ -150,7 +159,8 @@ export default class Preloader extends Phaser.Scene {
         this.load.audio('menu_music', 'menu_music.mp3');
         this.load.audio('main_music', 'bg_music.mp3');
         this.load.audio('shoot_laser', 'shoot_laser.mp3');
-        this.load.audio('hit', 'hit.mp3'); // Add hit sound for player damage
+        this.load.audio('hit_correct', 'success_sfx.mp3'); // Add hit sound for player damage
+        this.load.audio('hit_wrong', 'error_sfx.mp3'); // Add hit sound for player damage
         
         // For now, fallback to snowmen-attack assets for missing ones
         this.load.setPath('assets/games/snowmen-attack/');

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { ParallaxManager } from '../utils/ParallaxManager';
+import { LevelProgress } from './Boot';
 
 export default class MainMenu extends Phaser.Scene {
     private titleText!: Phaser.GameObjects.Text;
@@ -11,7 +12,7 @@ export default class MainMenu extends Phaser.Scene {
     private informationButton!: Phaser.GameObjects.Image;
     private settingsButton!: Phaser.GameObjects.Image;
     private languageButton!: Phaser.GameObjects.Container;
-    private skinChangeButton!: Phaser.GameObjects.Image;
+    private fullscreenToggleButton!: Phaser.GameObjects.Image;
     private languageText!: Phaser.GameObjects.Text;
     private background!: Phaser.GameObjects.Image;
     private parallaxManager!: ParallaxManager;
@@ -30,8 +31,9 @@ export default class MainMenu extends Phaser.Scene {
         });
         
         // Only play menu music if it's not already playing to prevent double playback
-        if (!this.sound.get('menu_music') || !this.sound.get('menu_music').isPlaying) {
-            this.sound.play('menu_music', { loop: true,volume:0.6});
+        const menuMusic = this.sound.get('menu_music');
+        if (!menuMusic || !menuMusic.isPlaying) {
+            this.sound.play('menu_music', { loop: true, volume: 0.6 });
         }
 
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
@@ -137,7 +139,9 @@ export default class MainMenu extends Phaser.Scene {
                 this.sound.stopAll()
                 this.sound.play('shoot_laser');
 
-                this.scene.start('LanguageSelectionScene');
+                // Get the last unlocked level and go directly to MainGame
+                const lastUnlockedLevel = this.getLastUnlockedLevel();
+                this.scene.start('MainGame', { selectedLevel: lastUnlockedLevel });
             }
         );
 
@@ -274,14 +278,15 @@ export default class MainMenu extends Phaser.Scene {
             this.scene.launch('LanguageSelectionScene');
         });
 
-        // Skin change button (bottom-right)
-        this.skinChangeButton = this.add.image(width - margin - buttonSize/2, height - margin - buttonSize/2, 'skin_change');
-        this.skinChangeButton.setDisplaySize(buttonSize, buttonSize);
-        this.skinChangeButton.setInteractive();
-        this.skinChangeButton.setDepth(100); // Above parallax objects
-        this.setupCornerButtonEffects(this.skinChangeButton, () => {
+        // Fullscreen toggle button (bottom-right)
+        this.fullscreenToggleButton = this.add.image(width - margin - buttonSize/2, height - margin - buttonSize/2, 'fullscreen_toggle');
+        this.fullscreenToggleButton.setDisplaySize(buttonSize, buttonSize);
+        this.fullscreenToggleButton.setInteractive();
+        this.fullscreenToggleButton.setDepth(100); // Above parallax objects
+        this.setupCornerButtonEffects(this.fullscreenToggleButton, () => {
             this.sound.play('shoot_laser');
-            this.scene.start('SkinSelection');
+            // TODO: Implement fullscreen toggle functionality
+            console.log('Fullscreen toggle button clicked');
         });
     }
 
@@ -404,5 +409,35 @@ export default class MainMenu extends Phaser.Scene {
                 this.sound.get(key).stop();
             }
         });
+    }
+
+    private getLastUnlockedLevel(): number {
+        // Get level progress from registry
+        let levelProgress = this.registry.get('levelProgress') as LevelProgress;
+        
+        // If not found in registry, try localStorage as fallback
+        if (!levelProgress) {
+            const storedProgress = localStorage.getItem('levelProgress');
+            if (storedProgress) {
+                try {
+                    levelProgress = JSON.parse(storedProgress);
+                } catch (error) {
+                    console.error('Error parsing level progress:', error);
+                    return 1; // Default to level 1 if parsing fails
+                }
+            } else {
+                return 1; // Default to level 1 if no progress found
+            }
+        }
+
+        // Find the highest unlocked level
+        let lastUnlockedLevel = 1; // Default to level 1
+        for (let level = 1; level <= 6; level++) { // Assuming 6 levels max
+            if (levelProgress[level] && levelProgress[level].unlocked) {
+                lastUnlockedLevel = level;
+            }
+        }
+
+        return lastUnlockedLevel;
     }
 }

@@ -1,786 +1,173 @@
 import Phaser from 'phaser';
-import Track from './Track';
-import Player from './Player';
-import PlayerSnowball from './PlayerSnowball';
-import EnemySnowball from './EnemySnowball';
-import { EventBus } from '../EventBus';
-import {generateOptions, generatePossibleAnswersForTable, generateQuestionsForTables, shuffle} from '../utils/QuestionGenerator';
-import { Question,  WrongAttempt } from '../models/Types';
-import Snowman from './Snowman';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
-import { LanguageManager, languageManager } from '../utils/LanguageManager';
-import { SkinManager } from '../utils/SkinManager';
+import { languageManager } from '../utils/LanguageManager';
 
 export default class MainGame extends Phaser.Scene {
-    private player!: Player;
-    public tracks!: Track[];
-
-    private score: number = 0;
-    private highscore: number = 0;
-
-    private infoPanel!: Phaser.GameObjects.Image;
-    private scoreText!: Phaser.GameObjects.Text;
-    private highscoreText!: Phaser.GameObjects.Text;
-
-    private questionContainer!: Phaser.GameObjects.Container;
-    private questionText!: Phaser.GameObjects.Text;
-    public currentQuestion!: Question;
-    private mobileControls?: any;
-    private gameStarted: boolean = false;
+    private background!: Phaser.GameObjects.Image;
+    private titleText!: Phaser.GameObjects.Text;
+    private backButton!: Phaser.GameObjects.Container;
     private languageChangeUnsubscribe?: () => void;
+    private selectedLevel?: number;
     
     constructor() {
         super('MainGame');
     }
 
-    questionOrder = 0
-    wrongAttempts: Set<WrongAttempt> // the attempts to display at the review mistakes scene
-    questionsToRetry: Set<Question>; // les questions a reviser : the question.options needs to be updated before pushing to this array and we need to use these questions once the questions array is empty.
-    
-    selectedTables: number[];
-    questions : Question[] 
-    init(data:{selectedTables:number[]}){
-        this.selectedTables = data.selectedTables
-        console.log("selectedTables in MainGame : ",this.selectedTables)
-        this.questionOrder = 0;
-        this.questions = generateQuestionsForTables(this.selectedTables)
+    init(data?: { selectedLevel?: number }) {
+        // Initialize with selected level if provided (for future use)
+        if (data?.selectedLevel) {
+            this.selectedLevel = data.selectedLevel;
+            console.log("selectedLevel in MainGame:", data.selectedLevel);
+        }
     }
 
-    createQuestionUI(questionTextValue: string) {
-        if (this.questionContainer) {
-            this.questionContainer.destroy();
-        }
-        
-        const { width, height, centerX } = ResponsiveGameUtils.getResponsiveConfig(this);
-        
-        this.questionContainer = this.add.container(centerX, 0).setDepth(1);
-
-        // Use responsive background image
-        const bgImage = this.add.image(0, 0, 'question_ui_large_short_on_top').setOrigin(0.5, 0);
-        
-        // Scale background for smaller screens with consistent scaling
-        const { config } = ResponsiveGameUtils.getResponsiveConfig(this);
-        let bgScale = 1.0; // Default desktop scale
-        
-        if (config.screenSize === 'mobile') {
-            bgScale = 0.45; // Smaller scale for mobile
-        } else if (config.screenSize === 'tablet') {
-            bgScale = 0.7; // Fixed scale for tablet
-        }
-        
-        bgImage.setScale(bgScale);
-        
-        this.questionContainer.add(bgImage);
-
-        // Create responsive question text
-        this.questionText = this.add.text(0, bgImage.height * bgScale / 2, questionTextValue, 
-            ResponsiveGameUtils.getTextStyle(32, this, {
-                align: 'center'
-            })
-        ).setOrigin(0.5, 0.5);
-        
-        this.questionContainer.add(this.questionText);
-    };
-
     create(): void {
-        this.score = 0;
-        this.highscore = this.registry.get('highscore') as number;
-        this.questionsToRetry = new Set<Question>
-        this.wrongAttempts = new Set<WrongAttempt>
-        this.gameStarted = false; // Reset game started flag
+        // Ensure no other scenes are running to prevent stacking
+        this.scene.manager.scenes.forEach(scene => {
+            if (scene.scene.key !== 'MainGame' && scene.scene.isActive()) {
+                scene.scene.stop();
+            }
+        });
         
-        this.setupUI();
-        this.setupTracks();
-        this.setupInputs();
+        // Only play background music if it's not already playing to prevent double playback
+        const bgMusic = this.sound.get('main_music');
+        if (!bgMusic || !bgMusic.isPlaying) {
+            this.sound.play('main_music', { loop: true, volume: 0.4 });
+        }
         
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
+
+        // Setup responsive input for mobile
+        ResponsiveGameUtils.setupMobileInput(this);
+
+        this.createBackground();
+
+        this.createTitle();
+
+        this.createBackButton();
+
+        // Subscribe to language changes with scene validation
+        this.languageChangeUnsubscribe = languageManager.onLanguageChangeWithSceneCheck(this, () => {
+            // No text updates needed since we use an icon
+        });
+
         // Setup resize handling
         ResponsiveGameUtils.setupResizeHandler(this, () => {
             this.handleResize();
-        });
-        
-        // Subscribe to language changes
-        this.languageChangeUnsubscribe = languageManager.onLanguageChange(() => {
-            // Only update if this scene is active
-            if (this.scene && this.scene.manager && this.scene.isActive()) {
-                this.updateMobileControlTexts();
-            }
         });
 
         // Listen for scene shutdown to cleanup
         this.events.on('shutdown', () => {
             this.cleanup();
         });
+
+        // Listen for scene stop to cleanup
+        this.events.on('destroy', () => {
+            this.cleanup();
+        });
     }
-    
-    private setupUI(): void {
+
+    private createBackground(): void {
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Add responsive background and overlay using SkinManager - these should always fill the screen
-        this.add.image(centerX, centerY, SkinManager.getTextureKey('background'));
-        this.add.image(0, 0, SkinManager.getTextureKey('overlay')).setOrigin(0);
+        // Add background (same as main menu)
+        this.background = this.add.image(centerX, centerY, 'bg');
+        this.background.setDisplaySize(width, height);
         
-        // Add responsive score panels with scaling
-        const panelPadding = ResponsiveGameUtils.getResponsivePadding(16, this);
-        const { config } = ResponsiveGameUtils.getResponsiveConfig(this);
-        let panelScale = 1.0; // Default desktop scale
-        
-        if (config.screenSize === 'mobile') {
-            panelScale = 0.45; // Smaller scale for mobile
-        } else if (config.screenSize === 'tablet') {
-            panelScale = 0.7; // Fixed scale for tablet
-        }
-        
-        // Use SkinManager for sprites or fallback to hardcoded names for panels
-        const currentSkin = SkinManager.getCurrentSkin();
-        let spritesKey: string;
-        let panelFrame: string | undefined;
-        
-        if (currentSkin.type === 'atlas') {
-            spritesKey = SkinManager.getTextureKey('sprites');
-            panelFrame = 'panel-score';
-        } else {
-            // For individual frame skins, fallback to classic for UI panels
-            spritesKey = 'classic_sprites';
-            panelFrame = 'panel-score';
-        }
-        
-        this.add.image(panelPadding, 0, spritesKey, panelFrame).setOrigin(0).setScale(panelScale);
-        this.add.image(width - panelPadding, 0, spritesKey, 'panel-best').setOrigin(1, 0).setScale(panelScale);
-        
-        // Only show info panel on desktop (not mobile/tablet)
-        if (!ResponsiveGameUtils.needsTouchControls(this)) {
-            this.infoPanel = this.add.image(centerX, centerY, spritesKey, 'controls').setScale(panelScale);
-        }
+        // Add overlay on top of background (same as main menu)
+        const overlay = this.add.image(centerX, centerY, 'overlay');
+        overlay.setDisplaySize(width, height);
+    }
 
-        // Create responsive text
-        this.scoreText = this.add.text(140 * (width / 1024), 2, this.score.toString(), 
-            ResponsiveGameUtils.getTextStyle(32, this)
-        );
+    private createTitle(): void {
+        const { width, height, centerX, centerY, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        // Create level title (only show level info)
+        const titleText = this.selectedLevel ? 
+            `LEVEL ${this.selectedLevel}` : 
+            'LEVEL 1';
+            
+        this.titleText = this.add.text(centerX, height * 0.08, titleText, {
+            fontSize: `${Math.max(24, 36 * minScale)}px`,
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            stroke: '#2d5aa0',
+            strokeThickness: 3,
+            align: 'center'
+        });
+        this.titleText.setOrigin(0.5);
+        this.titleText.setShadow(2, 2, '#000000', 4, true, false);
+        this.titleText.setDepth(100); // Ensure title is above parallax objects
+    }
 
-        this.highscoreText = this.add.text(820 * (width / 1024), 2, this.highscore.toString(), 
-            ResponsiveGameUtils.getTextStyle(32, this)
-        );
+    private createBackButton(): void {
+        const { width, height, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        const buttonSize = Math.max(40, 60 * minScale);
+        const margin = Math.max(20, 30 * minScale);
+
+        // Exit button positioned at top right corner (same size as main menu corner buttons)
+        this.backButton = this.add.container(width - margin - buttonSize/2, margin + buttonSize/2);
+        
+        const exitIcon = this.add.image(0, 0, 'exit');
+        exitIcon.setDisplaySize(buttonSize, buttonSize);
+        exitIcon.setInteractive();
+        
+        this.backButton.add(exitIcon);
+        this.backButton.setDepth(100); // Ensure button is above other elements
+        
+        // Store original scale for hover effects
+        const originalScale = 1.0;
+        
+        // Add hover effects (same as main menu corner buttons)
+        exitIcon.on('pointerover', () => {
+            this.backButton.setScale(originalScale * 1.1);
+            exitIcon.setTint(0xcccccc);
+        });
+        
+        exitIcon.on('pointerout', () => {
+            this.backButton.setScale(originalScale);
+            exitIcon.clearTint();
+        });
+        
+        exitIcon.on('pointerdown', () => {
+            this.sound.play('shoot_laser');
+            // Stop background music when exiting to main menu
+            this.sound.stopAll();
+            this.scene.start('MainMenu');
+        });
     }
-    
-    private setupTracks(): void {
-        // Create responsive tracks based on screen height
-        const trackPositions = ResponsiveGameUtils.getTrackPositions(this, 4);
-        
-        // Add extra spacing between tracks for better visibility
-        const { height } = ResponsiveGameUtils.getResponsiveConfig(this);
-        const extraSpacing = height * 0.035; 
-        
-        this.tracks = trackPositions.map((trackY, index) => 
-            new Track(this, index, trackY + (extraSpacing * index))
-        );
-        
-        this.player = new Player(this, this.tracks[0]);
-        
-        // Set up collision between player and enemy snowballs for interception
-        this.setupPlayerInterceptionCollisions();
-    }
-    
-    private setupInputs(): void {
-        // Setup mobile input support
-        ResponsiveGameUtils.setupMobileInput(this);
-        
-        // Add touch controls for mobile and tablet
-        if (ResponsiveGameUtils.needsTouchControls(this)) {
-            this.setupMobileControls();
-        } else {
-            // Only set up keyboard controls for desktop
-            this.input.keyboard!.once('keydown-SPACE', this.start, this);
-            this.input.keyboard!.once('keydown-UP', this.start, this);
-            this.input.keyboard!.once('keydown-DOWN', this.start, this);
-        }
-    }
-    
+
     private handleResize(): void {
         // Reposition UI elements on resize
-        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
+        const { width, height, centerX, centerY, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Update background position - backgrounds should always fill the screen
-        const backgrounds = this.children.list.filter(child => 
-            (child as any).texture?.key === SkinManager.getTextureKey('background') || 
-            (child as any).texture?.key === SkinManager.getTextureKey('overlay')
+        // Update background position
+        if (this.background) {
+            this.background.setPosition(centerX, centerY);
+            this.background.setDisplaySize(width, height);
+        }
+        
+        // Update overlay position
+        const overlays = this.children.list.filter(child => 
+            (child as any).texture?.key === 'overlay'
         );
-        backgrounds.forEach(bg => {
-            const bgImage = bg as Phaser.GameObjects.Image;
-            if ((bg as any).texture?.key === SkinManager.getTextureKey('background')) {
-                bgImage.setPosition(centerX, centerY);
-            } else if ((bg as any).texture?.key === SkinManager.getTextureKey('overlay')) {
-                bgImage.setPosition(0, 0);
-            }
+        overlays.forEach(overlay => {
+            const overlayImage = overlay as Phaser.GameObjects.Image;
+            overlayImage.setPosition(centerX, centerY);
+            overlayImage.setDisplaySize(width, height);
         });
         
-        // Update info panel position (only if it exists - desktop only)
-        if (this.infoPanel) {
-            this.infoPanel.setPosition(centerX, centerY);
+        // Update title position
+        if (this.titleText) {
+            this.titleText.setPosition(centerX, height * 0.08);
         }
         
-        // Update question container position
-        if (this.questionContainer) {
-            this.questionContainer.setPosition(centerX, 0);
-        }
-        
-        // Update track positions with better spacing
-        if (this.tracks) {
-            const trackPositions = ResponsiveGameUtils.getTrackPositions(this, 4);
-            this.tracks.forEach((track, index) => {
-                track.updateTrackPosition(trackPositions[index]);
-            });
-        }
-        
-        // Update player position to match current track
-        if (this.player) {
-            this.player.y = this.player.currentTrack.y;
-        }
-        
-        // Update mobile controls if they exist
-        if (this.mobileControls && ResponsiveGameUtils.needsTouchControls(this)) {
-            this.destroyMobileControls();
-            this.setupMobileControls();
-        }
-        
-        // Re-establish player interception collisions after resize
-        if (this.player && this.tracks) {
-            this.setupPlayerInterceptionCollisions();
-        }
-    }
-    
-    private destroyMobileControls(): void {
-        if (this.mobileControls) {
-            Object.values(this.mobileControls).forEach((control: any) => {
-                if (control && control.destroy) {
-                    control.destroy();
-                }
-            });
-            this.mobileControls = undefined;
-        }
-    }
-
-    onSnowmanHit(snowman: Snowman,track:Track): void {
-        const answer = parseInt(snowman.label.text);
-        const correct = this.currentQuestion.answer === answer;
-
-        if (correct) {
-            console.log('Correct!');
-            
-            // Update score immediately
-            this.score++;
-            this.scoreText.setText(this.score.toString()); 
-            
-            // Play success sound effect with increased volume
-            this.sound.play('success_sfx');
-            
-            // Create green glow effect on the snowman instead of destroying it
-            this.createSnowmanSuccessEffect(snowman);
-            
-            // Pause all game elements for 1 second before moving to next question
-            this.pauseGameForSuccess();
-            
-            // Load next question after 1 second delay
-            this.time.delayedCall(1000, () => {
-                this.resumeGameAndLoadNext();
-            });
-        } else {
-            console.log('Wrong!');
-            
-            // Play error sound effect for wrong answer
-            this.sound.play('error_sfx');
-            
-            // Create red glow effect on the snowman before it gets knocked back
-            this.createSnowmanErrorEffect(snowman);
-            
-            this.handleWrongAnswer(answer,track);
-        }
-    }
-    handleWrongAnswer(answer: number, track: Track): void {
-        console.log('Wrong!');
-        if(this.score >= 1){
-            this.score--;
-            this.scoreText.setText(this.score.toString());
-        }
-
-        if (!this.questionsToRetry.has(this.currentQuestion)) {
-            this.questionsToRetry.add(this.currentQuestion);
-        }
-
-        // Update options for each question in retry set with their respective table's possible answers
-        this.questionsToRetry.forEach(q => {
-            const possibleAnswersForThisQuestion = generatePossibleAnswersForTable(q.operand1);
-            q.options = generateOptions(q.answer, possibleAnswersForThisQuestion);
-        });
-
-        const alreadyRegistered = Array.from(this.wrongAttempts).some(
-            attempt => attempt.question === this.currentQuestion && attempt.attemptedAnswer === answer
-        );
-
-        if (!alreadyRegistered) {
-            this.wrongAttempts.add({
-                orderOfAppearance: this.questionOrder,
-                question: this.currentQuestion,
-                attemptedAnswer: answer,
-            });
-        }
-
-        console.log("wrongAttempts: ", this.wrongAttempts);
-        console.log("questionsToRetry: ", this.questionsToRetry);
-
-        // Speed up all snowmen
-        this.tracks.forEach(track => {
-            track.snowmanSmall.speed += 10;
-        });
-
-        track.setSnowmenLabel(answer);
-        track.snowmanSmall.start();
-    }
-
-    onEggHit(track: Track): void {
-        // Use the comprehensive egg crack sequence function
-        this.handleEggCrackSequence(track);
-    }
-
-    private pauseGameForEggAnimation(): void {
-        // Pause physics to stop all movement
-        this.physics.pause();
-        
-        // Stop all tracks and snowmen
-        this.tracks.forEach(track => {
-            track.stop();
-        });
-        
-        // Stop all player snowballs and hide them
-        this.tracks.forEach(track => {
-            (track.playerSnowballs.getChildren() as Phaser.Physics.Arcade.Sprite[]).forEach(snowball => {
-                if (snowball.active) {
-                    snowball.stop();
-                    snowball.setVisible(false);
-                    snowball.setActive(false);
-                }
-            });
-        });
-        
-        // Stop all enemy snowballs
-        this.stopAllEnemySnowballs();
-        
-        // Stop player movement and disable input
-        this.player.stop();
-        this.player.spacebar.enabled = false;
-        this.player.up.enabled = false;
-        this.player.down.enabled = false;
-    }
-
-    private resumeGameAndLoadNext(): void {
-        // Resume physics
-        this.physics.resume();
-        
-        // Re-enable player input
-        this.player.spacebar.enabled = true;
-        this.player.up.enabled = true;
-        this.player.down.enabled = true;
-        
-        // Load next question
-        this.loadNextQuestion();
-    }
-
-    loadNextQuestion(): void {
-        if (!this.questions || this.questions.length === 0) {
-            console.error("Questions not initialized correctly:", this.questions);
-            return;
-        }
-        this.stopAllEnemySnowballs()
-        this.questionOrder++;
-        console.log("question order : ",this.questionOrder)
-        console.log("questions.length : ",this.questions.length)
-        console.log("questionsToRetry.size : ",this.questionsToRetry.size)
-        
-        if (this.questionOrder >= this.questions.length) {//acount for 0-index
-            if (this.questionsToRetry.size > 0) {
-                console.log('Switching to retry questions...');
-                console.log('Questions to retry:', [...this.questionsToRetry]);
-                
-                // Convert to array and shuffle options for each retry question
-                this.questions = [...this.questionsToRetry].map(question => {
-                    // Generate fresh options for the question
-                    const possibleAnswersForThisQuestion = generatePossibleAnswersForTable(question.operand1);
-                    const shuffledOptions = generateOptions(question.answer, possibleAnswersForThisQuestion);
-                    
-                    // Actually shuffle the options array to randomize positions
-                    shuffle(shuffledOptions);
-                    
-                    console.log(`Shuffled options for ${question.operand1} x ${question.operand2}:`, shuffledOptions);
-                    
-                    return {
-                        ...question,
-                        options: shuffledOptions
-                    };
-                });
-                
-                console.log("this.questions after switch with shuffled options: ", this.questions)
-                this.questionsToRetry.clear();
-                this.questionOrder = 0;
-                console.log('Reset questionOrder to 0, starting retry round with shuffled options');
-            } else {
-                console.log('All questions done! No more retries available.');
-                this.gameOver();
-                return;
-            }
-        }
-
-        this.currentQuestion = this.questions[this.questionOrder];
-        console.log('Loading question:', this.currentQuestion);
-
-        this.createQuestionUI(`${this.currentQuestion.operand1} x ${this.currentQuestion.operand2}= ?`);
-        this.tracks[0].setSnowmenLabel(this.currentQuestion.options[0]);
-        this.tracks[1].setSnowmenLabel(this.currentQuestion.options[1]);
-        this.tracks[2].setSnowmenLabel(this.currentQuestion.options[2]);
-        this.tracks[3].setSnowmenLabel(this.currentQuestion.options[3]);
-
-        // Restart snowmen with responsive speed
-        this.tracks.forEach(track => {
-            // Set responsive speed based on screen size
-            const { config } = ResponsiveGameUtils.getResponsiveConfig(this);
-            let baseSpeed = 50; // Default desktop speed
-            if (config.screenSize === 'mobile') {
-                baseSpeed = 25; // Slower speed for mobile devices
-            } else if (config.screenSize === 'tablet') {
-                baseSpeed = 35; // Medium speed for tablets
-            }
-            track.snowmanSmall.speed = baseSpeed;
-            track.snowmanSmall.start();
-        });
-    }
-
-    public stopAllEnemySnowballs(): void {
-        this.tracks.forEach(track => {
-            (track.enemySnowballs.getChildren() as Phaser.Physics.Arcade.Sprite[]).forEach(snowball => {
-                if (snowball.active) {
-                    snowball.stop();
-                }
-            });
-        });
-    }
-
-
-    private start(): void {
-        if (!this.questions || this.questions.length === 0) {
-            console.error("Questions not initialized correctly:", this.questions);
-            return;
-        }
-        
-        // Mark game as started
-        this.gameStarted = true;
-        
-        // Update mobile control text if it exists
-        this.updateMobileControlTexts();
-        
-        this.input.keyboard!.removeAllListeners();
-
-        const { height } = ResponsiveGameUtils.getResponsiveConfig(this);
-
-        this.tweens.add({
-            targets: this.infoPanel,
-            y: height + 100, // Move off screen
-            alpha: 0,
-            duration: 500,
-            ease: 'Power2',
-        });
-
-        this.player.start();
-
-        this.tracks[0].start(4000, 8000);
-        this.tracks[1].start(500, 1000);
-        this.tracks[2].start(5000, 9000);
-        this.tracks[3].start(6000, 10000);
-
-
-        this.currentQuestion = this.questions[this.questionOrder];
-        this.createQuestionUI(`${this.currentQuestion.operand1} x ${this.currentQuestion.operand2}= ?`);
-
-        
-        this.tracks[0].setSnowmenLabel(this.currentQuestion.options[0]);
-        this.tracks[1].setSnowmenLabel(this.currentQuestion.options[1]);
-        this.tracks[2].setSnowmenLabel(this.currentQuestion.options[2]);
-        this.tracks[3].setSnowmenLabel(this.currentQuestion.options[3]);
-    
-    }
-
-    public gameOver(): void {
-        console.log('=== GAME OVER ===');
-        console.log('Final questionsToRetry.size:', this.questionsToRetry.size);
-        console.log('Final wrongAttempts.size:', this.wrongAttempts.size);
-        console.log('All questions completed including retries!');
-        
-        const { centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
-        
-        this.infoPanel.setTexture('gameover');
-
-        this.tweens.add({
-            targets: this.infoPanel,
-            y: centerY,
-            alpha: 1,
-            duration: 500,
-            ease: 'Power2',
-        });
-
-        this.tracks.forEach((track) => 
-            {
-                track.stop()
-                // track.snowmanSmall.stop()
-            });
-
-        this.sound.stopAll();
-        this.sound.play('gameover');
-
-        this.player.stop();
-
-        if (this.score > this.highscore) {
-            this.highscore = this.score;
-            this.highscoreText.setText('NEW HighScore!');
-            this.registry.set('highscore', this.score);
-            localStorage.setItem('highscore', this.score.toString()); 
-        }
-        //GAME OVER EVENT EMIT( snowman-attack-game.component will listen for this event)
-        EventBus.emit("game-over",this)
-        console.log("send data mistakes: ",this.wrongAttempts )
-        this.time.delayedCall(1000, () => {
-            this.scene.start('VictoryScene', {
-            score: this.score,
-            mistakes: this.wrongAttempts,
-         });
-});
-    }
-    onSnowmanReachedTheEndOfTheTrack(snowman: Snowman): void {
-        const answer = parseInt(snowman.label.text);
-        const correct = this.currentQuestion.answer === answer;
-
-        if (correct) {
-            console.log('Snowman with correct answer reached end: counted as wrong.');
-
-            if (!this.questionsToRetry.has(this.currentQuestion)) {
-                this.questionsToRetry.add(this.currentQuestion);
-            }
-
-            // Update options for each question in retry set with their respective table's possible answers
-            this.questionsToRetry.forEach(q => {
-                const possibleAnswersForThisQuestion = generatePossibleAnswersForTable(q.operand1);
-                q.options = generateOptions(q.answer, possibleAnswersForThisQuestion);
-            });
-            
-            const alreadyRegistered = Array.from(this.wrongAttempts).some(
-                attempt => attempt.question === this.currentQuestion && attempt.attemptedAnswer === -1
-            );
-
-            if (!alreadyRegistered) {
-                this.wrongAttempts.add({
-                    orderOfAppearance: this.questionOrder,
-                    question: this.currentQuestion,
-                    attemptedAnswer: -1,
-                });
-            }
-            console.log(this.wrongAttempts)
-        } else {
-            console.log("Snowman with wrong answer reached end : snowmen stopped in preUpdate, continue playing")
-            // snowman.stop()
-        }
-
-        this.loadNextQuestion();
-    }
-
-    setupMobileControls(): void {
-        const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this);
-        
-        // Create virtual controls for mobile
-        const buttonSize = ResponsiveGameUtils.getButtonSize(this);
-        
-        // Only show throw button for mobile, remove up/down buttons
-        // Throw button (centered horizontally, positioned at bottom with no gap)
-        const throwButton = this.add.rectangle(
-            width / 2,  // Center horizontally
-            height - buttonSize.height / 2,  // Position at bottom with no gap
-            buttonSize.width * 1.2,  // Make it slightly wider
-            buttonSize.height, 
-            0xcc0066, 
-            0.7
-        ).setInteractive();
-        
-        const throwText = this.add.text(
-            throwButton.x, 
-            throwButton.y, 
-            this.gameStarted ? languageManager.getText('game_throw_button') : languageManager.getText('game_start_button'), 
-            ResponsiveGameUtils.getTextStyle(18, this)  // Slightly larger text
-        ).setOrigin(0.5);
-        
-        // Add touch handlers
-        throwButton.on('pointerdown', () => {
-            if (!this.gameStarted) {
-                // Use throw button to start the game on mobile/tablet
-                this.start();
-                // Update button text after starting
-                throwText.setText(languageManager.getText('game_throw_button'));
-            } else if (this.player && this.player.isAlive && !this.player.isThrowing) {
-                this.player.throw();
-            }
-        });
-        
-        // Add screen tap for movement (tap to move up/down) - only after game starts
-        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-            // Don't move if clicking the throw button
-            if (throwButton.getBounds().contains(pointer.x, pointer.y)) {
-                return;
-            }
-            
-            // Only allow movement after game has started
-            if (this.gameStarted && this.player && this.player.isAlive) {
-                // Simple tap control: tap upper half = move up, tap lower half = move down
-                const centerY = height / 2;
-                if (pointer.y < centerY) {
-                    this.player.moveUp();
-                } else {
-                    this.player.moveDown();
-                }
-            }
-        });
-        
-        // Store references for cleanup
-        this.mobileControls = {
-            throwButton, throwText, 
-        };
-    }
-
-    /**
-     * Handles the complete egg crack sequence:
-     * 1. Stops all snowmen from moving
-     * 2. Stops all snowballs from advancing
-     * 3. Plays egg crack animation
-     * 4. Loads next question after animation completes
-     */
-    handleEggCrackSequence(track: Track): void {
-        // 1. Stop all snowmen movement
-        this.tracks.forEach(t => {
-            if (t.snowmanSmall) {
-                t.snowmanSmall.stop();
-            }
-        });
-
-        // 2. Stop all snowballs from advancing
-        this.stopAllSnowballs();
-
-        // 3. Pause physics to ensure everything stops
-        this.physics.pause();
-
-        // 4. Disable player input during animation
-        this.player.spacebar.enabled = false;
-        this.player.up.enabled = false;
-        this.player.down.enabled = false;
-
-        // 5. Play egg crack animation with callback
-        track.triggerEggCrack(() => {
-            // 6. After animation completes, load next question
-            this.time.delayedCall(500, () => {
-                // Resume physics
-                this.physics.resume();
-                
-                // Re-enable player input
-                this.player.spacebar.enabled = true;
-                this.player.up.enabled = true;
-                this.player.down.enabled = true;
-                
-                // Load next question
-                this.loadNextQuestion();
-            });
-        });
-    }
-
-    /**
-     * Stops all snowballs (both player and enemy) from advancing
-     */
-    private stopAllSnowballs(): void {
-        this.tracks.forEach(track => {
-            // Stop all player snowballs
-            (track.playerSnowballs.getChildren() as PlayerSnowball[]).forEach(snowball => {
-                if (snowball.active) {
-                    snowball.stop();
-                    snowball.setVisible(false);
-                    snowball.setActive(false);
-                }
-            });
-
-            // Stop all enemy snowballs
-            (track.enemySnowballs.getChildren() as EnemySnowball[]).forEach(snowball => {
-                if (snowball.active) {
-                    snowball.stop();
-                    snowball.setVisible(false);
-                    snowball.setActive(false);
-                }
-            });
-        });
-    }
-
-    onEggHitAsWrongAnswer(track: Track): void {
-        console.log('Egg hit - treating as wrong answer!');
-        
-        // Get the correct answer for this question
-        const correctAnswer = this.currentQuestion.answer;
-        
-        // Handle this as a wrong answer with the correct answer as the "attempted" answer
-        // This represents that the player failed to hit the correct snowman in time
-        this.handleWrongAnswerForEggHit(correctAnswer, track);
-        
-        // Then trigger the egg crack sequence and move to next question
-        this.handleEggCrackSequence(track);
-    }
-
-    handleWrongAnswerForEggHit(correctAnswer: number, track: Track): void {
-        console.log('Handling egg hit as wrong answer...');
-        
-        // Decrease score for wrong answer
-        if(this.score >= 1){
-            this.score--;
-            this.scoreText.setText(this.score.toString());
-        }
-
-        // Add current question to retry set if not already there
-        if (!this.questionsToRetry.has(this.currentQuestion)) {
-            this.questionsToRetry.add(this.currentQuestion);
-        }
-
-        // Update options for each question in retry set with their respective table's possible answers
-        this.questionsToRetry.forEach(q => {
-            const possibleAnswersForThisQuestion = generatePossibleAnswersForTable(q.operand1);
-            q.options = generateOptions(q.answer, possibleAnswersForThisQuestion);
-        });
-
-        // Add to wrong attempts - using correctAnswer to indicate player failed to hit correct target
-        const alreadyRegistered = Array.from(this.wrongAttempts).some(
-            attempt => attempt.question === this.currentQuestion && attempt.attemptedAnswer === correctAnswer
-        );
-
-        if (!alreadyRegistered) {
-            this.wrongAttempts.add({
-                orderOfAppearance: this.questionOrder,
-                question: this.currentQuestion,
-                attemptedAnswer: correctAnswer, // The answer they should have hit but didn't
-            });
-        }
-
-        console.log("wrongAttempts after egg hit: ", this.wrongAttempts);
-        console.log("questionsToRetry after egg hit: ", this.questionsToRetry);
-
-        // Speed up all snowmen
-        this.tracks.forEach(track => {
-            track.snowmanSmall.speed += 10;
-        });
-    }
-
-    private updateMobileControlTexts(): void {
-        // Update mobile control text when language changes
-        if (this.mobileControls && this.mobileControls.throwText) {
-            const newText = this.gameStarted ? 
-                languageManager.getText('game_throw_button') : 
-                languageManager.getText('game_start_button');
-            this.mobileControls.throwText.setText(newText);
+        // Update back button position to top right corner
+        if (this.backButton) {
+            const buttonSize = Math.max(40, 60 * minScale);
+            const margin = Math.max(20, 30 * minScale);
+            this.backButton.setPosition(width - margin - buttonSize/2, margin + buttonSize/2);
         }
     }
 
@@ -789,178 +176,12 @@ export default class MainGame extends Phaser.Scene {
             this.languageChangeUnsubscribe();
             this.languageChangeUnsubscribe = undefined;
         }
+        
+        // Stop all audio when cleaning up the scene
+        this.sound.stopAll();
     }
 
-    private setupPlayerInterceptionCollisions(): void {
-        // Set up collision between player and enemy snowballs from all tracks
-        this.tracks.forEach((track, trackIndex) => {
-            this.physics.add.overlap(
-                this.player,
-                track.enemySnowballs,
-                this.onPlayerInterceptSnowball as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-                undefined,
-                this
-            );
-        });
+    override update(): void {
+        // Game update logic can be added here later
     }
-
-    private onPlayerInterceptSnowball(
-        player: Phaser.GameObjects.GameObject,
-        snowball: Phaser.GameObjects.GameObject
-    ): void {
-        if (player instanceof Player && snowball instanceof EnemySnowball) {
-            console.log('Player intercepted enemy snowball!');
-            
-            // Stop and destroy the intercepted snowball
-            snowball.stop();
-            snowball.destroy();
-            
-            // Play a sound effect for the interception
-            this.sound.play('hit-snowman'); // Reuse existing sound effect
-            
-            this.createInterceptionEffect(snowball.x, snowball.y);
-        }
-    }
-
-    private createInterceptionEffect(x: number, y: number): void {
-        // Create a simple visual effect for interception
-        const effect = this.add.circle(x, y, 15, 0x00ff00, 0.7);
-        
-        // Animate the effect
-        this.tweens.add({
-            targets: effect,
-            scaleX: 2,
-            scaleY: 2,
-            alpha: 0,
-            duration: 300,
-            ease: 'Power2',
-            onComplete: () => {
-                effect.destroy();
-            }
-        });
-    }
-
-    private createSnowmanSuccessEffect(snowman: Snowman): void {
-        // Don't destroy the snowman, instead make it glow green and grow bigger
-        
-        // Store original values
-        const originalScale = snowman.scaleX;
-        const originalTint = snowman.tint;
-        
-        // Apply green tint to make it glow
-        snowman.setTint(0x00ff00);
-        
-        // Make the snowman bigger (similar to egg crack animation)
-        this.tweens.add({
-            targets: snowman,
-            scaleX: originalScale * 1.3,
-            scaleY: originalScale * 1.3,
-            duration: 300,
-            ease: 'Power2',
-            yoyo: true,
-            repeat: 1,
-            onComplete: () => {
-                // Reset the snowman to original state after animation
-                snowman.setScale(originalScale);
-                snowman.setTint(originalTint);
-            }
-        });
-        
-        // Add floating "+1" text above the snowman
-        const successText = this.add.text(snowman.x, snowman.y - 60, '+1', {
-            fontSize: '32px',
-            fontFamily: 'Arial',
-            color: '#00ff00',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        // Animate the text
-        this.tweens.add({
-            targets: successText,
-            y: snowman.y - 100,
-            alpha: 0,
-            duration: 800,
-            ease: 'Power2',
-            onComplete: () => {
-                successText.destroy();
-            }
-        });
-    }
-
-    private createSnowmanErrorEffect(snowman: Snowman): void {
-        // Apply red glow effect on wrong answer before knockback
-        
-        // Store original values
-        const originalScale = snowman.scaleX;
-        const originalTint = snowman.tint;
-        
-        // Apply red tint to make it glow
-        snowman.setTint(0xff0000);
-        
-        // Make the snowman bigger briefly (similar to success but faster)
-        this.tweens.add({
-            targets: snowman,
-            scaleX: originalScale * 1.2,
-            scaleY: originalScale * 1.2,
-            duration: 200,
-            ease: 'Power2',
-            yoyo: true,
-            repeat: 1,
-            onComplete: () => {
-                // Reset the snowman to original state before knockback
-                snowman.setScale(originalScale);
-                snowman.setTint(originalTint);
-            }
-        });
-        
-        // Add floating "-1" text above the snowman
-        const errorText = this.add.text(snowman.x, snowman.y - 60, '-1', {
-            fontSize: '1.5rem',
-            fontFamily: 'Arial',
-            color: '#ff0000',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        // Animate the text
-        this.tweens.add({
-            targets: errorText,
-            y: snowman.y - 100,
-            alpha: 0,
-            duration: 600,
-            ease: 'Power2',
-            onComplete: () => {
-                errorText.destroy();
-            }
-        });
-    }
-
-    private pauseGameForSuccess(): void {
-        // Pause physics to stop all movement
-        this.physics.pause();
-        
-        // Stop all tracks and snowmen
-        this.tracks.forEach(track => {
-            track.stop();
-        });
-        
-        // Stop all player snowballs
-        this.tracks.forEach(track => {
-            (track.playerSnowballs.getChildren() as Phaser.Physics.Arcade.Sprite[]).forEach(snowball => {
-                if (snowball.active) {
-                    snowball.stop();
-                    snowball.setVisible(false);
-                    snowball.setActive(false);
-                }
-            });
-        });
-        
-        // Stop all enemy snowballs
-        this.stopAllEnemySnowballs();
-        
-        // Disable player input during success pause
-        this.player.spacebar.enabled = false;
-        this.player.up.enabled = false;
-        this.player.down.enabled = false;
-    }
-
 }

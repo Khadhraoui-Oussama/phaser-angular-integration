@@ -116,12 +116,15 @@ export default class Preloader extends Phaser.Scene {
         this.load.svg('information', 'information.svg');
         this.load.svg('settings', 'settings.svg');
         this.load.svg('skin_change', 'skin_change.svg');
+        this.load.svg('fullscreen_toggle', 'fullscreen_toggle.svg');
+        this.load.svg('exit', 'exit.svg');
         this.load.svg('ui_element_small', 'ui_element_small.svg');
         this.load.svg('ui_element_large', 'ui_elemeny_large.svg');
         
         // Load sounds from EduSpace sounds folder
         this.load.setPath('assets/games/Eduspace/sounds/');
         this.load.audio('menu_music', 'menu_music.mp3');
+        this.load.audio('main_music', 'bg_music.mp3');
         this.load.audio('shoot_laser', 'shoot_laser.mp3');
         
         // For now, fallback to snowmen-attack assets for missing ones

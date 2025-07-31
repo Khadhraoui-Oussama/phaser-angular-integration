@@ -194,7 +194,7 @@ export default class LevelSelectScene extends Phaser.Scene {
                 // Start the game with the selected level
                 this.sound.stopAll()
                 this.sound.play('shoot_laser');
-                this.scene.start('MainMenu', { selectedLevel: level });
+                this.scene.start('MainGame', { selectedLevel: level });
             });
         } else {
             // Locked level - apply darker tint and no interaction
@@ -222,83 +222,56 @@ export default class LevelSelectScene extends Phaser.Scene {
     }
 
     private createBackButton(): void {
-        const { width, height, centerX, centerY, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
+        const { width, height, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Check if it's mobile for smaller buttons
-        const isMobile = ResponsiveGameUtils.isMobile(this);
-        const mobileScale = isMobile ? 0.7 : 1.0; // 70% size for mobile
+        const buttonSize = Math.max(40, 60 * minScale);
+        const margin = Math.max(20, 30 * minScale);
         
-        const buttonWidth = Math.max(150, 200 * minScale * mobileScale);
-        const buttonHeight = Math.max(50, 60 * minScale * mobileScale);
-        const fontSize = Math.max(18, 24 * minScale * mobileScale);
+        // Position exit button in top-right corner
+        this.backButton = this.add.container(width - margin - buttonSize/2, margin + buttonSize/2);
         
-        // Position button at bottom of screen for mobile, standard position for desktop/tablet
-        const buttonY = isMobile ? height - Math.max(30, 40 * minScale) : height - Math.max(80, 100 * minScale);
+        // Create exit button using exit.svg
+        const exitButton = this.add.image(0, 0, 'exit');
+        exitButton.setDisplaySize(buttonSize, buttonSize);
+        exitButton.setInteractive();
         
-        this.backButton = this.createButton(
-            centerX, 
-            buttonY, 
-            buttonWidth, 
-            buttonHeight, 
-            languageManager.getText('back'),
-            fontSize,
-            () => {
-                this.sound.stopAll()
-                this.sound.play('shoot_laser');
-                this.scene.start('MainMenu');
-            }
-        );
+        this.backButton.add(exitButton);
+        this.backButton.setDepth(100); // Above parallax objects
+        
+        // Apply the same hover effects as corner buttons in MainMenu
+        this.setupCornerButtonEffects(exitButton, () => {
+            this.sound.stopAll()
+            this.sound.play('shoot_laser');
+            this.scene.start('MainMenu');
+        });
     }
 
-    private createButton(x: number, y: number, width: number, height: number, text: string, fontSize: number, callback: () => void): Phaser.GameObjects.Container {
-        const container = this.add.container(x, y);
+    private setupCornerButtonEffects(button: Phaser.GameObjects.GameObject, callback: () => void): void {
+        let originalScaleX = (button as any).scaleX;
+        let originalScaleY = (button as any).scaleY;
         
-        // Check if it's mobile for smaller UI elements
-        const isMobile = ResponsiveGameUtils.isMobile(this);
-        const mobileScale = isMobile ? 0.5 : 1.0; // 70% size for mobile
-        
-        // Button background using the large UI element
-        const buttonBg = this.add.image(0, 0, 'ui_element_large');
-        buttonBg.setDisplaySize(width, height);
-        
-        // Apply additional scale to the button background for mobile
-        if (isMobile) {
-            buttonBg.setScale(mobileScale);
-        }
-        
-        // Make the button background interactive instead of the container
-        buttonBg.setInteractive();
-        
-        // Button text
-        const buttonText = this.add.text(0, 0, text, {
-            fontSize: `${fontSize}px`,
-            fontFamily: 'Arial',
-            color: '#ffffff',
-            stroke: '#2d5aa0',
-            strokeThickness: 2,
-            align: 'center'
-        });
-        buttonText.setOrigin(0.5);
-        
-        container.add([buttonBg, buttonText]);
-        
-        // Set high depth to ensure buttons are above parallax objects
-        container.setDepth(100);
-        
-        // Add hover effects to the button background
-        buttonBg.on('pointerover', () => {
-            container.setScale(1.05);
-            buttonBg.setTint(0xcccccc);
+        button.on('pointerover', () => {
+            (button as any).setScale(originalScaleX * 1.1, originalScaleY * 1.1);
+            if ((button as any).setTint) {
+                (button as any).setTint(0xcccccc);
+            }
         });
         
-        buttonBg.on('pointerout', () => {
-            container.setScale(1.0);
-            buttonBg.clearTint();
+        button.on('pointerout', () => {
+            (button as any).setScale(originalScaleX, originalScaleY);
+            if ((button as any).clearTint) {
+                (button as any).clearTint();
+            }
         });
         
-        buttonBg.on('pointerdown', callback);
-        
-        return container;
+        button.on('pointerdown', () => {
+            // Reset scale and tint before executing callback
+            (button as any).setScale(originalScaleX, originalScaleY);
+            if ((button as any).clearTint) {
+                (button as any).clearTint();
+            }
+            callback();
+        });
     }
 
     private updateTexts(): void {
@@ -317,13 +290,7 @@ export default class LevelSelectScene extends Phaser.Scene {
             }
         });
         
-        // Update back button text
-        if (this.backButton) {
-            const textObject = this.backButton.list[1] as Phaser.GameObjects.Text;
-            if (textObject) {
-                textObject.setText(languageManager.getText('back'));
-            }
-        }
+        // Note: Back button is now an image button (exit.svg) and doesn't need text updates
     }
 
     override update(): void {

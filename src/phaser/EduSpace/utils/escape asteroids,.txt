@@ -1,0 +1,5 @@
+escape asteroids, dymaic number, like palyer speed
+escape enemy spaceship bullets dynamic speed and number and trajectory and unpredicatbility
+and steer towards the right response.
+
+good for ML params later.

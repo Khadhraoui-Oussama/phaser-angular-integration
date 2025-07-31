@@ -22,7 +22,7 @@ export class ParallaxManager {
 
     private createParallaxObjects(): void {
         const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
-        const numberOfObjects = Phaser.Math.Between(8, 12); // Reduced number of objects
+        const numberOfObjects = Phaser.Math.Between(3, 5); // Reduced number of objects
 
         for (let i = 0; i < numberOfObjects; i++) {
             // Random object type
@@ -79,18 +79,54 @@ export class ParallaxManager {
             
             // Wrap around screen edges horizontally with closer spawn points
             if (obj.direction === 1 && obj.sprite.x > width + 150) {
-                // Reset to left side for left-to-right movement
+                // Reset to left side for left-to-right movement and change object type
                 obj.sprite.x = Phaser.Math.Between(-150, -50);
                 obj.sprite.y = Phaser.Math.Between(0, height);
+                this.recycleObject(obj);
             } else if (obj.direction === -1 && obj.sprite.x < -150) {
-                // Reset to right side for right-to-left movement
+                // Reset to right side for right-to-left movement and change object type
                 obj.sprite.x = Phaser.Math.Between(width + 50, width + 150);
                 obj.sprite.y = Phaser.Math.Between(0, height);
+                this.recycleObject(obj);
             }
             
             // Very slow rotation for subtle dynamic effect
             obj.sprite.rotation += obj.speed * 0.002;
         });
+    }
+
+    private recycleObject(obj: ParallaxObject): void {
+        // Get a new random object type (different from current one if possible)
+        let newObjectType = Phaser.Utils.Array.GetRandom(this.objectTypes);
+        
+        // Try to get a different object type than the current one
+        const currentTexture = obj.sprite.texture.key;
+        const availableTypes = this.objectTypes.filter(type => type !== currentTexture);
+        if (availableTypes.length > 0) {
+            newObjectType = Phaser.Utils.Array.GetRandom(availableTypes);
+        }
+        
+        // Change the sprite texture to the new object type
+        obj.sprite.setTexture(newObjectType);
+        
+        // Randomize other properties for variety
+        const scale = Phaser.Math.FloatBetween(0.45, 1.8);
+        const isMobile = ResponsiveGameUtils.isMobile(this.scene);
+        const isTablet = ResponsiveGameUtils.isTablet(this.scene);
+        const deviceScale = isMobile ? 0.5 : (isTablet ? 0.6 : 1.0);
+        obj.sprite.setScale(scale * deviceScale);
+        
+        // Update object properties
+        obj.scale = scale;
+        obj.depth = Math.floor(scale * 10);
+        obj.sprite.setDepth(obj.depth);
+        
+        // Update speed based on new scale
+        const baseSpeed = Phaser.Math.FloatBetween(0.05, 0.3);
+        obj.speed = baseSpeed * scale;
+        
+        // Set new random rotation
+        obj.sprite.setRotation(Phaser.Math.FloatBetween(0, Math.PI * 2));
     }
 
     public setActive(active: boolean): void {

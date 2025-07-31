@@ -19,8 +19,6 @@ export class Player extends Phaser.GameObjects.Container {
     private wasdKeys?: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
     private spaceKey?: Phaser.Input.Keyboard.Key;
     
-    // Mobile touch controls - only vertical movement allowed
-    private touchStartX: number = 0;
     private touchStartY: number = 0;
     private isDragging: boolean = false;
     

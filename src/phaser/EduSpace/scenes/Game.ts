@@ -4,6 +4,7 @@ import { languageManager } from '../utils/LanguageManager';
 import { Player } from './Player';
 import PlayerBullet from './PlayerBullet';
 import Answer, { AnswerData } from './Answer';
+import { QuestionData, AnswerOption } from '../models/Types';
 
 export default class MainGame extends Phaser.Scene {
     private background!: Phaser.GameObjects.Image;
@@ -15,6 +16,16 @@ export default class MainGame extends Phaser.Scene {
     private playerBullets!: Phaser.Physics.Arcade.Group;
     private answers: Answer[] = [];
     private answerSpawnTimer?: Phaser.Time.TimerEvent;
+    private isCurrentlyFullscreen: boolean = false;
+    
+    // Question system properties
+    private questionContainer!: Phaser.GameObjects.Container;
+    private questionText!: Phaser.GameObjects.Text;
+    private questionImage?: Phaser.GameObjects.Image;
+    private currentQuestion!: QuestionData;
+    private questionOrder: number = 0;
+    private questions: QuestionData[] = [];
+    private gameStarted: boolean = false;
     
     constructor() {
         super('MainGame');
@@ -26,6 +37,11 @@ export default class MainGame extends Phaser.Scene {
             this.selectedLevel = data.selectedLevel;
             console.log("selectedLevel in MainGame:", data.selectedLevel);
         }
+        
+        // Initialize question system
+        this.questionOrder = 0;
+        this.gameStarted = false;
+        this.initializeQuestions();
     }
 
     create(): void {
@@ -55,7 +71,8 @@ export default class MainGame extends Phaser.Scene {
 
         this.setupPhysicsWorldBounds();
 
-        this.createAnswerSpawner();
+        // Start the question system
+        this.startQuestionSystem();
 
         this.setupCollisionDetection();
 
@@ -72,6 +89,9 @@ export default class MainGame extends Phaser.Scene {
         ResponsiveGameUtils.setupResizeHandler(this, () => {
             this.handleResize();
         });
+        
+        // Setup fullscreen detection
+        this.setupFullscreenDetection();
 
         // Listen for scene shutdown to cleanup
         this.events.on('shutdown', () => {
@@ -142,6 +162,47 @@ export default class MainGame extends Phaser.Scene {
         console.log(`Physics world bounds set to: ${width}x${height}`);
     }
     
+    private setupFullscreenDetection(): void {
+        // Check initial fullscreen state
+        this.isCurrentlyFullscreen = !!(document.fullscreenElement || 
+            (document as any).webkitFullscreenElement || 
+            (document as any).mozFullScreenElement || 
+            (document as any).msFullscreenElement);
+        
+        // Listen for fullscreen changes
+        const fullscreenEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+        
+        fullscreenEvents.forEach(eventName => {
+            document.addEventListener(eventName, () => {
+                const newFullscreenState = !!(document.fullscreenElement || 
+                    (document as any).webkitFullscreenElement || 
+                    (document as any).mozFullScreenElement || 
+                    (document as any).msFullscreenElement);
+                
+                if (newFullscreenState !== this.isCurrentlyFullscreen) {
+                    this.isCurrentlyFullscreen = newFullscreenState;
+                    this.handleFullscreenChange(newFullscreenState);
+                }
+            });
+        });
+        
+        console.log(`Fullscreen detection setup. Initial state: ${this.isCurrentlyFullscreen}`);
+    }
+    
+    private handleFullscreenChange(isFullscreen: boolean): void {
+        console.log(`Fullscreen state changed: ${isFullscreen}`);
+        
+        // Update all active answers
+        this.answers.forEach(answer => {
+            if (answer && answer.active) {
+                answer.updateFullscreenScale(isFullscreen);
+            }
+        });
+        
+        // You can also scale other game elements here if needed
+        // For example, the player, bullets, UI elements, etc.
+    }
+    
     private createAnswerSpawner(): void {
         // Create timer to spawn answers every 3-5 seconds
         this.answerSpawnTimer = this.time.addEvent({
@@ -159,6 +220,8 @@ export default class MainGame extends Phaser.Scene {
         const sampleAnswers: AnswerData[] = [
             { isUrl:true,content: "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh", isCorrect: true, isImage: true },
             { isUrl:true,content: "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQK1dXQrVCbBvMdU4A83XdwM7Rtte8YFsWFI-y5JLABKyTRyUTBQko0SqyrqNJQf96aNdEqLNo5eZglqCIH2udWwuewokYR5-0QnjucNq4Y5Q", isCorrect: true, isImage: true },
+            { isUrl:true,content: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvJ5fvcF8CpcLH4z_oaCVANBnRweFNfP2wYw&s", isCorrect: true, isImage: true },
+            { isUrl:true,content: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUlYUm6-xKlW-L0jMgV4713KRacmJfEbIkyQ&s", isCorrect: true, isImage: true },
             { content: "Car", isCorrect: false, isImage: false },
         ];
         
@@ -171,6 +234,11 @@ export default class MainGame extends Phaser.Scene {
         // Create new answer
         const answer = new Answer(this, randomAnswerData, yPosition);
         this.answers.push(answer);
+        
+        // Apply current fullscreen state to new answer
+        if (this.isCurrentlyFullscreen) {
+            answer.updateFullscreenScale(true);
+        }
         
         console.log(`Answer spawned: "${randomAnswerData.content}" at Y: ${yPosition}`);
         
@@ -212,6 +280,11 @@ export default class MainGame extends Phaser.Scene {
         this.sound.play('hit_correct', { volume: 0.5 });
         
         // TODO: Add scoring logic, visual effects, etc.
+        
+        // Move to next question after a delay
+        this.time.delayedCall(1000, () => {
+            this.loadNextQuestion();
+        });
     }
     
     private handleWrongAnswer(answer: Answer): void {
@@ -223,6 +296,248 @@ export default class MainGame extends Phaser.Scene {
             // TODO: Reduce player lives or energy
             console.log('Player should lose health/energy for wrong answer');
         }
+        
+        // Move to next question after a delay
+        this.time.delayedCall(1500, () => {
+            this.loadNextQuestion();
+        });
+    }
+
+    // Question system methods
+    private initializeQuestions(): void {
+        // Sample questions for testing , we will load form JSON file later
+        this.questions = [
+            {
+                id: 1,
+                media: {
+                    text: "What is 2+2?",
+                    audio: null,
+                    image: null
+                },
+                answers: [
+                    { type: "text", value: "3", correct: false, url: null },
+                    { type: "text", value: "4", correct: true, url: null },
+                    { type: "text", value: "5", correct: false, url: null },
+                    { type: "text", value: "6", correct: false, url: null }
+                ],
+                points: 10,
+                langue: "en",
+                difficultyLevel: 1
+            },
+            {
+                id: 2,
+                media: {
+                    text: "Which animal is shown in the image?",
+                    audio: null,
+                    image: "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh"
+                },
+                answers: [
+                    { type: "text", value: "Cat", correct: false, url: null },
+                    { type: "text", value: "Dog", correct: true, url: null },
+                    { type: "text", value: "Bird", correct: false, url: null },
+                    { type: "text", value: "Fish", correct: false, url: null }
+                ],
+                points: 15,
+                langue: "en",
+                difficultyLevel: 1
+            },
+            {
+                id: 3,
+                media: {
+                    text: "Which one is a car?",
+                    audio: null,
+                    image: null
+                },
+                answers: [
+                    { type: "image", value: "Car", correct: true, url: "https://hips.hearstapps.com/hmg-prod/images/2025-ford-mustang-60th-anniversary-exterior-66227932bb88e.jpg?crop=0.793xw:1.00xh;0.106xw,0&resize=2048:*" },
+                    { type: "image", value: "Dog", correct: false, url: "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh" },
+                    { type: "image", value: "Cat", correct: false, url: "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQK1dXQrVCbBvMdU4A83XdwM7Rtte8YFsWFI-y5JLABKyTRyUTBQko0SqyrqNJQf96aNdEqLNo5eZglqCIH2udWwuewokYR5-0QnjucNq4Y5Q" },
+                    { type: "image", value: "House", correct: false, url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUlYUm6-xKlW-L0jMgV4713KRacmJfEbIkyQ&s" }
+                ],
+                points: 20,
+                langue: "en",
+                difficultyLevel: 2
+            }
+        ];
+        
+        console.log(`Initialized ${this.questions.length} questions`);
+    }
+
+    private startQuestionSystem(): void {
+        // Mark game as started
+        this.gameStarted = true;
+        
+        // Start with the first question
+        this.questionOrder = -1; // Will be incremented to 0 in loadNextQuestion
+        this.loadNextQuestion();
+    }
+
+    private createQuestionUI(questionTextValue: string, imageUrl?: string): void {
+        if (this.questionContainer) {
+            this.questionContainer.destroy();
+        }
+        
+        const { width, height, centerX } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        this.questionContainer = this.add.container(centerX, 0).setDepth(1000);
+
+        // Use the ui_element_large SVG as background
+        const bgImage = this.add.image(0, 0, 'ui_element_large').setOrigin(0.5, 0);
+        
+        // Scale background for different screen sizes
+        const { config } = ResponsiveGameUtils.getResponsiveConfig(this);
+        let bgScale = 1.0; // Default desktop scale
+        
+        if (config.screenSize === 'mobile') {
+            bgScale = 0.5; // Smaller scale for mobile
+        } else if (config.screenSize === 'tablet') {
+            bgScale = 0.7; // Medium scale for tablet
+        }
+        
+        bgImage.setScale(bgScale);
+        this.questionContainer.add(bgImage);
+
+        // Create question text
+        this.questionText = this.add.text(0, bgImage.height * bgScale * 0.3, questionTextValue, 
+            ResponsiveGameUtils.getTextStyle(24, this, {
+                align: 'center',
+                wordWrap: { width: bgImage.width * bgScale * 0.8 }
+            })
+        ).setOrigin(0.5, 0.5);
+        
+        this.questionContainer.add(this.questionText);
+
+        // Add question image if provided
+        if (imageUrl) {
+            this.loadQuestionImage(imageUrl, bgImage, bgScale);
+        }
+    }
+
+    private loadQuestionImage(imageUrl: string, bgImage: Phaser.GameObjects.Image, bgScale: number): void {
+        const imageKey = `question_image_${this.currentQuestion.id}`;
+        
+        // Check if image is already loaded
+        if (this.textures.exists(imageKey)) {
+            this.createQuestionImage(imageKey, bgImage, bgScale);
+        } else {
+            // Load the image dynamically
+            this.load.image(imageKey, imageUrl);
+            this.load.once('complete', () => {
+                this.createQuestionImage(imageKey, bgImage, bgScale);
+            });
+            this.load.start();
+        }
+    }
+
+    private createQuestionImage(imageKey: string, bgImage: Phaser.GameObjects.Image, bgScale: number): void {
+        if (!this.textures.exists(imageKey)) {
+            console.warn(`Image with key ${imageKey} not found`);
+            return;
+        }
+
+        this.questionImage = this.add.image(0, bgImage.height * bgScale * 0.7, imageKey);
+        
+        // Scale the image to fit within the background
+        const maxWidth = bgImage.width * bgScale * 0.6;
+        const maxHeight = bgImage.height * bgScale * 0.4;
+        const imageScale = Math.min(maxWidth / this.questionImage.width, maxHeight / this.questionImage.height);
+        this.questionImage.setScale(imageScale);
+        
+        this.questionContainer.add(this.questionImage);
+    }
+
+    private loadNextQuestion(): void {
+        if (!this.questions || this.questions.length === 0) {
+            console.error("Questions not initialized correctly:", this.questions);
+            return;
+        }
+
+        // Clear existing answer spawner and answers
+        this.clearCurrentAnswers();
+
+        this.questionOrder++;
+        console.log("question order:", this.questionOrder);
+        console.log("questions.length:", this.questions.length);
+        
+        if (this.questionOrder >= this.questions.length) {
+            console.log('All questions completed!');
+            this.gameOver();
+            return;
+        }
+
+        this.currentQuestion = this.questions[this.questionOrder];
+        console.log('Loading question:', this.currentQuestion);
+
+        // Create question UI
+        const questionText = this.currentQuestion.media.text ;
+        const questionImage = this.currentQuestion.media.image;
+        
+        this.createQuestionUI(questionText, questionImage || undefined);
+        
+        // Convert AnswerOption[] to AnswerData[] for spawning
+        this.spawnAnswersFromQuestion(this.currentQuestion.answers);
+    }
+
+    private spawnAnswersFromQuestion(answerOptions: AnswerOption[]): void {
+        // Convert AnswerOptions to AnswerData format
+        const answerDataArray: AnswerData[] = answerOptions.map(option => ({
+            content: option.type === 'image' && option.url ? option.url : option.value,
+            isCorrect: option.correct,
+            isImage: option.type === 'image',
+            isUrl: option.type === 'image' && !!option.url
+        }));
+
+        // Spawn answers with staggered timing like in snowmen attack
+        const answerSpawnDelayMS = 2500
+        answerDataArray.forEach((answerData, index) => {
+            this.time.delayedCall(index * answerSpawnDelayMS, () => {
+                const yPosition = Answer.getRandomYPosition(this);
+                const answer = new Answer(this, answerData, yPosition);
+                this.answers.push(answer);
+                
+                // Apply current fullscreen state to new answer
+                if (this.isCurrentlyFullscreen) {
+                    answer.updateFullscreenScale(true);
+                }
+                
+                console.log(`Answer spawned: "${answerData.content}" at Y: ${yPosition}`);
+            });
+        });
+    }
+
+    private clearCurrentAnswers(): void {
+        // Stop answer spawner
+        if (this.answerSpawnTimer) {
+            this.answerSpawnTimer.destroy();
+            this.answerSpawnTimer = undefined;
+        }
+        
+        // Clear existing answers
+        this.answers.forEach(answer => {
+            if (answer && answer.active) {
+                answer.destroy();
+            }
+        });
+        this.answers = [];
+    }
+
+    private gameOver(): void {
+        console.log('=== GAME OVER ===');
+        console.log('All questions completed!');
+        
+        // Stop all game elements
+        this.clearCurrentAnswers();
+        
+        if (this.questionContainer) {
+            this.questionContainer.destroy();
+        }
+        
+        // TODO: Show game over screen, final score, etc.
+        // For now, restart the questions
+        this.questionOrder = -1; // Will be incremented to 0 in loadNextQuestion
+        this.time.delayedCall(2000, () => {
+            this.loadNextQuestion();
+        });
     }
 
     private createTitle(): void {
@@ -325,6 +640,11 @@ export default class MainGame extends Phaser.Scene {
             this.titleText.setPosition(centerX, height * 0.08);
         }
         
+        // Update question container position
+        if (this.questionContainer) {
+            this.questionContainer.setPosition(centerX, 0);
+        }
+        
         // Update back button position to top right corner
         if (this.backButton) {
             const buttonSize = Math.max(40, 60 * minScale);
@@ -344,6 +664,12 @@ export default class MainGame extends Phaser.Scene {
         
         // Clean up answers
         this.cleanupAnswers();
+        
+        // Clean up question system
+        this.clearCurrentAnswers();
+        if (this.questionContainer) {
+            this.questionContainer.destroy();
+        }
         
         // Clean up answer spawner
         if (this.answerSpawnTimer) {

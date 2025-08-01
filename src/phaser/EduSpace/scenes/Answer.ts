@@ -14,6 +14,9 @@ export default class Answer extends Phaser.GameObjects.Container {
     private answerData: AnswerData;
     private moveSpeed: number = 150;
     private isDestroyed: boolean = false;
+    private basePortalScale: number = 4.0; // Store base scale for fullscreen calculations
+    private baseImageScale: number = 1.0; // Store base image scale
+    private isFullscreen: boolean = false;
     
     // Predefined Y positions (quarters of screen height)
     public static readonly Y_POSITIONS = {
@@ -54,13 +57,17 @@ export default class Answer extends Phaser.GameObjects.Container {
     private createPortalBackground(): void {
         // Create animated portal background
         const { config } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
-        let portalScale = 4.0;
         
+        // Set base scales based on device type
         if (config.screenSize === 'mobile') {
-            portalScale = 2.8;
+            this.basePortalScale = 2.8;
         } else if (config.screenSize === 'tablet') {
-            portalScale = 3; 
+            this.basePortalScale = 3.0;
+        } else {
+            this.basePortalScale = 4.0;
         }
+        
+        let portalScale = this.basePortalScale;
         
         // Create portal animation if it doesn't exist
         this.createPortalAnimation();
@@ -169,6 +176,9 @@ export default class Answer extends Phaser.GameObjects.Container {
                 const scaleY = targetSize / imageHeight;
                 const finalScale = Math.min(scaleX, scaleY);
                 
+                // Store base scale for fullscreen calculations
+                this.baseImageScale = finalScale;
+                
                 image.setScale(finalScale);
                 this.add(image);
                 
@@ -204,6 +214,9 @@ export default class Answer extends Phaser.GameObjects.Container {
             } else if (config.screenSize === 'tablet') {
                 imageScale = 0.5;
             }
+            
+            // Store base scale for fullscreen calculations
+            this.baseImageScale = imageScale;
             
             (this.answerContent as Phaser.GameObjects.Image).setScale(imageScale);
             this.add(this.answerContent);
@@ -285,6 +298,49 @@ export default class Answer extends Phaser.GameObjects.Container {
         this.y = height * closestPosition;
         
         console.log(`Answer position updated for screen resize. New position: x:${this.x}, y:${this.y}`);
+    }
+    
+    // Method to handle fullscreen scaling
+    public updateFullscreenScale(isFullscreen: boolean): void {
+        if (this.isDestroyed) return;
+        
+        this.isFullscreen = isFullscreen;
+        
+        // Calculate fullscreen scale multiplier
+        const fullscreenMultiplier = isFullscreen ? 1.3 : 1.0; // 30% bigger in fullscreen
+        
+        // Update portal scale
+        if (this.cloudBg) {
+            const newPortalScale = this.basePortalScale * fullscreenMultiplier;
+            this.cloudBg.setScale(newPortalScale);
+            console.log(`Portal scale updated: ${newPortalScale} (fullscreen: ${isFullscreen})`);
+        }
+        
+        // Update answer content scale
+        if (this.answerContent) {
+            if (this.answerData.isImage) {
+                // For images, scale relative to their current scale
+                const currentScale = (this.answerContent as Phaser.GameObjects.Image).scaleX;
+                const newImageScale = (this.baseImageScale || currentScale) * fullscreenMultiplier;
+                (this.answerContent as Phaser.GameObjects.Image).setScale(newImageScale);
+                console.log(`Image scale updated: ${newImageScale} (fullscreen: ${isFullscreen})`);
+            } else {
+                // For text, update font size
+                const textObj = this.answerContent as Phaser.GameObjects.Text;
+                const { config } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+                
+                let baseFontSize = 32;
+                if (config.screenSize === 'mobile') {
+                    baseFontSize = 20;
+                } else if (config.screenSize === 'tablet') {
+                    baseFontSize = 24;
+                }
+                
+                const newFontSize = Math.round(baseFontSize * fullscreenMultiplier);
+                textObj.setFontSize(newFontSize);
+                console.log(`Text font size updated: ${newFontSize}px (fullscreen: ${isFullscreen})`);
+            }
+        }
     }
     
     public override update(time: number, delta: number): void {

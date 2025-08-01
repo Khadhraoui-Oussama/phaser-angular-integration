@@ -21,3 +21,24 @@ export interface WrongAttempt{
 export interface RightAttempt{
     orderOfAppearance:number, 
 }
+
+// New interfaces for the comprehensive question system
+export interface QuestionData {
+    id: number;
+    media: {
+        text: string ;
+        audio: string | null;
+        image: string | null;
+    };
+    answers: AnswerOption[];
+    points: number;
+    langue: string;
+    difficultyLevel: number;
+}
+
+export interface AnswerOption {
+    type: 'text' | 'image';
+    value: string;
+    correct: boolean;
+    url: string | null;
+}

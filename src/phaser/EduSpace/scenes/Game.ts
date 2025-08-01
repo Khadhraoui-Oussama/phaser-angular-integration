@@ -3,8 +3,10 @@ import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { languageManager } from '../utils/LanguageManager';
 import { Player } from './Player';
 import PlayerBullet from './PlayerBullet';
+import EnemyBullet from './EnemyBullet';
 import Answer, { AnswerData } from './Answer';
 import { QuestionData, AnswerOption } from '../models/Types';
+import EnemySpaceship from './EnemySpaceship';
 
 export default class MainGame extends Phaser.Scene {
     private background!: Phaser.GameObjects.Image;
@@ -14,6 +16,7 @@ export default class MainGame extends Phaser.Scene {
     private selectedLevel?: number;
     private player!: Player;
     private playerBullets!: Phaser.Physics.Arcade.Group;
+    private enemyBullets!: Phaser.Physics.Arcade.Group;
     private answers: Answer[] = [];
     private answerSpawnTimer?: Phaser.Time.TimerEvent;
     private isCurrentlyFullscreen: boolean = false;
@@ -26,6 +29,11 @@ export default class MainGame extends Phaser.Scene {
     private questionOrder: number = 0;
     private questions: QuestionData[] = [];
     private gameStarted: boolean = false;
+    
+    // Enemy spaceship system
+    private enemySpaceships: EnemySpaceship[] = [];
+    private enemySpawnTimer?: Phaser.Time.TimerEvent;
+    public enemySpaceshipSpeed: number = 80; // Configurable speed variable
     
     constructor() {
         super('MainGame');
@@ -70,6 +78,9 @@ export default class MainGame extends Phaser.Scene {
         this.createBulletGroups();
 
         this.setupPhysicsWorldBounds();
+
+        // Setup enemy spaceship system
+        this.setupEnemySpaceshipSystem();
 
         // Start the question system
         this.startQuestionSystem();
@@ -150,6 +161,13 @@ export default class MainGame extends Phaser.Scene {
         this.playerBullets = this.physics.add.group({
             classType: PlayerBullet,
             maxSize: 20, // Maximum number of bullets on screen
+            runChildUpdate: true // Important: this ensures bullets update properly
+        });
+        
+        // Create physics group for enemy bullets
+        this.enemyBullets = this.physics.add.group({
+            classType: EnemyBullet,
+            maxSize: 30, // Maximum number of enemy bullets on screen
             runChildUpdate: true // Important: this ensures bullets update properly
         });
     }
@@ -527,6 +545,7 @@ export default class MainGame extends Phaser.Scene {
         
         // Stop all game elements
         this.clearCurrentAnswers();
+        this.clearEnemySpaceships();
         
         if (this.questionContainer) {
             this.questionContainer.destroy();
@@ -538,6 +557,149 @@ export default class MainGame extends Phaser.Scene {
         this.time.delayedCall(2000, () => {
             this.loadNextQuestion();
         });
+    }
+
+    // Enemy Spaceship System Methods
+    private setupEnemySpaceshipSystem(): void {
+        // Set the configurable speed
+        EnemySpaceship.setBaseSpeed(this.enemySpaceshipSpeed);
+        
+        // Set up event listener for enemy spaceship collisions
+        this.events.on('enemy-spaceship-collision', (data: { spaceship: EnemySpaceship; player: Player }) => {
+            console.log('Enemy spaceship collided with player!');
+            this.handleEnemyShipPlayerCollision(data.spaceship, data.player);
+        });
+        
+        // Set up event listener for enemy shooting
+        this.events.on('enemy-shoot', (data: { x: number; y: number; direction: { x: number; y: number } }) => {
+            // Create a new enemy bullet from the pool
+            const bullet = this.enemyBullets.get() as EnemyBullet;
+            if (bullet) {
+                bullet.fire(data.x, data.y, data.direction);
+                console.log('Enemy bullet created at:', data.x, data.y, 'Direction:', data.direction);
+            } else {
+                console.warn('Could not get enemy bullet from pool (pool might be full)');
+            }
+        });
+        
+        // Start spawning enemy spaceships
+        this.startEnemySpaceshipSpawning();
+        
+        console.log('Enemy spaceship system initialized');
+    }
+
+    private startEnemySpaceshipSpawning(): void {
+        // Create timer to spawn enemy spaceships periodically
+        this.enemySpawnTimer = this.time.addEvent({
+            delay: Phaser.Math.Between(3000, 6000), // Random delay between 3-6 seconds
+            callback: this.spawnEnemySpaceship,
+            callbackScope: this,
+            loop: true
+        });
+        
+        console.log('Enemy spaceship spawning started');
+    }
+
+    private spawnEnemySpaceship(): void {
+        // Don't spawn if game hasn't started or too many spaceships
+        if (!this.gameStarted || this.enemySpaceships.length >= 5) {
+            return;
+        }
+        
+        // Spawn enemy spaceship off-screen
+        const spaceship = EnemySpaceship.spawnOffScreen(this);
+        this.enemySpaceships.push(spaceship);
+        
+        // Apply current fullscreen state to new spaceship
+        if (this.isCurrentlyFullscreen) {
+            spaceship.updateFullscreenScale(true);
+        }
+        
+        console.log(`Enemy spaceship spawned. Total active: ${this.enemySpaceships.length}`);
+    }
+
+    private handleEnemyShipPlayerCollision(spaceship: EnemySpaceship, player: Player): void {
+        console.log('Player hit by enemy spaceship!');
+        
+        // Play damage sound
+        this.sound.play('hit_wrong', { volume: 0.5 });
+        
+        // Remove spaceship from tracking array
+        const index = this.enemySpaceships.indexOf(spaceship);
+        if (index > -1) {
+            this.enemySpaceships.splice(index, 1);
+        }
+        
+        // TODO: Reduce player lives/health, show damage effect, etc.
+        console.log('Player should lose health for enemy collision');
+        
+        // For now, just create a damage effect on the player
+        this.createPlayerDamageEffect(player);
+    }
+
+    private createPlayerDamageEffect(player: Player): void {
+        // Create red flash effect overlay on player
+        const flashOverlay = this.add.rectangle(player.x, player.y, 60, 60, 0xff0000, 0.5);
+        flashOverlay.setDepth(player.depth + 1);
+        
+        this.time.delayedCall(200, () => {
+            flashOverlay.destroy();
+        });
+        
+        // Create damage indicator
+        const damageText = this.add.text(player.x, player.y - 50, 'HIT!', {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#ff0000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        damageText.setDepth(100);
+        
+        // Animate damage text
+        this.tweens.add({
+            targets: damageText,
+            y: player.y - 100,
+            alpha: 0,
+            duration: 800,
+            ease: 'Power2.easeOut',
+            onComplete: () => {
+                damageText.destroy();
+            }
+        });
+    }
+
+    private clearEnemySpaceships(): void {
+        // Stop spawning
+        if (this.enemySpawnTimer) {
+            this.enemySpawnTimer.destroy();
+            this.enemySpawnTimer = undefined;
+        }
+        
+        // Destroy all active spaceships
+        this.enemySpaceships.forEach(spaceship => {
+            if (spaceship && spaceship.active) {
+                spaceship.destroy();
+            }
+        });
+        this.enemySpaceships = [];
+        
+        console.log('All enemy spaceships cleared');
+    }
+
+    // Method to manually adjust enemy spaceship speed
+    public setEnemySpaceshipSpeed(newSpeed: number): void {
+        this.enemySpaceshipSpeed = newSpeed;
+        EnemySpaceship.setBaseSpeed(newSpeed);
+        
+        // Update speed of existing spaceships
+        this.enemySpaceships.forEach(spaceship => {
+            if (spaceship && spaceship.active) {
+                spaceship.setSpeed(newSpeed);
+            }
+        });
+        
+        console.log(`Enemy spaceship speed set to: ${newSpeed}`);
     }
 
     private createTitle(): void {
@@ -694,6 +856,15 @@ export default class MainGame extends Phaser.Scene {
             }
         });
         
+        // Update enemy spaceships and clean up destroyed ones
+        this.enemySpaceships = this.enemySpaceships.filter(spaceship => {
+            if (spaceship && spaceship.active) {
+                spaceship.update(time, delta);
+                return true;
+            }
+            return false;
+        });
+        
         // Check for collisions between player and answers
         this.checkPlayerAnswerCollisions();
         
@@ -721,15 +892,29 @@ export default class MainGame extends Phaser.Scene {
         });
     }
     
+    
     // Utility method to get all active player bullets
     public getPlayerBullets(): Phaser.Physics.Arcade.Group {
         return this.playerBullets;
+    }
+    
+    // Utility method to get all active enemy bullets
+    public getEnemyBullets(): Phaser.Physics.Arcade.Group {
+        return this.enemyBullets;
+    }
+    
+    // Utility method to get the player
+    public getPlayer(): Player {
+        return this.player;
     }
     
     // Method to clean up bullets (useful for scene transitions)
     private cleanupBullets(): void {
         if (this.playerBullets && this.playerBullets.children) {
             this.playerBullets.clear(true, true);
+        }
+        if (this.enemyBullets && this.enemyBullets.children) {
+            this.enemyBullets.clear(true, true);
         }
     }
     
@@ -743,16 +928,4 @@ export default class MainGame extends Phaser.Scene {
         this.answers = [];
     }
     
-    // Example method for handling bullet-enemy collisions (to be implemented later)
-    private handleBulletEnemyCollision(bullet: PlayerBullet, enemy: Phaser.GameObjects.GameObject): void {
-        // This will be called when a bullet hits an enemy
-        console.log('Bullet hit enemy!');
-        
-        // Explode the bullet
-        bullet.explode();
-        
-        // Handle enemy damage/destruction here
-        // enemy.takeDamage() or similar
-        // Note: Bullets now travel horizontally from left to right
-    }
 }

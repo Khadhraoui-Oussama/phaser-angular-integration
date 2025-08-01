@@ -1,0 +1,202 @@
+import Phaser from 'phaser';
+import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import MainGame from './Game';
+
+export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
+    declare scene: MainGame;
+    private isAlive: boolean;
+    private speed: number;
+    private shootTimer?: Phaser.Time.TimerEvent;
+    private shootCooldown: number = 2000; // 2 seconds between shots
+    
+    // Static configurable speed variable
+    public static BASE_SPEED: number = 150;
+    
+    constructor(scene: MainGame, x: number, y: number) {
+        super(scene, x, y, 'enemy_ship_1_fly_000');
+        
+        this.scene = scene;
+        this.setOrigin(0.5, 0.5);
+        
+        // Set responsive scale - make enemy spaceship bigger than player
+        const { config, minScale } = ResponsiveGameUtils.getResponsiveConfig(scene);
+        
+        // Player ship uses Math.max(0.5, 0.8 * minScale), so make enemy bigger
+        const playerShipScale = Math.max(0.5, 0.8 * minScale);
+        let spaceshipScale = playerShipScale * 1.2; // 20% bigger than player
+        
+        if (config.screenSize === 'mobile') {
+            spaceshipScale = playerShipScale * 1.15; // 15% bigger on mobile
+        } else if (config.screenSize === 'tablet') {
+            spaceshipScale = playerShipScale * 1.18; // 18% bigger on tablet
+        }
+        
+        this.setScale(spaceshipScale);
+        
+        // Set depth to appear above background but below UI
+        this.setDepth(25);
+        
+        scene.add.existing(this);
+        scene.physics.add.existing(this);
+        
+        // Set up physics body
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setSize(this.width * 0.8, this.height * 0.8);
+        body.setCollideWorldBounds(false); // Allow movement off-screen
+        
+        this.isAlive = true;
+        
+        // Set speed with responsive adjustments
+        let baseSpeed = EnemySpaceship.BASE_SPEED;
+        if (config.screenSize === 'mobile') {
+            baseSpeed *= 0.7; // Slower on mobile
+        } else if (config.screenSize === 'tablet') {
+            baseSpeed *= 0.85; // Slightly slower on tablet
+        }
+        this.speed = baseSpeed;
+        
+        console.log(`EnemySpaceship created at (${x}, ${y}) with speed ${this.speed}`);
+    }
+    
+    start(): void {
+        this.isAlive = true;
+        this.setActive(true);
+        this.setVisible(true);
+        
+        // Start flying animation
+        this.play('enemy_ship_fly');
+        
+        // Start moving left
+        this.moveLeft();
+        
+        // Start shooting
+        this.startShooting();
+        
+        console.log('EnemySpaceship started moving left and shooting');
+    }
+    
+    private moveLeft(): void {
+        if (!this.isAlive) return;
+        
+        // Set velocity to move left
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setVelocityX(-this.speed);
+    }
+    
+    private startShooting(): void {
+        if (!this.isAlive) return;
+        
+        // Create timer to shoot periodically
+        this.shootTimer = this.scene.time.addEvent({
+            delay: this.shootCooldown,
+            callback: this.shoot,
+            callbackScope: this,
+            loop: true
+        });
+        
+        console.log('Enemy spaceship started shooting');
+    }
+    
+    private shoot(): void {
+        if (!this.isAlive || !this.active) return;
+        
+        // Calculate shoot position (slightly in front of the spaceship)
+        const shootX = this.x - 30; // Shoot from front of ship
+        const shootY = this.y;
+        
+        // Direction toward player (left direction)
+        const direction = { x: -1, y: 0 };
+        
+        // Emit shoot event to the scene
+        this.scene.events.emit('enemy-shoot', {
+            x: shootX,
+            y: shootY,
+            direction: direction
+        });
+        
+        console.log(`Enemy spaceship shot from (${shootX}, ${shootY})`);
+    }
+    
+    override stop(): this {
+        this.isAlive = false;
+        
+        // Stop shooting
+        if (this.shootTimer) {
+            this.shootTimer.destroy();
+            this.shootTimer = undefined;
+        }
+        
+        // Stop movement
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (body) {
+            body.setVelocity(0, 0);
+            body.enable = false;
+        }
+        
+        // Stop animation
+        this.anims.stop();
+        
+        return this;
+    }
+    
+    override preUpdate(time: number, delta: number): void {
+        super.preUpdate(time, delta);
+        
+        if (!this.isAlive) return;
+        
+        // Check if spaceship is off-screen (left side) and should be destroyed
+        if (this.x < -100) {
+            console.log('EnemySpaceship went off-screen, destroying');
+            this.destroy();
+        }
+    }
+    
+    // Static method to update speed for all spaceships
+    public static setBaseSpeed(newSpeed: number): void {
+        EnemySpaceship.BASE_SPEED = newSpeed;
+        console.log(`EnemySpaceship base speed updated to: ${newSpeed}`);
+    }
+    
+    // Method to update individual spaceship speed
+    public setSpeed(newSpeed: number): void {
+        this.speed = newSpeed;
+        this.moveLeft(); // Recalculate movement with new speed
+    }
+    
+    public getIsAlive(): boolean {
+        return this.isAlive;
+    }
+    
+    // Method to update scale for fullscreen changes
+    public updateFullscreenScale(isFullscreen: boolean): void {
+        const { config, minScale } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        
+        // Use same scaling logic as in constructor - make enemy bigger than player
+        const playerShipScale = Math.max(0.5, 0.8 * minScale);
+        let spaceshipScale = playerShipScale * 1.2; // 20% bigger than player
+        
+        if (config.screenSize === 'mobile') {
+            spaceshipScale = playerShipScale * 1.15; // 15% bigger on mobile
+        } else if (config.screenSize === 'tablet') {
+            spaceshipScale = playerShipScale * 1.18; // 18% bigger on tablet
+        }
+        
+        const scaleMultiplier = isFullscreen ? 1.3 : 1.0;
+        this.setScale(spaceshipScale * scaleMultiplier);
+    }
+    
+    // Static method to spawn enemy spaceship off-screen (right side only)
+    public static spawnOffScreen(scene: MainGame): EnemySpaceship {
+        const { width, height } = ResponsiveGameUtils.getResponsiveConfig(scene);
+        
+        // Spawn from right side only
+        const spawnX = width + 50;
+        const spawnY = Phaser.Math.Between(100, height - 100); // Random Y position with margins
+        
+        const spaceship = new EnemySpaceship(scene, spawnX, spawnY);
+        spaceship.start();
+        
+        console.log(`EnemySpaceship spawned off-screen at (${spawnX}, ${spawnY})`);
+        return spaceship;
+    }
+}

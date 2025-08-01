@@ -154,6 +154,24 @@ export default class Preloader extends Phaser.Scene {
             this.load.image(`shot6_exp${i}`, `shot6_exp${i}.png`);
         }
         
+        // Load enemy ship frames
+        this.load.setPath('assets/games/Eduspace/enemy_ships/ENEMY_SHIP_1/');
+        for (let i = 0; i <= 7; i++) {
+            this.load.image(`enemy_ship_1_fly_${i.toString().padStart(3, '0')}`, `enemy_ship_1_fly_${i.toString().padStart(3, '0')}.png`);
+        }
+        
+        // Load enemy shot travel frames
+        this.load.setPath('assets/games/Eduspace/enemy_ships/shot_3/travel/');
+        for (let i = 1; i <= 5; i++) {
+            this.load.image(`enemy_shot_travel_${i}`, `shot4_${i}.png`);
+        }
+        
+        // Load enemy shot explosion frames
+        this.load.setPath('assets/games/Eduspace/enemy_ships/shot_3/explosion/');
+        for (let i = 1; i <= 8; i++) {
+            this.load.image(`enemy_shot_exp_${i}`, `shot4_exp${i}.png`);
+        }
+        
         // Load sounds from EduSpace sounds folder
         this.load.setPath('assets/games/Eduspace/sounds/');
         this.load.audio('menu_music', 'menu_music.mp3');
@@ -220,6 +238,28 @@ export default class Preloader extends Phaser.Scene {
         } else {
             this.createIndividualFrameAnimations();
         }
+        
+        // Create enemy ship animations (independent of skin system)
+        this.createEnemyShipAnimations();
+    }
+
+    private createEnemyShipAnimations(): void {
+        // Create enemy ship fly animation
+        this.anims.create({
+            key: 'enemy_ship_fly',
+            frames: [
+                { key: 'enemy_ship_1_fly_000' },
+                { key: 'enemy_ship_1_fly_001' },
+                { key: 'enemy_ship_1_fly_002' },
+                { key: 'enemy_ship_1_fly_003' },
+                { key: 'enemy_ship_1_fly_004' },
+                { key: 'enemy_ship_1_fly_005' },
+                { key: 'enemy_ship_1_fly_006' },
+                { key: 'enemy_ship_1_fly_007' }
+            ],
+            frameRate: 12,
+            repeat: -1
+        });
     }
 
     private createAtlasAnimations(): void {
@@ -484,7 +524,9 @@ export default class Preloader extends Phaser.Scene {
             'snowmanWalkBig', 'snowmanThrowStartBig', 'snowmanThrowEndBig', 'snowmanDieBig',
             // Individual frame animations (wizard skin)
             'wizard_ice_idle', 'wizard_ice_attack', 'wizard_fire_idle', 
-            'wizard_fire_walk', 'wizard_fire_attack', 'wizard_fire_die'
+            'wizard_fire_walk', 'wizard_fire_attack', 'wizard_fire_die',
+            // Enemy ship animations
+            'enemy_ship_fly'
         ];
         
         // Remove existing animations if they exist

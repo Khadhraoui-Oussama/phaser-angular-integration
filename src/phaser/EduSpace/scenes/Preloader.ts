@@ -100,6 +100,12 @@ export default class Preloader extends Phaser.Scene {
         this.load.image('bg', 'bg.png');
         this.load.image('bg2', 'bg_2.png');
         this.load.image('bg3', 'bg_3.png');
+        this.load.image('bg4', 'bg_4.png');
+        this.load.image('bg5', 'bg_5.png');
+        this.load.image('bg6', 'bg_6.png');
+        this.load.image('bg7', 'bg_7.png');
+        this.load.image('bg8', 'bg_8.png');
+        this.load.image('bg9', 'bg_9.png');
         this.load.image('overlay', 'overlay.png');
         
         // Load parallax objects

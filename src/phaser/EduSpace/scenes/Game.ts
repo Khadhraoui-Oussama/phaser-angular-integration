@@ -30,6 +30,12 @@ export default class MainGame extends Phaser.Scene {
     private questions: QuestionData[] = [];
     private gameStarted: boolean = false;
     
+    // Background animation system
+    private questionsPerBackgroundChange: number = 1; // CONFIGURABLE: Change this to set how many questions between background changes (1 = every question, 2 = every 2 questions, etc.)
+    private availableBackgrounds: string[] = ['bg2', 'bg3', 'bg4', 'bg5', 'bg6', 'bg7', 'bg8', 'bg9'];
+    private usedBackgrounds: string[] = [];
+    private currentBackgroundKey: string = 'bg2';
+    
     // Enemy spaceship system
     private enemySpaceships: EnemySpaceship[] = [];
     private enemySpawnTimer?: Phaser.Time.TimerEvent;
@@ -119,12 +125,99 @@ export default class MainGame extends Phaser.Scene {
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         // Add background (same as main menu)
-        this.background = this.add.image(centerX, centerY, 'bg2');
+        this.background = this.add.image(centerX, centerY, this.currentBackgroundKey);
         this.background.setDisplaySize(width, height);
+        this.background.setDepth(0); // Ensure background is behind everything
         
         // Add overlay on top of background (same as main menu)
         const overlay = this.add.image(centerX, centerY, 'overlay');
         overlay.setDisplaySize(width, height);
+        overlay.setDepth(1); // Overlay just above background
+    }
+
+    /**
+     * Get a random background that hasn't been used yet.
+     * If all backgrounds have been used, reset the used list and pick randomly.
+     */
+    private getNextRandomBackground(): string {
+        // If all backgrounds have been used, reset the used list
+        if (this.usedBackgrounds.length >= this.availableBackgrounds.length) {
+            this.usedBackgrounds = [];
+            console.log('All backgrounds used, resetting cycle');
+        }
+        
+        // Get available backgrounds that haven't been used
+        const unusedBackgrounds = this.availableBackgrounds.filter(bg => 
+            !this.usedBackgrounds.includes(bg) && bg !== this.currentBackgroundKey
+        );
+        
+        // If no unused backgrounds (shouldn't happen with the reset above), use all available
+        const backgroundsToChooseFrom = unusedBackgrounds.length > 0 ? unusedBackgrounds : this.availableBackgrounds;
+        
+        // Pick random background
+        const randomIndex = Math.floor(Math.random() * backgroundsToChooseFrom.length);
+        const nextBackground = backgroundsToChooseFrom[randomIndex];
+        
+        // Add to used list
+        this.usedBackgrounds.push(nextBackground);
+        
+        return nextBackground;
+    }
+
+    /**
+     * Animate background change with fade in/out effect
+     */
+    private changeBackgroundAnimated(): void {
+        const nextBackgroundKey = this.getNextRandomBackground();
+        
+        if (nextBackgroundKey === this.currentBackgroundKey) {
+            console.log('Background is the same, skipping animation');
+            return;
+        }
+        
+        console.log(`Changing background from ${this.currentBackgroundKey} to ${nextBackgroundKey}`);
+        
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        // Create new background image (initially invisible)
+        const newBackground = this.add.image(centerX, centerY, nextBackgroundKey);
+        newBackground.setDisplaySize(width, height);
+        newBackground.setDepth(0);
+        newBackground.setAlpha(0);
+        
+        // Fade out current background and fade in new background
+        this.tweens.add({
+            targets: this.background,
+            alpha: 0,
+            duration: 800,
+            ease: 'Power2.easeInOut'
+        });
+        
+        const bgChangeDurationMS = 1000
+        this.tweens.add({
+            targets: newBackground,
+            alpha: 1,
+            duration: bgChangeDurationMS,
+            ease: 'Power2.easeInOut',
+            onComplete: () => {
+                // Remove old background and update reference
+                this.background.destroy();
+                this.background = newBackground;
+                this.currentBackgroundKey = nextBackgroundKey;
+                console.log(`Background changed to ${nextBackgroundKey}`);
+            }
+        });
+    }
+
+    /**
+     * Check if background should change based on question count
+     */
+    private checkForBackgroundChange(): void {
+        // Change background every N questions (starting from question 1, not 0)
+        if (this.questionOrder > 0 && this.questionOrder % this.questionsPerBackgroundChange === 0) {
+            console.log(`Question ${this.questionOrder}: Time to change background!`);
+            this.changeBackgroundAnimated();
+        }
     }
 
     private createPlayer(): void {
@@ -371,7 +464,8 @@ export default class MainGame extends Phaser.Scene {
         // TODO: Add scoring logic, visual effects, etc.
         
         // Move to next question after a delay
-        this.time.delayedCall(1000, () => {
+        const loadNextQuestionDelayMS = 200
+        this.time.delayedCall(loadNextQuestionDelayMS, () => {
             this.loadNextQuestion();
         });
     }
@@ -547,6 +641,9 @@ export default class MainGame extends Phaser.Scene {
         this.questionOrder++;
         console.log("question order:", this.questionOrder);
         console.log("questions.length:", this.questions.length);
+        
+        // Check if background should change
+        this.checkForBackgroundChange();
         
         if (this.questionOrder >= this.questions.length) {
             console.log('All questions completed!');

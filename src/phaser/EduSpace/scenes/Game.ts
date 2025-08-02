@@ -21,6 +21,25 @@ export default class MainGame extends Phaser.Scene {
     private answerSpawnTimer?: Phaser.Time.TimerEvent;
     private isCurrentlyFullscreen: boolean = false;
     
+    // UI Elements
+    private energyDisplay!: Phaser.GameObjects.Container;
+    private energyDisplayImage!: Phaser.GameObjects.Image;
+    private energyText!: Phaser.GameObjects.Text;
+    private scorePanel!: Phaser.GameObjects.Container;
+    private scorePanelImage!: Phaser.GameObjects.Image;
+    private scoreText!: Phaser.GameObjects.Text;
+    private scoreLabelText!: Phaser.GameObjects.Text;
+    
+    // Game state
+    private currentScore: number = 0;
+    private currentEnergy: number = 100;
+    private maxEnergy: number = 100;
+    
+    // Energy loss configuration - adjust these values to change difficulty
+    private energyLossWrongAnswer: number = 5; // Energy lost when selecting wrong answer
+    private energyLossEnemyBullet: number = 10; // Energy lost when hit by enemy bullet
+    private energyLossEnemyShip: number = 20; // Energy lost when colliding with enemy ship
+    
     // Question system properties
     private questionContainer!: Phaser.GameObjects.Container;
     private questionText!: Phaser.GameObjects.Text;
@@ -97,9 +116,16 @@ export default class MainGame extends Phaser.Scene {
 
         this.createBackButton();
 
+        this.createEnergyDisplay();
+
+        this.createScorePanel();
+
         // Subscribe to language changes with scene validation
         this.languageChangeUnsubscribe = languageManager.onLanguageChangeWithSceneCheck(this, () => {
-            // No text updates needed since we use an icon
+            // Update score label text when language changes
+            if (this.scoreLabelText) {
+                this.scoreLabelText.setText(languageManager.getText('score'));
+            }
         });
 
         // Setup resize handling
@@ -447,7 +473,10 @@ export default class MainGame extends Phaser.Scene {
         // Apply damage to player (this will trigger hit effect and invulnerability)
         const playerDied = player.takeDamage(20);
         
-        if (playerDied) {
+        // Reduce energy when hit by enemy bullet
+        this.removeEnergy(this.energyLossEnemyBullet);
+        
+        if (playerDied || this.currentEnergy <= 0) {
             console.log('Player has been destroyed!');
             // Handle game over logic here if needed
         }
@@ -461,7 +490,8 @@ export default class MainGame extends Phaser.Scene {
         // Add score, play success sound, show effect, etc.
         this.sound.play('hit_correct', { volume: 0.5 });
         
-        // TODO: Add scoring logic, visual effects, etc.
+        // Add points for correct answer
+        this.addScore(10);
         
         // Move to next question after a delay
         const loadNextQuestionDelayMS = 200
@@ -476,8 +506,15 @@ export default class MainGame extends Phaser.Scene {
         this.sound.play('shoot_laser', { volume: 0.3 }); // Using available sound as placeholder
         
         if (this.player) {
-            // TODO: Reduce player lives or energy
-            console.log('Player should lose health/energy for wrong answer');
+            // Reduce player energy for wrong answer
+            this.removeEnergy(this.energyLossWrongAnswer);
+            console.log(`Player energy reduced to: ${this.currentEnergy}`);
+            
+            // Check if player is out of energy
+            if (this.currentEnergy <= 0) {
+                console.log('Player out of energy - Game Over!');
+                // TODO: Handle game over
+            }
         }
         
         // Move to next question after a delay
@@ -792,6 +829,9 @@ export default class MainGame extends Phaser.Scene {
         // Apply damage to player (this will trigger hit effect and invulnerability)
         const playerDied = player.takeDamage(30); // Higher damage for spaceship collision
         
+        // Reduce energy when hit by enemy spaceship
+        this.removeEnergy(this.energyLossEnemyShip); 
+        
         // Remove spaceship from tracking array
         const index = this.enemySpaceships.indexOf(spaceship);
         if (index > -1) {
@@ -801,7 +841,7 @@ export default class MainGame extends Phaser.Scene {
         // Destroy the spaceship
         spaceship.destroy();
         
-        if (playerDied) {
+        if (playerDied || this.currentEnergy <= 0) {
             console.log('Player has been destroyed by enemy spaceship!');
             // Handle game over logic here if needed
         }
@@ -903,6 +943,114 @@ export default class MainGame extends Phaser.Scene {
         });
     }
 
+    private createEnergyDisplay(): void {
+        const { width, height, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        const panelWidth = Math.max(120, 150 * minScale);
+        const panelHeight = Math.max(40, 50 * minScale);
+        const margin = Math.max(20, 30 * minScale);
+
+        // Position at top left corner
+        this.energyDisplay = this.add.container(margin + panelWidth/2, margin + panelHeight/2);
+        
+        // Create the energy display background
+        this.energyDisplayImage = this.add.image(0, 0, 'energy_display');
+        this.energyDisplayImage.setDisplaySize(panelWidth, panelHeight);
+        
+        // Create energy text
+        const fontSize = Math.max(16, 20 * minScale);
+        this.energyText = this.add.text(0, 0, this.currentEnergy.toString(), {
+            fontSize: `${fontSize}px`,
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        this.energyText.setOrigin(0.5);
+        this.energyText.setShadow(1, 1, '#000000', 2, true, false);
+        
+        // Add elements to container
+        this.energyDisplay.add([this.energyDisplayImage, this.energyText]);
+        this.energyDisplay.setDepth(100); // Ensure UI is above other elements
+    }
+
+    private createScorePanel(): void {
+        const { width, height, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        const panelWidth = Math.max(160, 200 * minScale);
+        const panelHeight = Math.max(40, 50 * minScale);
+        const margin = Math.max(20, 30 * minScale);
+
+        // Position at top left corner, under the energy display
+        const energyPanelHeight = Math.max(40, 50 * minScale);
+        const leftX = margin + panelWidth/2;
+        const topY = margin + energyPanelHeight + 10 + panelHeight/2; // Below the energy display with some spacing
+        
+        this.scorePanel = this.add.container(leftX, topY);
+        
+        // Create the score panel background
+        this.scorePanelImage = this.add.image(0, 0, 'score_panel');
+        this.scorePanelImage.setDisplaySize(panelWidth, panelHeight);
+        
+        // Create score label text (left side)
+        const fontSize = Math.max(14, 18 * minScale);
+        const scoreLabel = languageManager.getText('score');
+        this.scoreLabelText = this.add.text(-panelWidth/4, 0, scoreLabel, {
+            fontSize: `${fontSize}px`,
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        this.scoreLabelText.setOrigin(0.5);
+        this.scoreLabelText.setShadow(1, 1, '#000000', 2, true, false);
+        
+        // Create score value text (right side)
+        this.scoreText = this.add.text(panelWidth/4, 0, this.currentScore.toString(), {
+            fontSize: `${fontSize}px`,
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        this.scoreText.setOrigin(0.5);
+        this.scoreText.setShadow(1, 1, '#000000', 2, true, false);
+        
+        // Add elements to container
+        this.scorePanel.add([this.scorePanelImage, this.scoreLabelText, this.scoreText]);
+        this.scorePanel.setDepth(100); // Ensure UI is above other elements
+    }
+
+    public updateScore(newScore: number): void {
+        this.currentScore = newScore;
+        if (this.scoreText) {
+            this.scoreText.setText(this.currentScore.toString());
+        }
+    }
+
+    public addScore(points: number): void {
+        this.updateScore(this.currentScore + points);
+    }
+
+    public updateEnergy(newEnergy: number): void {
+        this.currentEnergy = Math.max(0, Math.min(newEnergy, this.maxEnergy));
+        if (this.energyText) {
+            this.energyText.setText(this.currentEnergy.toString());
+        }
+    }
+
+    public removeEnergy(amount: number): void {
+        this.updateEnergy(this.currentEnergy - amount);
+    }
+
+    public getScore(): number {
+        return this.currentScore;
+    }
+
+    public getEnergy(): number {
+        return this.currentEnergy;
+    }
+
     private handleResize(): void {
         // Reposition UI elements on resize
         const { width, height, centerX, centerY, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
@@ -954,6 +1102,41 @@ export default class MainGame extends Phaser.Scene {
             const buttonSize = Math.max(40, 60 * minScale);
             const margin = Math.max(20, 30 * minScale);
             this.backButton.setPosition(width - margin - buttonSize/2, margin + buttonSize/2);
+        }
+
+        // Update energy display position and size
+        if (this.energyDisplay) {
+            const panelWidth = Math.max(120, 150 * minScale);
+            const panelHeight = Math.max(40, 50 * minScale);
+            const margin = Math.max(20, 30 * minScale);
+            
+            this.energyDisplay.setPosition(margin + panelWidth/2, margin + panelHeight/2);
+            this.energyDisplayImage.setDisplaySize(panelWidth, panelHeight);
+            
+            const fontSize = Math.max(16, 20 * minScale);
+            this.energyText.setStyle({ fontSize: `${fontSize}px` });
+        }
+
+        // Update score panel position and size
+        if (this.scorePanel) {
+            const panelWidth = Math.max(160, 200 * minScale);
+            const panelHeight = Math.max(40, 50 * minScale);
+            const margin = Math.max(20, 30 * minScale);
+            const energyPanelHeight = Math.max(40, 50 * minScale);
+            
+            const leftX = margin + panelWidth/2;
+            const topY = margin + energyPanelHeight + 10 + panelHeight/2;
+            
+            this.scorePanel.setPosition(leftX, topY);
+            this.scorePanelImage.setDisplaySize(panelWidth, panelHeight);
+            
+            const fontSize = Math.max(14, 18 * minScale);
+            this.scoreLabelText.setStyle({ fontSize: `${fontSize}px` });
+            this.scoreText.setStyle({ fontSize: `${fontSize}px` });
+            
+            // Update text positions
+            this.scoreLabelText.setPosition(-panelWidth/4, 0);
+            this.scoreText.setPosition(panelWidth/4, 0);
         }
     }
 

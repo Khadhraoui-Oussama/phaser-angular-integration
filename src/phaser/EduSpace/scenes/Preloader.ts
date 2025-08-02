@@ -128,6 +128,8 @@ export default class Preloader extends Phaser.Scene {
         this.load.svg('exit', 'exit.svg');
         this.load.svg('ui_element_small', 'ui_element_small.svg');
         this.load.svg('ui_element_large', 'ui_elemeny_large.svg');
+        this.load.svg('energy_display', 'energy_display.svg');
+        this.load.svg('score_panel', 'score_panel.svg');
         
 
         // Load the answer object portal frames

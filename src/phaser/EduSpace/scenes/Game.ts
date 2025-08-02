@@ -34,11 +34,16 @@ export default class MainGame extends Phaser.Scene {
     private currentScore: number = 0;
     private currentEnergy: number = 100;
     private maxEnergy: number = 100;
+    private gameState: 'playing' | 'gameOver' = 'playing';
     
     // Energy loss configuration - adjust these values to change difficulty
     private energyLossWrongAnswer: number = 5; // Energy lost when selecting wrong answer
     private energyLossEnemyBullet: number = 10; // Energy lost when hit by enemy bullet
     private energyLossEnemyShip: number = 20; // Energy lost when colliding with enemy ship
+    
+    // Score configuration
+    private scoreCorrectAnswer: number = 2; // Points for correct answer
+    private scoreEnemyKill: number = 1; // Points for destroying enemy spaceship
     
     // Question system properties
     private questionContainer!: Phaser.GameObjects.Container;
@@ -70,6 +75,11 @@ export default class MainGame extends Phaser.Scene {
             this.selectedLevel = data.selectedLevel;
             console.log("selectedLevel in MainGame:", data.selectedLevel);
         }
+        
+        // Initialize game state
+        this.gameState = 'playing';
+        this.currentScore = 0;
+        this.currentEnergy = 100;
         
         // Initialize question system
         this.questionOrder = 0;
@@ -450,6 +460,9 @@ export default class MainGame extends Phaser.Scene {
             this.enemySpaceships.splice(index, 1);
         }
         
+        // Add score for destroying enemy
+        this.addScore(this.scoreEnemyKill);
+        
         // Play hit sound
         this.sound.play('hit_correct', { volume: 0.3 });
     }
@@ -476,9 +489,9 @@ export default class MainGame extends Phaser.Scene {
         // Reduce energy when hit by enemy bullet
         this.removeEnergy(this.energyLossEnemyBullet);
         
-        if (playerDied || this.currentEnergy <= 0) {
-            console.log('Player has been destroyed!');
-            // Handle game over logic here if needed
+        // Check for game over
+        if (this.currentEnergy <= 0) {
+            this.triggerGameOver();
         }
         
         // Play damage sound (this is already called in player.takeDamage, but we can keep it for emphasis)
@@ -491,7 +504,7 @@ export default class MainGame extends Phaser.Scene {
         this.sound.play('hit_correct', { volume: 0.5 });
         
         // Add points for correct answer
-        this.addScore(10);
+        this.addScore(this.scoreCorrectAnswer);
         
         // Move to next question after a delay
         const loadNextQuestionDelayMS = 200
@@ -505,6 +518,10 @@ export default class MainGame extends Phaser.Scene {
         // Reduce player health/lives, play error sound, show effect, etc.
         this.sound.play('shoot_laser', { volume: 0.3 }); // Using available sound as placeholder
         
+        // Reduce score by 1 for wrong answer
+        this.addScore(-1);
+        console.log(`Score reduced by 1. Current score: ${this.currentScore}`);
+        
         if (this.player) {
             // Reduce player energy for wrong answer
             this.removeEnergy(this.energyLossWrongAnswer);
@@ -512,8 +529,8 @@ export default class MainGame extends Phaser.Scene {
             
             // Check if player is out of energy
             if (this.currentEnergy <= 0) {
-                console.log('Player out of energy - Game Over!');
-                // TODO: Handle game over
+                this.triggerGameOver();
+                return;
             }
         }
         
@@ -667,6 +684,11 @@ export default class MainGame extends Phaser.Scene {
     }
 
     private loadNextQuestion(): void {
+        // Don't load next question if game is over
+        if (this.gameState === 'gameOver') {
+            return;
+        }
+        
         if (!this.questions || this.questions.length === 0) {
             console.error("Questions not initialized correctly:", this.questions);
             return;
@@ -684,7 +706,7 @@ export default class MainGame extends Phaser.Scene {
         
         if (this.questionOrder >= this.questions.length) {
             console.log('All questions completed!');
-            this.gameOver();
+            this.levelCompleted();
             return;
         }
 
@@ -744,9 +766,10 @@ export default class MainGame extends Phaser.Scene {
         this.answers = [];
     }
 
-    private gameOver(): void {
-        console.log('=== GAME OVER ===');
-        console.log('All questions completed!');
+    private levelCompleted(): void {
+        console.log('=== LEVEL COMPLETED ===');
+        console.log('All questions completed successfully!');
+        console.log(`Final Score: ${this.currentScore}`);
         
         // Stop all game elements
         this.clearCurrentAnswers();
@@ -756,12 +779,173 @@ export default class MainGame extends Phaser.Scene {
             this.questionContainer.destroy();
         }
         
-        // TODO: Show game over screen, final score, etc.
-        // For now, restart the questions
+        // Show level completed screen or advance to next level
+        // For now, restart the questions (you can modify this to advance to next level)
         this.questionOrder = -1; // Will be incremented to 0 in loadNextQuestion
         this.time.delayedCall(2000, () => {
             this.loadNextQuestion();
         });
+    }
+
+    private triggerGameOver(): void {
+        if (this.gameState === 'gameOver') {
+            return; // Already in game over state
+        }
+        
+        this.gameState = 'gameOver';
+        console.log('=== GAME OVER - ENERGY DEPLETED ===');
+        console.log(`Final Score: ${this.currentScore}`);
+        
+        // Stop all game elements
+        this.clearCurrentAnswers();
+        this.clearEnemySpaceships();
+        
+        // Stop the player from moving/shooting
+        if (this.player) {
+            this.player.setActive(false);
+        }
+        
+        // Clear question UI
+        if (this.questionContainer) {
+            this.questionContainer.destroy();
+        }
+        
+        // Show game over UI
+        this.showGameOverScreen();
+    }
+
+    private showGameOverScreen(): void {
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        // Create main container
+        const gameOverContainer = this.add.container(centerX, centerY);
+        gameOverContainer.setDepth(2000);
+        
+        // Create background using ui_element_small scaled up
+        const bgScale = Math.max(width / 400, height / 300) * 0.8; // Scale to fit screen with some padding
+        const backgroundPanel = this.add.image(0, 0, 'ui_element_small');
+        backgroundPanel.setScale(bgScale);
+        backgroundPanel.setAlpha(0.95); // Slightly transparent
+        gameOverContainer.add(backgroundPanel);
+        
+        // Game Over text
+        const gameOverText = this.add.text(0, -120, languageManager.getText('mission_failed'), {
+            fontSize: '48px',
+            fontFamily: 'Arial',
+            color: '#ff4444',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        gameOverText.setOrigin(0.5);
+        gameOverText.setShadow(3, 3, '#000000', 6, true, false);
+        gameOverContainer.add(gameOverText);
+        
+        // Energy depleted text
+        const energyText = this.add.text(0, -60, languageManager.getText('energy_depleted'), {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            align: 'center'
+        });
+        energyText.setOrigin(0.5);
+        energyText.setShadow(2, 2, '#000000', 4, true, false);
+        gameOverContainer.add(energyText);
+        
+        // Final score text
+        const scoreText = this.add.text(0, 0, `${languageManager.getText('final_score')}: ${this.currentScore}`, {
+            fontSize: '28px',
+            fontFamily: 'Arial',
+            color: '#ffff44',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        scoreText.setOrigin(0.5);
+        scoreText.setShadow(2, 2, '#000000', 4, true, false);
+        gameOverContainer.add(scoreText);
+        
+        // Restart button using ui_element_large
+        const restartButton = this.add.container(0, 80);
+        
+        const restartBg = this.add.image(0, 0, 'ui_element_large');
+        restartBg.setScale(0.8); // Increased scale for much larger buttons
+        restartBg.setInteractive();
+        
+        const restartText = this.add.text(0, 0, languageManager.getText('restart_level'), {
+            fontSize: '28px', // Increased font size for better readability
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        restartText.setOrigin(0.5);
+        restartText.setShadow(2, 2, '#000000', 4, true, false);
+        
+        restartButton.add([restartBg, restartText]);
+        gameOverContainer.add(restartButton);
+        
+        // Restart button hover effects
+        restartBg.on('pointerover', () => {
+            restartBg.setTint(0xcccccc);
+            restartButton.setScale(1.05);
+        });
+        
+        restartBg.on('pointerout', () => {
+            restartBg.clearTint();
+            restartButton.setScale(1.0);
+        });
+        
+        restartBg.on('pointerdown', () => {
+            this.sound.play('shoot_laser', { volume: 0.5 });
+            this.restartLevel();
+        });
+        
+        // Main menu button using ui_element_large
+        const menuButton = this.add.container(0, 180); // Increased spacing due to larger buttons
+        
+        const menuBg = this.add.image(0, 0, 'ui_element_large');
+        menuBg.setScale(0.8); // Increased scale for much larger buttons
+        menuBg.setInteractive();
+        menuBg.setTint(0x888888); // Slightly darker tint for menu button
+        
+        const menuText = this.add.text(0, 0, languageManager.getText('main_menu'), {
+            fontSize: '28px', // Increased font size for better readability
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        menuText.setOrigin(0.5);
+        menuText.setShadow(2, 2, '#000000', 4, true, false);
+        
+        menuButton.add([menuBg, menuText]);
+        gameOverContainer.add(menuButton);
+        
+        // Menu button hover effects
+        menuBg.on('pointerover', () => {
+            menuBg.setTint(0xaaaaaa);
+            menuButton.setScale(1.05);
+        });
+        
+        menuBg.on('pointerout', () => {
+            menuBg.setTint(0x888888);
+            menuButton.setScale(1.0);
+        });
+        
+        menuBg.on('pointerdown', () => {
+            this.sound.play('shoot_laser', { volume: 0.5 });
+            this.sound.stopAll();
+            this.scene.start('MainMenu');
+        });
+    }
+
+    private restartLevel(): void {
+        console.log('Restarting level...');
+        
+        // Stop all sounds
+        this.sound.stopAll();
+        
+        // Restart the scene with the same level
+        this.scene.restart({ selectedLevel: this.selectedLevel });
     }
 
     // Enemy Spaceship System Methods
@@ -806,8 +990,8 @@ export default class MainGame extends Phaser.Scene {
     }
 
     private spawnEnemySpaceship(): void {
-        // Don't spawn if game hasn't started or too many spaceships
-        if (!this.gameStarted || this.enemySpaceships.length >= 5) {
+        // Don't spawn if game hasn't started, too many spaceships, or game is over
+        if (!this.gameStarted || this.enemySpaceships.length >= 5 || this.gameState === 'gameOver') {
             return;
         }
         
@@ -841,9 +1025,9 @@ export default class MainGame extends Phaser.Scene {
         // Destroy the spaceship
         spaceship.destroy();
         
-        if (playerDied || this.currentEnergy <= 0) {
-            console.log('Player has been destroyed by enemy spaceship!');
-            // Handle game over logic here if needed
+        // Check for game over
+        if (this.currentEnergy <= 0) {
+            this.triggerGameOver();
         }
         
         // Play damage sound (this is already called in player.takeDamage, but we can keep it for emphasis)
@@ -1022,7 +1206,7 @@ export default class MainGame extends Phaser.Scene {
     }
 
     public updateScore(newScore: number): void {
-        this.currentScore = newScore;
+        this.currentScore = Math.max(0, newScore); // Ensure score never goes below 0
         if (this.scoreText) {
             this.scoreText.setText(this.currentScore.toString());
         }
@@ -1036,6 +1220,11 @@ export default class MainGame extends Phaser.Scene {
         this.currentEnergy = Math.max(0, Math.min(newEnergy, this.maxEnergy));
         if (this.energyText) {
             this.energyText.setText(this.currentEnergy.toString());
+        }
+        
+        // Check for game over if energy reaches 0
+        if (this.currentEnergy <= 0 && this.gameState === 'playing') {
+            this.triggerGameOver();
         }
     }
 
@@ -1169,6 +1358,11 @@ export default class MainGame extends Phaser.Scene {
     }
 
     override update(time: number, delta: number): void {
+        // Don't update if game is over
+        if (this.gameState === 'gameOver') {
+            return;
+        }
+        
         // Update player if it exists
         if (this.player && this.player.active) {
             this.player.update(time, delta);
@@ -1242,6 +1436,9 @@ export default class MainGame extends Phaser.Scene {
                     // Destroy the spaceship
                     spaceship.destroy();
                     this.enemySpaceships.splice(spaceshipIndex, 1);
+                    
+                    // Add score for destroying enemy
+                    this.addScore(this.scoreEnemyKill);
                     
                     // Play hit sound
                     this.sound.play('hit_correct', { volume: 0.3 });

@@ -13,6 +13,13 @@ export interface TranslationKeys {
   game_start_button: string;
   game_throw_button: string;
   
+  // Game Over
+  mission_failed: string;
+  energy_depleted: string;
+  final_score: string;
+  restart_level: string;
+  main_menu: string;
+  
   // Language Selection
   language_selection_title: string;
   
@@ -35,6 +42,12 @@ export const translations: Record<string, TranslationKeys> = {
     game_start_button: 'START',
     game_throw_button: 'THROW',
     
+    mission_failed: 'MISSION FAILED',
+    energy_depleted: 'Energy Depleted',
+    final_score: 'Final Score',
+    restart_level: 'RESTART LEVEL',
+    main_menu: 'MAIN MENU',
+    
     language_selection_title: 'Select Language',
     
     back: 'Back',
@@ -53,6 +66,12 @@ export const translations: Record<string, TranslationKeys> = {
     game_start_button: 'COMMENCER',
     game_throw_button: 'LANCER',
     
+    mission_failed: 'MISSION ÉCHOUÉE',
+    energy_depleted: 'Énergie Épuisée',
+    final_score: 'Score Final',
+    restart_level: 'RECOMMENCER NIVEAU',
+    main_menu: 'MENU PRINCIPAL',
+    
     language_selection_title: 'Sélectionner la langue',
     
     back: 'Retour',
@@ -70,6 +89,12 @@ export const translations: Record<string, TranslationKeys> = {
     
     game_start_button: 'ابدأ',
     game_throw_button: 'ارمي',
+    
+    mission_failed: 'فشلت المهمة',
+    energy_depleted: 'نفدت الطاقة',
+    final_score: 'النقاط النهائية',
+    restart_level: 'إعادة تشغيل المستوى',
+    main_menu: 'القائمة الرئيسية',
     
     language_selection_title: 'اختر اللغة',
     

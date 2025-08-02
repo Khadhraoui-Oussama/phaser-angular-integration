@@ -152,7 +152,7 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
         }
         
         // Play explosion sound
-        this.scene.sound.play('hit', { volume: 0.3 });
+        this.scene.sound.play('hit_correct', { volume: 0.3 });
     }
 
     public override stop(): this {

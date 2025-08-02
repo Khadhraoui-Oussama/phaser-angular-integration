@@ -290,6 +290,64 @@ export default class MainGame extends Phaser.Scene {
                 this.answers.splice(index, 1);
             }
         });
+
+       
+        // Set up physics collisions between player and enemy bullets
+        this.setupPlayerEnemyBulletCollisions();
+    }
+
+    
+
+    private setupPlayerEnemyBulletCollisions(): void {
+        // Create collider between player and enemy bullets
+        this.physics.add.overlap(
+            this.player,
+            this.enemyBullets,
+            this.handlePlayerEnemyBulletCollision,
+            undefined,
+            this
+        );
+        
+        console.log('Player vs enemy bullet collision detection setup');
+    }
+
+    private handlePlayerBulletEnemyCollision(object1: any, object2: any): void {
+        const bullet = object1 as PlayerBullet;
+        const spaceship = object2 as EnemySpaceship;
+        
+        console.log('Player bullet hit enemy spaceship!');
+        
+        // Explode the bullet
+        if (bullet.explode) {
+            bullet.explode();
+        }
+        
+        // Destroy the spaceship
+        spaceship.destroy();
+        
+        // Remove spaceship from tracking array
+        const index = this.enemySpaceships.indexOf(spaceship);
+        if (index > -1) {
+            this.enemySpaceships.splice(index, 1);
+        }
+        
+        // Play hit sound
+        this.sound.play('hit_correct', { volume: 0.3 });
+    }
+
+    private handlePlayerEnemyBulletCollision(object1: any, object2: any): void {
+        const player = object1 as Player;
+        const bullet = object2 as EnemyBullet;
+        
+        console.log('Player hit by enemy bullet!');
+        
+        // Explode the bullet
+        if (bullet.explode) {
+            bullet.explode();
+        }
+        
+        // Play damage sound
+        this.sound.play('hit_wrong', { volume: 0.5 });
     }
     
     private handleCorrectAnswer(answer: Answer): void {
@@ -632,42 +690,9 @@ export default class MainGame extends Phaser.Scene {
         
         // TODO: Reduce player lives/health, show damage effect, etc.
         console.log('Player should lose health for enemy collision');
-        
-        // For now, just create a damage effect on the player
-        this.createPlayerDamageEffect(player);
+        //TODO: add red flash or overlay
     }
 
-    private createPlayerDamageEffect(player: Player): void {
-        // Create red flash effect overlay on player
-        const flashOverlay = this.add.rectangle(player.x, player.y, 60, 60, 0xff0000, 0.5);
-        flashOverlay.setDepth(player.depth + 1);
-        
-        this.time.delayedCall(200, () => {
-            flashOverlay.destroy();
-        });
-        
-        // Create damage indicator
-        const damageText = this.add.text(player.x, player.y - 50, 'HIT!', {
-            fontSize: '24px',
-            fontFamily: 'Arial',
-            color: '#ff0000',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        damageText.setDepth(100);
-        
-        // Animate damage text
-        this.tweens.add({
-            targets: damageText,
-            y: player.y - 100,
-            alpha: 0,
-            duration: 800,
-            ease: 'Power2.easeOut',
-            onComplete: () => {
-                damageText.destroy();
-            }
-        });
-    }
 
     private clearEnemySpaceships(): void {
         // Stop spawning
@@ -868,6 +893,9 @@ export default class MainGame extends Phaser.Scene {
         // Check for collisions between player and answers
         this.checkPlayerAnswerCollisions();
         
+        // Check for collisions between player bullets and enemy spaceships
+        this.checkPlayerBulletEnemyCollisions();
+        
         // Other game update logic can be added here later
     }
     
@@ -889,6 +917,36 @@ export default class MainGame extends Phaser.Scene {
                     answer.onPlayerCollision();
                 }
             }
+        });
+    }
+    
+    private checkPlayerBulletEnemyCollisions(): void {
+        if (!this.playerBullets || this.enemySpaceships.length === 0) return;
+        
+        // Check collision between each player bullet and each enemy spaceship
+        this.playerBullets.children.entries.forEach((bullet: any) => {
+            if (!bullet.active) return;
+            
+            this.enemySpaceships.forEach((spaceship, spaceshipIndex) => {
+                if (!spaceship || !spaceship.active) return;
+                
+                // Use Phaser's built-in overlap detection
+                if (this.physics.overlap(bullet, spaceship)) {
+                    console.log('Player bullet hit enemy spaceship!');
+                    
+                    // Explode the bullet
+                    if (bullet.explode) {
+                        bullet.explode();
+                    }
+                    
+                    // Destroy the spaceship
+                    spaceship.destroy();
+                    this.enemySpaceships.splice(spaceshipIndex, 1);
+                    
+                    // Play hit sound
+                    this.sound.play('hit_correct', { volume: 0.3 });
+                }
+            });
         });
     }
     

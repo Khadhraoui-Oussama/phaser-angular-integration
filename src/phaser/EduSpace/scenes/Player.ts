@@ -336,7 +336,7 @@ export class Player extends Phaser.GameObjects.Container {
         this.startInvulnerability();
         
         // Play damage sound
-        this.scene.sound.play('hit', { volume: 0.4 });
+        this.scene.sound.play('hit_wrong', { volume: 0.4 });
         
         return false; // Didn't die
     }

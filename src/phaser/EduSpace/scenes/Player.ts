@@ -356,8 +356,80 @@ export class Player extends Phaser.GameObjects.Container {
     
     private startInvulnerability(): void {
         this.isInvulnerable = true;
+        
+        // Add red hit effect
+        this.createHitEffect();
+        
         this.scene.time.delayedCall(this.invulnerabilityTime, () => {
             this.isInvulnerable = false;
+        });
+    }
+    
+    private createHitEffect(): void {
+        if (!this.ship) return;
+        
+        // Store original values
+        const originalScale = this.ship.scaleX;
+        const originalTint = this.ship.tint;
+        
+        // Apply red tint to indicate damage
+        this.ship.setTint(0xff0000);
+        
+        // Create a slight shake/scale effect
+        this.scene.tweens.add({
+            targets: this.ship,
+            scaleX: originalScale * 1.2,
+            scaleY: originalScale * 1.2,
+            duration: 150,
+            ease: 'Power2',
+            yoyo: true,
+            repeat: 1,
+            onComplete: () => {
+                // Reset the ship to original state after animation
+                this.ship.setScale(originalScale);
+            }
+        });
+        
+        // Flash red effect - alternate between red and normal tint
+        let flashCount = 0;
+        const maxFlashes = 6; // 3 full red/normal cycles
+        
+        const flashTimer = this.scene.time.addEvent({
+            delay: 200,
+            callback: () => {
+                flashCount++;
+                if (flashCount % 2 === 0) {
+                    this.ship.setTint(originalTint); // Normal tint
+                } else {
+                    this.ship.setTint(0xff0000); // Red tint
+                }
+                
+                if (flashCount >= maxFlashes) {
+                    this.ship.setTint(originalTint); // Ensure we end with normal tint
+                    flashTimer.destroy();
+                }
+            },
+            loop: true
+        });
+        
+        // Add floating damage text above the player
+        const damageText = this.scene.add.text(this.x, this.y - 40, '-1', {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#ff0000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        // Animate the damage text
+        this.scene.tweens.add({
+            targets: damageText,
+            y: this.y - 80,
+            alpha: 0,
+            duration: 1000,
+            ease: 'Power2',
+            onComplete: () => {
+                damageText.destroy();
+            }
         });
     }
     

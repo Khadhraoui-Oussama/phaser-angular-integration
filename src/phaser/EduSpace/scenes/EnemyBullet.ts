@@ -61,6 +61,8 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
             for (let i = 1; i <= 5; i++) {
                 if (this.scene.textures.exists(`enemy_shot_travel_${i}`)) {
                     frames.push({ key: `enemy_shot_travel_${i}` });
+                } else {
+                    console.warn(`EnemyBullet: Missing texture enemy_shot_travel_${i}`);
                 }
             }
             
@@ -69,8 +71,11 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
                     key: 'enemy_bullet_travel',
                     frames: frames,
                     frameRate: 8,
-                    repeat: 1 // Loop infinitely while traveling
+                    repeat: 1
                 });
+                console.log(`EnemyBullet: Created travel animation with ${frames.length} frames`);
+            } else {
+                console.error('EnemyBullet: No frames found for travel animation');
             }
         }
     }
@@ -82,6 +87,8 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
             for (let i = 1; i <= 8; i++) {
                 if (this.scene.textures.exists(`enemy_shot_exp_${i}`)) {
                     frames.push({ key: `enemy_shot_exp_${i}` });
+                } else {
+                    console.warn(`EnemyBullet: Missing texture enemy_shot_exp_${i}`);
                 }
             }
             
@@ -92,6 +99,9 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
                     frameRate: 20,
                     repeat: 0 // Play once
                 });
+                console.log(`EnemyBullet: Created explosion animation with ${frames.length} frames`);
+            } else {
+                console.error('EnemyBullet: No frames found for explosion animation');
             }
         }
     }
@@ -147,10 +157,16 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         );
         
         // Play travel animation
-        if (this.anims.exists('enemy_bullet_travel')) {
+        if (this.scene.anims.exists('enemy_bullet_travel')) {
             this.play('enemy_bullet_travel');
         } else {
-            console.warn('EnemyBullet: enemy_bullet_travel animation not found');
+            console.warn('EnemyBullet: enemy_bullet_travel animation not found, attempting to create it');
+            this.createTravelAnimation();
+            if (this.scene.anims.exists('enemy_bullet_travel')) {
+                this.play('enemy_bullet_travel');
+            } else {
+                console.error('EnemyBullet: Failed to create enemy_bullet_travel animation');
+            }
         }
         
         console.log(`Enemy bullet fired from (${x}, ${y}) with direction (${direction.x}, ${direction.y})`);
@@ -165,8 +181,26 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         // Stop movement
         this.setVelocity(0, 0);
         
+        // Immediately disable physics body to prevent further collisions
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (body) {
+            body.enable = false;
+        }
+        
         // Play explosion animation
-        this.play('enemy_bullet_explosion');
+        if (this.scene.anims.exists('enemy_bullet_explosion')) {
+            this.play('enemy_bullet_explosion');
+        } else {
+            console.warn('EnemyBullet: enemy_bullet_explosion animation not found, attempting to create it');
+            this.createExplosionAnimation();
+            if (this.scene.anims.exists('enemy_bullet_explosion')) {
+                this.play('enemy_bullet_explosion');
+            } else {
+                console.error('EnemyBullet: Failed to create enemy_bullet_explosion animation, returning to pool immediately');
+                this.returnToPool();
+                return;
+            }
+        }
         
         // Listen for animation complete
         this.once('animationcomplete-enemy_bullet_explosion', () => {
@@ -191,6 +225,12 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         
         // Stop movement
         this.setVelocity(0, 0);
+        
+        // Disable physics body
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (body) {
+            body.enable = false;
+        }
         
         // Stop any animations
         this.anims.stop();

@@ -339,15 +339,28 @@ export default class MainGame extends Phaser.Scene {
         const player = object1 as Player;
         const bullet = object2 as EnemyBullet;
         
+        // Check if bullet has already hit something or is exploding
+        if (bullet.getHasHitTarget() || bullet.getIsExploding() || !bullet.active) {
+            return;
+        }
+        
         console.log('Player hit by enemy bullet!');
         
-        // Explode the bullet
+        // Explode the bullet (this will disable its physics body)
         if (bullet.explode) {
             bullet.explode();
         }
         
-        // Play damage sound
-        this.sound.play('hit_wrong', { volume: 0.5 });
+        // Apply damage to player (this will trigger hit effect and invulnerability)
+        const playerDied = player.takeDamage(20);
+        
+        if (playerDied) {
+            console.log('Player has been destroyed!');
+            // Handle game over logic here if needed
+        }
+        
+        // Play damage sound (this is already called in player.takeDamage, but we can keep it for emphasis)
+        // this.sound.play('hit_wrong', { volume: 0.5 });
     }
     
     private handleCorrectAnswer(answer: Answer): void {
@@ -679,8 +692,8 @@ export default class MainGame extends Phaser.Scene {
     private handleEnemyShipPlayerCollision(spaceship: EnemySpaceship, player: Player): void {
         console.log('Player hit by enemy spaceship!');
         
-        // Play damage sound
-        this.sound.play('hit_wrong', { volume: 0.5 });
+        // Apply damage to player (this will trigger hit effect and invulnerability)
+        const playerDied = player.takeDamage(30); // Higher damage for spaceship collision
         
         // Remove spaceship from tracking array
         const index = this.enemySpaceships.indexOf(spaceship);
@@ -688,9 +701,16 @@ export default class MainGame extends Phaser.Scene {
             this.enemySpaceships.splice(index, 1);
         }
         
-        // TODO: Reduce player lives/health, show damage effect, etc.
-        console.log('Player should lose health for enemy collision');
-        //TODO: add red flash or overlay
+        // Destroy the spaceship
+        spaceship.destroy();
+        
+        if (playerDied) {
+            console.log('Player has been destroyed by enemy spaceship!');
+            // Handle game over logic here if needed
+        }
+        
+        // Play damage sound (this is already called in player.takeDamage, but we can keep it for emphasis)
+        // this.sound.play('hit_wrong', { volume: 0.5 });
     }
 
 

@@ -38,7 +38,7 @@ export default class MainGame extends Phaser.Scene {
     private energyLossEnemyBullet: number = 10;
     private energyLossEnemyShip: number = 20;
     
-    private scoreCorrectAnswer: number = 2;
+    private scoreCorrectAnswer: number = 2; // Deprecated: now using currentQuestion.points
     private scoreEnemyKill: number = 1;
     
     // Question system properties
@@ -153,6 +153,11 @@ export default class MainGame extends Phaser.Scene {
                 this.victoryScreenTexts.scoreText.setText(`${languageManager.getText('final_score')}: ${this.currentScore}`);
                 this.victoryScreenTexts.levelSelectText.setText(languageManager.getText('victory_level_select'));
                 this.victoryScreenTexts.menuText.setText(languageManager.getText('main_menu'));
+            }
+            
+            if (this.nextLevelUnlockedText) {
+                const unlockMessage = `${languageManager.getText('next_level_unlocked')} (80% achieved)\n${languageManager.getText('level_unlock_requirement')}`;
+                this.nextLevelUnlockedText.setText(unlockMessage);
             }
         });
 
@@ -433,11 +438,11 @@ export default class MainGame extends Phaser.Scene {
     
     private handleCorrectAnswer(answer: Answer): void {
         console.log('=== CORRECT ANSWER SELECTED ===');
-        console.log(`Answer: "${answer.getContent()}" | Score: +${this.scoreCorrectAnswer}`);
+        console.log(`Answer: "${answer.getContent()}" | Score: +${this.currentQuestion.points}`);
         
         this.sound.play('hit_correct', { volume: 0.5 });
         
-        this.addScore(this.scoreCorrectAnswer);
+        this.addScore(this.currentQuestion.points);
         
         this.correctAnswersCount++;
         this.totalQuestionsAnswered++;
@@ -1887,8 +1892,8 @@ export default class MainGame extends Phaser.Scene {
     private showNextLevelUnlockedMessage(): void {
         const { centerX, height } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Create a more descriptive unlock message
-        const unlockMessage = `Next Level Unlocked! (80% achieved)\nAnswer all questions correctly to auto-advance`;
+        // Create a localized unlock message
+        const unlockMessage = `${languageManager.getText('next_level_unlocked')} (80% achieved)\n${languageManager.getText('level_unlock_requirement')}`;
         
         // Create the unlock message text
         this.nextLevelUnlockedText = this.add.text(
@@ -1905,7 +1910,7 @@ export default class MainGame extends Phaser.Scene {
             }
         );
         this.nextLevelUnlockedText.setOrigin(0.5);
-        this.nextLevelUnlockedText.setDepth(1000); // High depth to appear above everything
+        this.nextLevelUnlockedText.setDepth(1000);
         
         // Create flashing animation
         this.tweens.add({
@@ -1915,8 +1920,8 @@ export default class MainGame extends Phaser.Scene {
             yoyo: true,
             repeat: 5, // Flash 6 times total
             onComplete: () => {
-                // Remove the text after 3 seconds
-                this.time.delayedCall(1000, () => {
+                // Remove the text after staying on screen for 4 seconds
+                this.time.delayedCall(4000, () => {
                     if (this.nextLevelUnlockedText) {
                         this.nextLevelUnlockedText.destroy();
                         this.nextLevelUnlockedText = undefined;

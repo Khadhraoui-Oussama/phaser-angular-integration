@@ -19,6 +19,10 @@ export interface TranslationKeys {
   // Language Selection
   language_selection_title: string;
   
+  // Level Progression
+  next_level_unlocked: string;
+  level_unlock_requirement: string;
+  
   // General
   back: string;
   level: string;
@@ -43,6 +47,9 @@ export const translations: Record<string, TranslationKeys> = {
     
     language_selection_title: 'Select Language',
     
+    next_level_unlocked: 'Next Level Unlocked!',
+    level_unlock_requirement: 'Answer all questions correctly to auto-advance',
+    
     back: 'Back',
     level: 'Level',
     score: 'Score'
@@ -64,6 +71,9 @@ export const translations: Record<string, TranslationKeys> = {
     
     language_selection_title: 'Sélectionner la langue',
     
+    next_level_unlocked: 'Niveau Suivant Débloqué !',
+    level_unlock_requirement: 'Répondez correctement à toutes les questions pour avancer automatiquement',
+    
     back: 'Retour',
     level: 'Niveau',
     score: 'Score'
@@ -84,6 +94,9 @@ export const translations: Record<string, TranslationKeys> = {
     victory_level_select: 'اختيار المستوى',
     
     language_selection_title: 'اختر اللغة',
+    
+    next_level_unlocked: '! تم فتح المستوى التالي',
+    level_unlock_requirement: 'أجب على جميع الأسئلة بشكل صحيح للتقدم التلقائي',
     
     back: 'رجوع',
     level: 'مستوى',

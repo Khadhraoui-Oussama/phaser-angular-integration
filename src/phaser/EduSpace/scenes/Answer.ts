@@ -346,7 +346,15 @@ export default class Answer extends Phaser.GameObjects.Container {
     public override update(time: number, delta: number): void {
         // Check if answer has moved off-screen to the left
         if (this.x < -100 && !this.isDestroyed) {
-            console.log('Answer moved off-screen, destroying...');
+            console.log('Answer moved off-screen, notifying game scene...');
+            
+            // Emit event to game scene before destroying
+            this.scene.events.emit('answer-off-screen', {
+                answer: this,
+                content: this.answerData.content,
+                isCorrect: this.answerData.isCorrect
+            });
+            
             this.destroy();
         }
     }

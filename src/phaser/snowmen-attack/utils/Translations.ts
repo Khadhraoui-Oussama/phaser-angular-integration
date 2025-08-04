@@ -1,14 +1,11 @@
 export interface TranslationKeys {
-  // Table Selection Scene
   table_selection_scene_title: string;
   table_selection_scene_start: string;
   table_selection_scene_random: string;
   
-  // Main Menu
   main_menu_start: string;
   main_menu_click_to_start: string;
   
-  // Game UI
   game_score: string;
   game_high_score: string;
   game_question: string;
@@ -17,14 +14,12 @@ export interface TranslationKeys {
   game_start_button: string;
   game_throw_button: string;
   
-  // Victory Scene
   victory_title: string;
   victory_score: string;
   victory_new_high_score: string;
   victory_play_again: string;
   victory_menu: string;
   
-  // Review Mistakes Scene
   review_mistakes_title: string;
   review_mistakes_question: string;
   review_mistakes_your_answer: string;

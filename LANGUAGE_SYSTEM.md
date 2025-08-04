@@ -295,3 +295,8 @@ export default class ExampleScene extends Phaser.Scene {
     }
 }
 ```
+
+if 80% pass the player, else replay the level again 
+parallex in the main game
+TODO : Add player bullet and enemy bullet collision and start 4th epic
+disable player bullet after collision

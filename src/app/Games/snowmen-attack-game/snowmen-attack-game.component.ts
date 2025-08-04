@@ -12,7 +12,7 @@ import { ScreenDetectionService } from '../../services/screen-detection.service'
   styleUrl: './snowmen-attack-game.component.css'
 })
 export class SnowmenAttackGameComponent {
-     startGameResponsiveFn = StartSnowmenAttackGameResponsive; // New responsive function
+    startGameResponsiveFn = StartSnowmenAttackGameResponsive;
     
     constructor(private screenDetectionService: ScreenDetectionService) {
         EventBus.on('current-scene-ready', (scene: Phaser.Scene) => {

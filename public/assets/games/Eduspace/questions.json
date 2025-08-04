@@ -1,0 +1,144 @@
+{
+  "levels": [
+    {
+      "levelId": 1,
+      "levelName": "Easy Math",
+      "difficulty": 1,
+      "questions": [
+        {
+          "id": 1,
+          "media": {
+            "text": "What is 2 + 2?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "3", "correct": false, "url": null },
+            { "type": "text", "value": "4", "correct": true, "url": null },
+            { "type": "text", "value": "5", "correct": false, "url": null },
+            { "type": "text", "value": "6", "correct": false, "url": null }
+          ],
+          "points": 10,
+          "langue": "en",
+          "difficultyLevel": 1
+        },
+        {
+          "id": 2,
+          "media": {
+            "text": "What is 5 + 3?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "7", "correct": false, "url": null },
+            { "type": "text", "value": "8", "correct": true, "url": null },
+            { "type": "text", "value": "9", "correct": false, "url": null },
+            { "type": "text", "value": "10", "correct": false, "url": null }
+          ],
+          "points": 10,
+          "langue": "en",
+          "difficultyLevel": 1
+        }
+      ]
+    },
+    {
+      "levelId": 2,
+      "levelName": "general questions",
+      "difficulty": 3,
+      "questions": [
+        {
+          "id": 3,
+          "media": {
+            "text": "Which animal is shown in the image?",
+            "audio": null,
+            "image": "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh"
+          },
+          "answers": [
+            { "type": "text", "value": "Cat", "correct": false, "url": null },
+            { "type": "text", "value": "Dog", "correct": true, "url": null },
+            { "type": "text", "value": "Bird", "correct": false, "url": null },
+            { "type": "text", "value": "Fish", "correct": false, "url": null }
+          ],
+          "points": 15,
+          "langue": "en",
+          "difficultyLevel": 2
+        },
+        {
+          "id": 4,
+          "media": {
+            "text": "What color is the sun?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "Blue", "correct": false, "url": null },
+            { "type": "text", "value": "Green", "correct": false, "url": null },
+            { "type": "text", "value": "Yellow", "correct": true, "url": null },
+            { "type": "text", "value": "Purple", "correct": false, "url": null }
+          ],
+          "points": 12,
+          "langue": "en",
+          "difficultyLevel": 2
+        },
+        {
+          "id": 5,
+          "media": {
+            "text": "How many legs does a spider have?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "6", "correct": false, "url": null },
+            { "type": "text", "value": "8", "correct": true, "url": null },
+            { "type": "text", "value": "10", "correct": false, "url": null },
+            { "type": "text", "value": "12", "correct": false, "url": null }
+          ],
+          "points": 18,
+          "langue": "en",
+          "difficultyLevel": 2
+        }
+      ]
+    },
+    {
+      "levelId": 3,
+      "levelName": "general questions 2",
+      "difficulty": 5,
+      "questions": [
+        {
+          "id": 6,
+          "media": {
+            "text": "Which one is a car?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "image", "value": "Car", "correct": true, "url": "https://hips.hearstapps.com/hmg-prod/images/2025-ford-mustang-60th-anniversary-exterior-66227932bb88e.jpg?crop=0.793xw:1.00xh;0.106xw,0&resize=2048:*" },
+            { "type": "image", "value": "Dog", "correct": false, "url": "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh" },
+            { "type": "image", "value": "Cat", "correct": false, "url": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQK1dXQrVCbBvMdU4A83XdwM7Rtte8YFsWFI-y5JLABKyTRyUTBQko0SqyrqNJQf96aNdEqLNo5eZglqCIH2udWwuewokYR5-0QnjucNq4Y5Q" },
+            { "type": "image", "value": "Ant", "correct": false, "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUlYUm6-xKlW-L0jMgV4713KRacmJfEbIkyQ&s" }
+          ],
+          "points": 25,
+          "langue": "en",
+          "difficultyLevel": 3
+        },
+        {
+          "id": 7,
+          "media": {
+            "text": "Which shape has three sides?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "Circle", "correct": false, "url": null },
+            { "type": "text", "value": "Square", "correct": false, "url": null },
+            { "type": "text", "value": "Triangle", "correct": true, "url": null },
+            { "type": "text", "value": "Rectangle", "correct": false, "url": null }
+          ],
+          "points": 20,
+          "langue": "en",
+          "difficultyLevel": 3
+        }
+      ]
+    }
+  ]
+}

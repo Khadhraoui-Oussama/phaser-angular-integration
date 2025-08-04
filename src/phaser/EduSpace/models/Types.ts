@@ -23,6 +23,17 @@ export interface RightAttempt{
 }
 
 // New interfaces for the comprehensive question system
+export interface LevelData {
+    levelId: number;
+    levelName: string;
+    difficulty: number; // 1-5 scale where 1 is easiest, 5 is hardest
+    questions: QuestionData[];
+}
+
+export interface QuestionsJsonData {
+    levels: LevelData[];
+}
+
 export interface QuestionData {
     id: number;
     media: {

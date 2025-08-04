@@ -5,7 +5,7 @@ import { Player } from './Player';
 import PlayerBullet from './PlayerBullet';
 import EnemyBullet from './EnemyBullet';
 import Answer, { AnswerData } from './Answer';
-import { QuestionData, AnswerOption } from '../models/Types';
+import { QuestionData, AnswerOption, QuestionsJsonData, LevelData } from '../models/Types';
 import EnemySpaceship from './EnemySpaceship';
 
 export default class MainGame extends Phaser.Scene {
@@ -18,7 +18,6 @@ export default class MainGame extends Phaser.Scene {
     private playerBullets!: Phaser.Physics.Arcade.Group;
     private enemyBullets!: Phaser.Physics.Arcade.Group;
     private answers: Answer[] = [];
-    private answerSpawnTimer?: Phaser.Time.TimerEvent;
     private isCurrentlyFullscreen: boolean = false;
     
     // UI Elements
@@ -30,20 +29,17 @@ export default class MainGame extends Phaser.Scene {
     private scoreText!: Phaser.GameObjects.Text;
     private scoreLabelText!: Phaser.GameObjects.Text;
     
-    // Game state
     private currentScore: number = 0;
     private currentEnergy: number = 100;
     private maxEnergy: number = 100;
     private gameState: 'playing' | 'gameOver' = 'playing';
     
-    // Energy loss configuration - adjust these values to change difficulty
-    private energyLossWrongAnswer: number = 5; // Energy lost when selecting wrong answer
-    private energyLossEnemyBullet: number = 10; // Energy lost when hit by enemy bullet
-    private energyLossEnemyShip: number = 20; // Energy lost when colliding with enemy ship
+    private energyLossWrongAnswer: number = 5;
+    private energyLossEnemyBullet: number = 10;
+    private energyLossEnemyShip: number = 20;
     
-    // Score configuration
-    private scoreCorrectAnswer: number = 2; // Points for correct answer
-    private scoreEnemyKill: number = 1; // Points for destroying enemy spaceship
+    private scoreCorrectAnswer: number = 2;
+    private scoreEnemyKill: number = 1;
     
     // Question system properties
     private questionContainer!: Phaser.GameObjects.Container;
@@ -54,48 +50,65 @@ export default class MainGame extends Phaser.Scene {
     private questions: QuestionData[] = [];
     private gameStarted: boolean = false;
     
-    // Background animation system
-    private questionsPerBackgroundChange: number = 1; // CONFIGURABLE: Change this to set how many questions between background changes (1 = every question, 2 = every 2 questions, etc.)
+    private allLevels: LevelData[] = [];
+    private currentLevel?: LevelData;
+    private questionsJsonData?: QuestionsJsonData;
+    
+    private correctAnswersCount: number = 0;
+    private totalQuestionsAnswered: number = 0;
+    private nextLevelUnlocked: boolean = false;
+    private nextLevelUnlockedText?: Phaser.GameObjects.Text;
+    
+    private answerSpawnTimers: Phaser.Time.TimerEvent[] = [];
+    
+    private questionsPerBackgroundChange: number = 2;
     private availableBackgrounds: string[] = ['bg2', 'bg3', 'bg4', 'bg5', 'bg6', 'bg7', 'bg8', 'bg9'];
     private usedBackgrounds: string[] = [];
     private currentBackgroundKey: string = 'bg2';
     
-    // Enemy spaceship system
     private enemySpaceships: EnemySpaceship[] = [];
     private enemySpawnTimer?: Phaser.Time.TimerEvent;
-    public enemySpaceshipSpeed: number = 80; // Configurable speed variable
+    public enemySpaceshipSpeed: number = 50;
+    
+    // Victory screen text elements for localization updates
+    private victoryScreenTexts?: {
+        victoryText: Phaser.GameObjects.Text;
+        missionText: Phaser.GameObjects.Text;
+        scoreText: Phaser.GameObjects.Text;
+        levelSelectText: Phaser.GameObjects.Text;
+        menuText: Phaser.GameObjects.Text;
+    };
     
     constructor() {
         super('MainGame');
     }
 
     init(data?: { selectedLevel?: number }) {
-        // Initialize with selected level if provided (for future use)
         if (data?.selectedLevel) {
             this.selectedLevel = data.selectedLevel;
             console.log("selectedLevel in MainGame:", data.selectedLevel);
         }
         
-        // Initialize game state
         this.gameState = 'playing';
         this.currentScore = 0;
         this.currentEnergy = 100;
         
-        // Initialize question system
         this.questionOrder = 0;
         this.gameStarted = false;
-        this.initializeQuestions();
+        
+        this.correctAnswersCount = 0;
+        this.totalQuestionsAnswered = 0;
+        this.nextLevelUnlocked = false;
+        this.answerSpawnTimers = [];
     }
 
     create(): void {
-        // Ensure no other scenes are running to prevent stacking
         this.scene.manager.scenes.forEach(scene => {
             if (scene.scene.key !== 'MainGame' && scene.scene.isActive()) {
                 scene.scene.stop();
             }
         });
         
-        // Only play background music if it's not already playing to prevent double playback
         const bgMusic = this.sound.get('main_music');
         if (!bgMusic || !bgMusic.isPlaying) {
             this.sound.play('main_music', { loop: true, volume: 0.4 });
@@ -103,7 +116,6 @@ export default class MainGame extends Phaser.Scene {
         
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
 
-        // Setup responsive input for mobile
         ResponsiveGameUtils.setupMobileInput(this);
 
         this.createBackground();
@@ -114,11 +126,11 @@ export default class MainGame extends Phaser.Scene {
 
         this.setupPhysicsWorldBounds();
 
-        // Setup enemy spaceship system
         this.setupEnemySpaceshipSystem();
 
-        // Start the question system
-        this.startQuestionSystem();
+        this.loadQuestionsFromJSON().then(() => {
+            this.startQuestionSystem();
+        });
 
         this.setupCollisionDetection();
 
@@ -130,28 +142,30 @@ export default class MainGame extends Phaser.Scene {
 
         this.createScorePanel();
 
-        // Subscribe to language changes with scene validation
         this.languageChangeUnsubscribe = languageManager.onLanguageChangeWithSceneCheck(this, () => {
-            // Update score label text when language changes
             if (this.scoreLabelText) {
                 this.scoreLabelText.setText(languageManager.getText('score'));
             }
+            
+            if (this.victoryScreenTexts) {
+                this.victoryScreenTexts.victoryText.setText(languageManager.getText('victory_congratulations'));
+                this.victoryScreenTexts.missionText.setText(languageManager.getText('victory_all_levels_completed'));
+                this.victoryScreenTexts.scoreText.setText(`${languageManager.getText('final_score')}: ${this.currentScore}`);
+                this.victoryScreenTexts.levelSelectText.setText(languageManager.getText('victory_level_select'));
+                this.victoryScreenTexts.menuText.setText(languageManager.getText('main_menu'));
+            }
         });
 
-        // Setup resize handling
         ResponsiveGameUtils.setupResizeHandler(this, () => {
             this.handleResize();
         });
         
-        // Setup fullscreen detection
         this.setupFullscreenDetection();
 
-        // Listen for scene shutdown to cleanup
         this.events.on('shutdown', () => {
             this.cleanup();
         });
 
-        // Listen for scene stop to cleanup
         this.events.on('destroy', () => {
             this.cleanup();
         });
@@ -160,15 +174,13 @@ export default class MainGame extends Phaser.Scene {
     private createBackground(): void {
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Add background (same as main menu)
         this.background = this.add.image(centerX, centerY, this.currentBackgroundKey);
         this.background.setDisplaySize(width, height);
-        this.background.setDepth(0); // Ensure background is behind everything
+        this.background.setDepth(0);
         
-        // Add overlay on top of background (same as main menu)
         const overlay = this.add.image(centerX, centerY, 'overlay');
         overlay.setDisplaySize(width, height);
-        overlay.setDepth(1); // Overlay just above background
+        overlay.setDepth(1);
     }
 
     /**
@@ -176,25 +188,20 @@ export default class MainGame extends Phaser.Scene {
      * If all backgrounds have been used, reset the used list and pick randomly.
      */
     private getNextRandomBackground(): string {
-        // If all backgrounds have been used, reset the used list
         if (this.usedBackgrounds.length >= this.availableBackgrounds.length) {
             this.usedBackgrounds = [];
             console.log('All backgrounds used, resetting cycle');
         }
         
-        // Get available backgrounds that haven't been used
         const unusedBackgrounds = this.availableBackgrounds.filter(bg => 
             !this.usedBackgrounds.includes(bg) && bg !== this.currentBackgroundKey
         );
         
-        // If no unused backgrounds (shouldn't happen with the reset above), use all available
         const backgroundsToChooseFrom = unusedBackgrounds.length > 0 ? unusedBackgrounds : this.availableBackgrounds;
         
-        // Pick random background
         const randomIndex = Math.floor(Math.random() * backgroundsToChooseFrom.length);
         const nextBackground = backgroundsToChooseFrom[randomIndex];
         
-        // Add to used list
         this.usedBackgrounds.push(nextBackground);
         
         return nextBackground;
@@ -215,13 +222,11 @@ export default class MainGame extends Phaser.Scene {
         
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Create new background image (initially invisible)
         const newBackground = this.add.image(centerX, centerY, nextBackgroundKey);
         newBackground.setDisplaySize(width, height);
         newBackground.setDepth(0);
         newBackground.setAlpha(0);
         
-        // Fade out current background and fade in new background
         this.tweens.add({
             targets: this.background,
             alpha: 0,
@@ -236,7 +241,6 @@ export default class MainGame extends Phaser.Scene {
             duration: bgChangeDurationMS,
             ease: 'Power2.easeInOut',
             onComplete: () => {
-                // Remove old background and update reference
                 this.background.destroy();
                 this.background = newBackground;
                 this.currentBackgroundKey = nextBackgroundKey;
@@ -249,7 +253,6 @@ export default class MainGame extends Phaser.Scene {
      * Check if background should change based on question count
      */
     private checkForBackgroundChange(): void {
-        // Change background every N questions (starting from question 1, not 0)
         if (this.questionOrder > 0 && this.questionOrder % this.questionsPerBackgroundChange === 0) {
             console.log(`Question ${this.questionOrder}: Time to change background!`);
             this.changeBackgroundAnimated();
@@ -259,12 +262,9 @@ export default class MainGame extends Phaser.Scene {
     private createPlayer(): void {
         const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Create player at fixed X position (width/8) and center-left area of screen for horizontal shooting
         this.player = new Player(this, width / 8, height * 0.5);
         
-        // Listen for player events
         this.events.on('player-shoot', (data: { x: number; y: number; direction: { x: number; y: number } }) => {
-            // Create a new bullet from the pool
             const bullet = this.playerBullets.get() as PlayerBullet;
             if (bullet) {
                 bullet.fire(data.x, data.y, data.direction);
@@ -276,47 +276,40 @@ export default class MainGame extends Phaser.Scene {
         
         this.events.on('player-destroyed', () => {
             console.log('Player destroyed - Game Over');
-            // Handle game over logic here
         });
         
         this.events.on('player-life-lost', (remainingLives: number) => {
             console.log('Player lost a life. Remaining lives:', remainingLives);
-            // Handle life lost logic here
         });
     }
     
     private createBulletGroups(): void {
-        // Create physics group for player bullets
         this.playerBullets = this.physics.add.group({
             classType: PlayerBullet,
-            maxSize: 20, // Maximum number of bullets on screen
-            runChildUpdate: true // Important: this ensures bullets update properly
+            maxSize: 20,
+            runChildUpdate: true
         });
         
-        // Create physics group for enemy bullets
         this.enemyBullets = this.physics.add.group({
             classType: EnemyBullet,
-            maxSize: 30, // Maximum number of enemy bullets on screen
-            runChildUpdate: true // Important: this ensures bullets update properly
+            maxSize: 30,
+            runChildUpdate: true
         });
     }
     
     private setupPhysicsWorldBounds(): void {
         const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this);
         
-        // Set physics world bounds to match screen size
         this.physics.world.setBounds(0, 0, width, height);
         console.log(`Physics world bounds set to: ${width}x${height}`);
     }
     
     private setupFullscreenDetection(): void {
-        // Check initial fullscreen state
         this.isCurrentlyFullscreen = !!(document.fullscreenElement || 
             (document as any).webkitFullscreenElement || 
             (document as any).mozFullScreenElement || 
             (document as any).msFullscreenElement);
         
-        // Listen for fullscreen changes
         const fullscreenEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
         
         fullscreenEvents.forEach(eventName => {
@@ -339,96 +332,49 @@ export default class MainGame extends Phaser.Scene {
     private handleFullscreenChange(isFullscreen: boolean): void {
         console.log(`Fullscreen state changed: ${isFullscreen}`);
         
-        // Update all active answers
         this.answers.forEach(answer => {
             if (answer && answer.active) {
                 answer.updateFullscreenScale(isFullscreen);
             }
         });
-        
-        // You can also scale other game elements here if needed
-        // For example, the player, bullets, UI elements, etc.
-    }
-    
-    private createAnswerSpawner(): void {
-        // Create timer to spawn answers every 3-5 seconds
-        this.answerSpawnTimer = this.time.addEvent({
-            delay: Phaser.Math.Between(3000, 5000), // Random delay between 3-5 seconds
-            callback: this.spawnAnswer,
-            callbackScope: this,
-            loop: true
-        });
-        
-        console.log('Answer spawner created');
-    }
-    
-    private spawnAnswer(): void {
-        // Sample answer data - replace with your actual question/answer logic
-        const sampleAnswers: AnswerData[] = [
-            { isUrl:true,content: "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh", isCorrect: true, isImage: true },
-            { isUrl:true,content: "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQK1dXQrVCbBvMdU4A83XdwM7Rtte8YFsWFI-y5JLABKyTRyUTBQko0SqyrqNJQf96aNdEqLNo5eZglqCIH2udWwuewokYR5-0QnjucNq4Y5Q", isCorrect: true, isImage: true },
-            { isUrl:true,content: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvJ5fvcF8CpcLH4z_oaCVANBnRweFNfP2wYw&s", isCorrect: true, isImage: true },
-            { isUrl:true,content: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUlYUm6-xKlW-L0jMgV4713KRacmJfEbIkyQ&s", isCorrect: true, isImage: true },
-            { content: "Car", isCorrect: false, isImage: false },
-        ];
-        
-        // Get random answer data
-        const randomAnswerData = sampleAnswers[Math.floor(Math.random() * sampleAnswers.length)];
-        
-        // Get random Y position
-        const yPosition = Answer.getRandomYPosition(this);
-        
-        // Create new answer
-        const answer = new Answer(this, randomAnswerData, yPosition);
-        this.answers.push(answer);
-        
-        // Apply current fullscreen state to new answer
-        if (this.isCurrentlyFullscreen) {
-            answer.updateFullscreenScale(true);
-        }
-        
-        console.log(`Answer spawned: "${randomAnswerData.content}" at Y: ${yPosition}`);
-        
-        // Set next spawn delay
-        if (this.answerSpawnTimer) {
-            this.answerSpawnTimer.reset({
-                delay: Phaser.Math.Between(3000, 5000),
-                callback: this.spawnAnswer,
-                callbackScope: this,
-                loop: false
-            });
-        }
     }
     
     private setupCollisionDetection(): void {
-        // Listen for answer collision events
         this.events.on('answer-collision', (data: { answer: Answer; isCorrect: boolean; content: string }) => {
             console.log(`Answer collision detected: "${data.content}", correct: ${data.isCorrect}`);
             
-            if (data.isCorrect) {
-                // Handle correct answer
-                this.handleCorrectAnswer(data.answer);
-            } else {
-                // Handle wrong answer
-                this.handleWrongAnswer(data.answer);
+            const answerIndex = this.answers.indexOf(data.answer);
+            if (answerIndex === -1) {
+                console.log('Answer already processed, ignoring duplicate collision event');
+                return;
             }
             
-            // Remove answer from tracking array
+            this.answers.splice(answerIndex, 1);
+            
+            if (data.isCorrect) {
+                this.handleCorrectAnswer(data.answer);
+            } else {
+                this.handleWrongAnswer(data.answer);
+            }
+        });
+
+        this.events.on('answer-off-screen', (data: { answer: Answer; content: string; isCorrect: boolean }) => {
+            console.log(`Answer went off-screen: "${data.content}", correct: ${data.isCorrect}`);
+            
             const index = this.answers.indexOf(data.answer);
             if (index > -1) {
                 this.answers.splice(index, 1);
             }
+            
+            this.checkAndRespawnAnswers();
         });
-
        
-        // Set up physics collisions between player and enemy bullets
         this.setupPlayerEnemyBulletCollisions();
     }
 
     
 
     private setupPlayerEnemyBulletCollisions(): void {
-        // Create collider between player and enemy bullets
         this.physics.add.overlap(
             this.player,
             this.enemyBullets,
@@ -446,24 +392,19 @@ export default class MainGame extends Phaser.Scene {
         
         console.log('Player bullet hit enemy spaceship!');
         
-        // Explode the bullet
         if (bullet.explode) {
             bullet.explode();
         }
         
-        // Destroy the spaceship
         spaceship.destroy();
         
-        // Remove spaceship from tracking array
         const index = this.enemySpaceships.indexOf(spaceship);
         if (index > -1) {
             this.enemySpaceships.splice(index, 1);
         }
         
-        // Add score for destroying enemy
         this.addScore(this.scoreEnemyKill);
         
-        // Play hit sound
         this.sound.play('hit_correct', { volume: 0.3 });
     }
 
@@ -471,78 +412,130 @@ export default class MainGame extends Phaser.Scene {
         const player = object1 as Player;
         const bullet = object2 as EnemyBullet;
         
-        // Check if bullet has already hit something or is exploding
         if (bullet.getHasHitTarget() || bullet.getIsExploding() || !bullet.active) {
             return;
         }
         
         console.log('Player hit by enemy bullet!');
         
-        // Explode the bullet (this will disable its physics body)
         if (bullet.explode) {
             bullet.explode();
         }
         
-        // Apply damage to player (this will trigger hit effect and invulnerability)
         const playerDied = player.takeDamage(20);
         
-        // Reduce energy when hit by enemy bullet
         this.removeEnergy(this.energyLossEnemyBullet);
         
-        // Check for game over
         if (this.currentEnergy <= 0) {
             this.triggerGameOver();
         }
-        
-        // Play damage sound (this is already called in player.takeDamage, but we can keep it for emphasis)
-        // this.sound.play('hit_wrong', { volume: 0.5 });
     }
     
     private handleCorrectAnswer(answer: Answer): void {
-        console.log('Correct answer selected!');
-        // Add score, play success sound, show effect, etc.
+        console.log('=== CORRECT ANSWER SELECTED ===');
+        console.log(`Answer: "${answer.getContent()}" | Score: +${this.scoreCorrectAnswer}`);
+        
         this.sound.play('hit_correct', { volume: 0.5 });
         
-        // Add points for correct answer
         this.addScore(this.scoreCorrectAnswer);
         
-        // Move to next question after a delay
-        const loadNextQuestionDelayMS = 200
+        this.correctAnswersCount++;
+        this.totalQuestionsAnswered++;
+        
+        console.log(`Progress: ${this.correctAnswersCount}/${this.totalQuestionsAnswered} correct answers`);
+        
+        this.checkLevelUnlockCondition();
+        
+        this.clearCurrentAnswers();
+        
+        const loadNextQuestionDelayMS = 500;
         this.time.delayedCall(loadNextQuestionDelayMS, () => {
             this.loadNextQuestion();
         });
     }
     
     private handleWrongAnswer(answer: Answer): void {
-        console.log('Wrong answer selected!');
-        // Reduce player health/lives, play error sound, show effect, etc.
-        this.sound.play('shoot_laser', { volume: 0.3 }); // Using available sound as placeholder
+        console.log('=== WRONG ANSWER SELECTED ===');
+        console.log(`Answer: "${answer.getContent()}" | Score: -1 | Energy: -${this.energyLossWrongAnswer}`);
         
-        // Reduce score by 1 for wrong answer
+        this.sound.play('shoot_laser', { volume: 0.3 });
+        
         this.addScore(-1);
-        console.log(`Score reduced by 1. Current score: ${this.currentScore}`);
+        
+        console.log(`Progress: ${this.correctAnswersCount}/${this.totalQuestionsAnswered} correct answers`);
         
         if (this.player) {
-            // Reduce player energy for wrong answer
             this.removeEnergy(this.energyLossWrongAnswer);
             console.log(`Player energy reduced to: ${this.currentEnergy}`);
             
-            // Check if player is out of energy
             if (this.currentEnergy <= 0) {
                 this.triggerGameOver();
                 return;
             }
         }
         
-        // Move to next question after a delay
-        this.time.delayedCall(1500, () => {
-            this.loadNextQuestion();
+        this.clearCurrentAnswers();
+        
+        const respawnAnswersDelayMS = 500;
+        this.time.delayedCall(respawnAnswersDelayMS, () => {
+            this.respawnCurrentQuestionAnswers();
         });
     }
 
     // Question system methods
-    private initializeQuestions(): void {
-        // Sample questions for testing , we will load form JSON file later
+    private async loadQuestionsFromJSON(): Promise<void> {
+        try {
+            console.log('=== LOADING QUESTIONS FROM JSON ===');
+            
+            // Load the questions.json file
+            const response = await fetch('assets/games/Eduspace/questions.json');
+            if (!response.ok) {
+                throw new Error(`Failed to load questions.json: ${response.status}`);
+            }
+            
+            this.questionsJsonData = await response.json() as QuestionsJsonData;
+            this.allLevels = this.questionsJsonData.levels;
+            
+            console.log(`Loaded ${this.allLevels.length} levels from JSON`);
+            this.allLevels.forEach(level => {
+                console.log(`Level ${level.levelId}: ${level.levelName} (Difficulty: ${level.difficulty}/5, ${level.questions.length} questions)`);
+            });
+            
+            // Set the current level based on selected level or default to first level
+            const levelId = this.selectedLevel || 1;
+            this.currentLevel = this.allLevels.find(level => level.levelId === levelId);
+            
+            if (!this.currentLevel) {
+                console.warn(`Level ${levelId} not found, using first available level`);
+                this.currentLevel = this.allLevels[0];
+            }
+            
+            if (this.currentLevel) {
+                this.questions = this.currentLevel.questions;
+                console.log(`Selected Level: ${this.currentLevel.levelName}`);
+                console.log(`Questions for this level: ${this.questions.length}`);
+                
+                // Debug: Log all questions in this level
+                console.log('=== ALL QUESTIONS IN THIS LEVEL ===');
+                this.questions.forEach((question, index) => {
+                    console.log(`Question ${index + 1}: ID=${question.id}, Text="${question.media.text}"`);
+                });
+                console.log('=== END QUESTION LIST ===');
+            } else {
+                throw new Error('No levels available in questions.json');
+            }
+            
+        } catch (error) {
+            console.error('Error loading questions from JSON:', error);
+            
+            // Fallback to hardcoded questions if JSON loading fails
+            console.log('Falling back to hardcoded questions...');
+            this.initializeFallbackQuestions();
+        }
+    }
+
+    private initializeFallbackQuestions(): void {
+        // Fallback questions in case JSON loading fails
         this.questions = [
             {
                 id: 1,
@@ -589,7 +582,7 @@ export default class MainGame extends Phaser.Scene {
                     { type: "image", value: "Car", correct: true, url: "https://hips.hearstapps.com/hmg-prod/images/2025-ford-mustang-60th-anniversary-exterior-66227932bb88e.jpg?crop=0.793xw:1.00xh;0.106xw,0&resize=2048:*" },
                     { type: "image", value: "Dog", correct: false, url: "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh" },
                     { type: "image", value: "Cat", correct: false, url: "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQK1dXQrVCbBvMdU4A83XdwM7Rtte8YFsWFI-y5JLABKyTRyUTBQko0SqyrqNJQf96aNdEqLNo5eZglqCIH2udWwuewokYR5-0QnjucNq4Y5Q" },
-                    { type: "image", value: "House", correct: false, url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUlYUm6-xKlW-L0jMgV4713KRacmJfEbIkyQ&s" }
+                    { type: "image", value: "Ant", correct: false, url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUlYUm6-xKlW-L0jMgV4713KRacmJfEbIkyQ&s" }
                 ],
                 points: 20,
                 langue: "en",
@@ -597,10 +590,14 @@ export default class MainGame extends Phaser.Scene {
             }
         ];
         
-        console.log(`Initialized ${this.questions.length} questions`);
+        console.log(`Initialized ${this.questions.length} fallback questions`);
     }
 
     private startQuestionSystem(): void {
+        console.log('=== STARTING QUESTION SYSTEM ===');
+        console.log(`Total questions available: ${this.questions.length}`);
+        console.log('Question system initialized with proper answer spawning');
+        
         // Mark game as started
         this.gameStarted = true;
         
@@ -686,6 +683,7 @@ export default class MainGame extends Phaser.Scene {
     private loadNextQuestion(): void {
         // Don't load next question if game is over
         if (this.gameState === 'gameOver') {
+            console.log('Game is over, not loading next question');
             return;
         }
         
@@ -694,36 +692,52 @@ export default class MainGame extends Phaser.Scene {
             return;
         }
 
-        // Clear existing answer spawner and answers
+        // Clear existing answers and timers FIRST
         this.clearCurrentAnswers();
 
         this.questionOrder++;
-        console.log("question order:", this.questionOrder);
-        console.log("questions.length:", this.questions.length);
+        console.log(`=== LOADING QUESTION ${this.questionOrder + 1}/${this.questions.length} ===`);
+        console.log(`Debug: questionOrder=${this.questionOrder}, questions.length=${this.questions.length}`);
         
         // Check if background should change
         this.checkForBackgroundChange();
         
         if (this.questionOrder >= this.questions.length) {
             console.log('All questions completed!');
+            console.log(`Debug: Triggering levelCompleted because questionOrder (${this.questionOrder}) >= questions.length (${this.questions.length})`);
             this.levelCompleted();
             return;
         }
 
         this.currentQuestion = this.questions[this.questionOrder];
-        console.log('Loading question:', this.currentQuestion);
+        console.log('Current question:', {
+            id: this.currentQuestion.id,
+            text: this.currentQuestion.media.text,
+            answerCount: this.currentQuestion.answers.length,
+            hasImage: !!this.currentQuestion.media.image
+        });
 
         // Create question UI
-        const questionText = this.currentQuestion.media.text ;
+        const questionText = this.currentQuestion.media.text;
         const questionImage = this.currentQuestion.media.image;
         
         this.createQuestionUI(questionText, questionImage || undefined);
         
-        // Convert AnswerOption[] to AnswerData[] for spawning
+        // Spawn answers for this specific question
         this.spawnAnswersFromQuestion(this.currentQuestion.answers);
     }
 
     private spawnAnswersFromQuestion(answerOptions: AnswerOption[]): void {
+        // Don't spawn if game is over
+        if (this.gameState === 'gameOver') {
+            return;
+        }
+        
+        console.log(`Spawning ${answerOptions.length} answers for current question`);
+        
+        // Clear any existing spawn timers first
+        this.clearAnswerSpawnTimers();
+        
         // Convert AnswerOptions to AnswerData format
         const answerDataArray: AnswerData[] = answerOptions.map(option => ({
             content: option.type === 'image' && option.url ? option.url : option.value,
@@ -732,10 +746,15 @@ export default class MainGame extends Phaser.Scene {
             isUrl: option.type === 'image' && !!option.url
         }));
 
-        // Spawn answers with staggered timing like in snowmen attack
-        const answerSpawnDelayMS = 2500
+        // Spawn answers with delay and store timer references
+        const answerSpawnDelayMS = 2500; 
         answerDataArray.forEach((answerData, index) => {
-            this.time.delayedCall(index * answerSpawnDelayMS, () => {
+            const timer = this.time.delayedCall(index * answerSpawnDelayMS, () => {
+                // Double-check game state before spawning each answer
+                if (this.gameState === 'gameOver') {
+                    return;
+                }
+                
                 const yPosition = Answer.getRandomYPosition(this);
                 const answer = new Answer(this, answerData, yPosition);
                 this.answers.push(answer);
@@ -745,31 +764,105 @@ export default class MainGame extends Phaser.Scene {
                     answer.updateFullscreenScale(true);
                 }
                 
-                console.log(`Answer spawned: "${answerData.content}" at Y: ${yPosition}`);
+                console.log(`Answer ${index + 1}/${answerOptions.length} spawned: "${answerData.content}" at Y: ${yPosition} (Correct: ${answerData.isCorrect})`);
+                
+                // Remove this timer from the active list
+                const timerIndex = this.answerSpawnTimers.indexOf(timer);
+                if (timerIndex > -1) {
+                    this.answerSpawnTimers.splice(timerIndex, 1);
+                }
             });
+            
+            // Store the timer reference
+            this.answerSpawnTimers.push(timer);
         });
+        
+        console.log(`All ${answerOptions.length} answers scheduled to spawn over ${(answerOptions.length - 1) * answerSpawnDelayMS}ms`);
+    }
+
+    /**
+     * Respawn the current question's answers without changing the question.
+     * This is used when wrong answers are selected or answers go off-screen.
+     */
+    private respawnCurrentQuestionAnswers(): void {
+        // Don't respawn if game is over or no current question
+        if (this.gameState === 'gameOver' || !this.currentQuestion) {
+            return;
+        }
+        
+        console.log('=== RESPAWNING CURRENT QUESTION ANSWERS ===');
+        console.log(`Respawning answers for question: "${this.currentQuestion.media.text}"`);
+        
+        // Spawn the same question's answers again
+        this.spawnAnswersFromQuestion(this.currentQuestion.answers);
+    }
+
+    /**
+     * Check if we need to respawn answers for the current question.
+     * This is called when answers go off-screen to ensure the question continues
+     * until the correct answer is selected.
+     */
+    private checkAndRespawnAnswers(): void {
+        // Don't respawn if game is over or no current question
+        if (this.gameState === 'gameOver' || !this.currentQuestion) {
+            return;
+        }
+        
+        // Check if there are any active answers remaining
+        const activeAnswers = this.answers.filter(answer => answer && answer.active);
+        
+        console.log(`Active answers remaining: ${activeAnswers.length}`);
+        
+        // If no answers are active and we're still on a question, respawn them
+        if (activeAnswers.length === 0) {
+            console.log('No active answers remaining, respawning current question answers...');
+            
+            // Add a small delay before respawning to avoid immediate overlap
+            const respawnDelayMS = 1000;
+            this.time.delayedCall(respawnDelayMS, () => {
+                this.respawnCurrentQuestionAnswers();
+            });
+        }
     }
 
     private clearCurrentAnswers(): void {
-        // Stop answer spawner
-        if (this.answerSpawnTimer) {
-            this.answerSpawnTimer.destroy();
-            this.answerSpawnTimer = undefined;
-        }
+        console.log(`Clearing ${this.answers.length} active answers`);
+
+        // Clear any pending answer spawn timers first
+        this.clearAnswerSpawnTimers();
         
         // Clear existing answers
+        let clearedCount = 0;
         this.answers.forEach(answer => {
             if (answer && answer.active) {
                 answer.destroy();
+                clearedCount++;
             }
         });
         this.answers = [];
+        
+        console.log(`Successfully cleared ${clearedCount} answers`);
+    }
+
+    private clearAnswerSpawnTimers(): void {
+        console.log(`Clearing ${this.answerSpawnTimers.length} pending answer spawn timers`);
+        
+        this.answerSpawnTimers.forEach(timer => {
+            if (timer && !timer.hasDispatched) {
+                timer.destroy();
+            }
+        });
+        this.answerSpawnTimers = [];
+        
+        console.log('All answer spawn timers cleared');
     }
 
     private levelCompleted(): void {
         console.log('=== LEVEL COMPLETED ===');
         console.log('All questions completed successfully!');
         console.log(`Final Score: ${this.currentScore}`);
+        console.log(`Questions Answered: ${this.totalQuestionsAnswered}/${this.questions.length}`);
+        console.log(`Correct Answers: ${this.correctAnswersCount}/${this.questions.length}`);
         
         // Stop all game elements
         this.clearCurrentAnswers();
@@ -779,12 +872,56 @@ export default class MainGame extends Phaser.Scene {
             this.questionContainer.destroy();
         }
         
-        // Show level completed screen or advance to next level
-        // For now, restart the questions (you can modify this to advance to next level)
-        this.questionOrder = -1; // Will be incremented to 0 in loadNextQuestion
-        this.time.delayedCall(2000, () => {
-            this.loadNextQuestion();
-        });
+        // Mark current level as completed and update high score
+        this.markCurrentLevelCompleted();
+        
+        // Check if player answered ALL questions correctly (100% completion)
+        const totalQuestions = this.questions.length;
+        const allQuestionsCorrect = this.correctAnswersCount === totalQuestions;
+        
+        console.log(`Level completion check: correctAnswersCount=${this.correctAnswersCount}, totalQuestions=${totalQuestions}, allQuestionsCorrect=${allQuestionsCorrect}`);
+        
+        // Check if there's a next level
+        const nextLevelId = (this.currentLevel?.levelId || 1) + 1;
+        const nextLevel = this.allLevels.find(level => level.levelId === nextLevelId);
+        
+        // Check if next level is unlocked - either from current session or from previous sessions
+        const levelProgress = this.registry.get('levelProgress') || {};
+        const isNextLevelAlreadyUnlocked = levelProgress[nextLevelId]?.unlocked || false;
+        const isNextLevelUnlocked = this.nextLevelUnlocked || isNextLevelAlreadyUnlocked;
+        
+        console.log(`Next level check: nextLevelId=${nextLevelId}, exists=${!!nextLevel}, sessionUnlocked=${this.nextLevelUnlocked}, persistentUnlocked=${isNextLevelAlreadyUnlocked}, finalUnlocked=${isNextLevelUnlocked}`);
+        
+        // Check if this is the last level completed with 100% accuracy
+        const isLastLevel = !nextLevel; // No next level means this is the last one
+        const isGameCompleted = isLastLevel && allQuestionsCorrect;
+        
+        if (isGameCompleted) {
+            // Show victory screen for completing all levels with 100% accuracy
+            console.log(`=== GAME COMPLETED! ALL LEVELS FINISHED WITH 100% ACCURACY ===`);
+            this.time.delayedCall(2000, () => {
+                this.showVictoryScreen();
+            });
+        } else if (nextLevel && isNextLevelUnlocked && allQuestionsCorrect) {
+            // Transition to next level only if ALL questions were answered correctly (100%)
+            console.log(`=== TRANSITIONING TO LEVEL ${nextLevelId} (ALL QUESTIONS CORRECT - 100% COMPLETION) ===`);
+            this.time.delayedCall(2000, () => {
+                this.scene.restart({ selectedLevel: nextLevelId });
+            });
+        } else {
+            // Level completed but not transitioning anywhere - just log the completion status
+            if (nextLevel && isNextLevelUnlocked && !allQuestionsCorrect) {
+                console.log(`=== LEVEL COMPLETED (${this.correctAnswersCount}/${totalQuestions} correct - need 100% for auto-progression) ===`);
+            } else if (nextLevel && !isNextLevelUnlocked) {
+                console.log(`=== LEVEL COMPLETED (Next level not unlocked - need 80% correct) ===`);
+            } else {
+                console.log('=== LEVEL COMPLETED (No next level available) ===');
+            }
+            
+            // Instead of transitioning to level select, just stay in the current scene
+            // The user can use the back button to return to the main menu if they want to
+            console.log('=== STAYING IN CURRENT SCENE - Use back button to return to main menu ===');
+        }
     }
 
     private triggerGameOver(): void {
@@ -935,6 +1072,173 @@ export default class MainGame extends Phaser.Scene {
             this.sound.play('shoot_laser', { volume: 0.5 });
             this.sound.stopAll();
             this.scene.start('MainMenu');
+        });
+    }
+
+    private showVictoryScreen(): void {
+        const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        // Create main container
+        const victoryContainer = this.add.container(centerX, centerY);
+        victoryContainer.setDepth(2000);
+        
+        // Create background using ui_element_small scaled up
+        const bgScale = Math.max(width / 400, height / 300) * 0.8; // Scale to fit screen with some padding
+        const backgroundPanel = this.add.image(0, 0, 'ui_element_small');
+        backgroundPanel.setScale(bgScale);
+        backgroundPanel.setAlpha(0.95); // Slightly transparent
+        backgroundPanel.setTint(0x44ff44); // Green for victory
+        victoryContainer.add(backgroundPanel);
+        
+        // Victory text
+        const victoryText = this.add.text(0, -140, languageManager.getText('victory_congratulations'), {
+            fontSize: '48px',
+            fontFamily: 'Arial',
+            color: '#44ff44',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        victoryText.setOrigin(0.5);
+        victoryText.setShadow(3, 3, '#000000', 6, true, false);
+        victoryContainer.add(victoryText);
+        
+        // Mission completed text
+        const missionText = this.add.text(0, -80, languageManager.getText('victory_all_levels_completed'), {
+            fontSize: '32px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        missionText.setOrigin(0.5);
+        missionText.setShadow(2, 2, '#000000', 4, true, false);
+        victoryContainer.add(missionText);
+        
+        // Final score text
+        const scoreText = this.add.text(0, -30, `${languageManager.getText('final_score')}: ${this.currentScore}`, {
+            fontSize: '28px',
+            fontFamily: 'Arial',
+            color: '#ffff44',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        scoreText.setOrigin(0.5);
+        scoreText.setShadow(2, 2, '#000000', 4, true, false);
+        victoryContainer.add(scoreText);
+        
+        // Level Select button using ui_element_large
+        const levelSelectButton = this.add.container(0, 90);
+        
+        const levelSelectBg = this.add.image(0, 0, 'ui_element_large');
+        levelSelectBg.setScale(0.8);
+        levelSelectBg.setInteractive();
+        levelSelectBg.setTint(0x4444ff); // Blue tint for level select
+        
+        const levelSelectText = this.add.text(0, 0, languageManager.getText('victory_level_select'), {
+            fontSize: '28px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        levelSelectText.setOrigin(0.5);
+        levelSelectText.setShadow(2, 2, '#000000', 4, true, false);
+        
+        levelSelectButton.add([levelSelectBg, levelSelectText]);
+        victoryContainer.add(levelSelectButton);
+        
+        // Level Select button hover effects
+        levelSelectBg.on('pointerover', () => {
+            levelSelectBg.setTint(0x6666ff);
+            levelSelectButton.setScale(1.05);
+        });
+        
+        levelSelectBg.on('pointerout', () => {
+            levelSelectBg.setTint(0x4444ff);
+            levelSelectButton.setScale(1.0);
+        });
+        
+        levelSelectBg.on('pointerdown', () => {
+            this.sound.play('shoot_laser', { volume: 0.5 });
+            this.sound.stopAll();
+            this.scene.start('LevelSelectScene');
+        });
+        
+        // Main menu button using ui_element_large
+        const menuButton = this.add.container(0, 180);
+        
+        const menuBg = this.add.image(0, 0, 'ui_element_large');
+        menuBg.setScale(0.8);
+        menuBg.setInteractive();
+        menuBg.setTint(0x888888); // Gray tint for menu button
+        
+        const menuText = this.add.text(0, 0, languageManager.getText('main_menu'), {
+            fontSize: '28px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        menuText.setOrigin(0.5);
+        menuText.setShadow(2, 2, '#000000', 4, true, false);
+        
+        menuButton.add([menuBg, menuText]);
+        victoryContainer.add(menuButton);
+        
+        // Menu button hover effects
+        menuBg.on('pointerover', () => {
+            menuBg.setTint(0xaaaaaa);
+            menuButton.setScale(1.05);
+        });
+        
+        menuBg.on('pointerout', () => {
+            menuBg.setTint(0x888888);
+            menuButton.setScale(1.0);
+        });
+        
+        menuBg.on('pointerdown', () => {
+            this.sound.play('shoot_laser', { volume: 0.5 });
+            this.sound.stopAll();
+            this.scene.start('MainMenu');
+        });
+        
+        // Store text references for language change updates
+        this.victoryScreenTexts = {
+            victoryText,
+            missionText,
+            scoreText,
+            levelSelectText,
+            menuText
+        };
+        
+        // Add celebration animation
+        this.createCelebrationAnimation(victoryContainer);
+    }
+
+    private createCelebrationAnimation(container: Phaser.GameObjects.Container): void {
+        // Create flashing effect for the victory text
+        const victoryText = container.list[1] as Phaser.GameObjects.Text; // The "CONGRATULATIONS!" text
+        
+        this.tweens.add({
+            targets: victoryText,
+            alpha: { from: 1, to: 0.6 },
+            duration: 400,
+            yoyo: true,
+            repeat: -1, // Infinite repeat
+            ease: 'Power2.easeInOut'
+        });
+        
+        // Create pulsing effect for the background
+        const background = container.list[0] as Phaser.GameObjects.Image;
+        
+        this.tweens.add({
+            targets: background,
+            scaleX: { from: background.scaleX, to: background.scaleX * 1.02 },
+            scaleY: { from: background.scaleY, to: background.scaleY * 1.02 },
+            duration: 800,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
         });
     }
 
@@ -1335,22 +1639,20 @@ export default class MainGame extends Phaser.Scene {
             this.languageChangeUnsubscribe = undefined;
         }
         
+        // Clear victory screen text references
+        this.victoryScreenTexts = undefined;
+        
         // Clean up bullets
         this.cleanupBullets();
         
-        // Clean up answers
+        // Clean up answers and timers
         this.cleanupAnswers();
+        this.clearAnswerSpawnTimers();
         
         // Clean up question system
         this.clearCurrentAnswers();
         if (this.questionContainer) {
             this.questionContainer.destroy();
-        }
-        
-        // Clean up answer spawner
-        if (this.answerSpawnTimer) {
-            this.answerSpawnTimer.destroy();
-            this.answerSpawnTimer = undefined;
         }
         
         // Stop all audio when cleaning up the scene
@@ -1481,6 +1783,147 @@ export default class MainGame extends Phaser.Scene {
             }
         });
         this.answers = [];
+    }
+    
+    private checkLevelUnlockCondition(): void {
+        if (!this.currentLevel || this.nextLevelUnlocked) {
+            return; // No current level or already unlocked
+        }
+        
+        const totalQuestions = this.currentLevel.questions.length;
+        const questionsNeededFor80Percent = Math.ceil(totalQuestions * 0.8);
+        
+        console.log(`Level unlock check: ${this.correctAnswersCount}/${totalQuestions} correct answers`);
+        console.log(`Need ${questionsNeededFor80Percent} correct answers to unlock next level (80% of ${totalQuestions})`);
+        
+        // Check if we have enough CORRECT answers to reach 80% threshold
+        // This unlocks the next level in localStorage/registry but doesn't transition to it
+        if (this.correctAnswersCount >= questionsNeededFor80Percent && !this.nextLevelUnlocked) {
+            console.log(`=== 80% THRESHOLD REACHED! Unlocking next level... ===`);
+            console.log(`Correct answers: ${this.correctAnswersCount}/${totalQuestions} (${Math.round((this.correctAnswersCount / totalQuestions) * 100)}%)`);
+            this.unlockNextLevel();
+        }
+    }
+    
+    private unlockNextLevel(): void {
+        const nextLevelId = this.currentLevel!.levelId + 1;
+        const nextLevel = this.allLevels.find(level => level.levelId === nextLevelId);
+        
+        if (!nextLevel) {
+            console.log('No next level to unlock - this is the last level');
+            return;
+        }
+        
+        this.nextLevelUnlocked = true;
+        console.log(`=== NEXT LEVEL UNLOCKED: Level ${nextLevelId} ===`);
+        console.log(`This level was unlocked due to reaching 80% correct answers (${this.correctAnswersCount} correct out of ${this.currentLevel!.questions.length} total)`);
+        
+        // Update level progress in registry and localStorage
+        this.updateLevelProgress(nextLevelId);
+        
+        // Show unlock message to the player
+        this.showNextLevelUnlockedMessage();
+    }
+    
+    private updateLevelProgress(levelIdToUnlock: number): void {
+        let levelProgress = this.registry.get('levelProgress') || {};
+        
+        // Initialize if doesn't exist
+        if (!levelProgress[levelIdToUnlock]) {
+            levelProgress[levelIdToUnlock] = {
+                unlocked: false,
+                completed: false,
+                highScore: 0
+            };
+        }
+        
+        // Unlock the specified level (but do NOT mark it as completed)
+        levelProgress[levelIdToUnlock].unlocked = true;
+        
+        console.log(`=== UNLOCKING LEVEL ${levelIdToUnlock} (NOT COMPLETING IT) ===`);
+        console.log(`Level ${levelIdToUnlock} before unlock:`, levelProgress[levelIdToUnlock]);
+        
+        // Save to registry and localStorage
+        this.registry.set('levelProgress', levelProgress);
+        localStorage.setItem('levelProgress', JSON.stringify(levelProgress));
+        
+        console.log(`Level ${levelIdToUnlock} unlocked in progress:`, levelProgress);
+    }
+    
+    private markCurrentLevelCompleted(): void {
+        if (!this.currentLevel) return;
+        
+        let levelProgress = this.registry.get('levelProgress') || {};
+        
+        console.log(`=== MARKING LEVEL ${this.currentLevel.levelId} AS COMPLETED ===`);
+        
+        // Initialize current level if doesn't exist
+        if (!levelProgress[this.currentLevel.levelId]) {
+            levelProgress[this.currentLevel.levelId] = {
+                unlocked: true, // Current level must be unlocked if we can play it
+                completed: false,
+                highScore: 0
+            };
+        }
+        
+        console.log(`Level ${this.currentLevel.levelId} before completion:`, levelProgress[this.currentLevel.levelId]);
+        
+        // Mark current level as completed and update high score
+        levelProgress[this.currentLevel.levelId].completed = true;
+        const currentHighScore = levelProgress[this.currentLevel.levelId].highScore || 0;
+        if (this.currentScore > currentHighScore) {
+            levelProgress[this.currentLevel.levelId].highScore = this.currentScore;
+        }
+        
+        console.log(`Level ${this.currentLevel.levelId} after completion:`, levelProgress[this.currentLevel.levelId]);
+        
+        // Save to registry and localStorage
+        this.registry.set('levelProgress', levelProgress);
+        localStorage.setItem('levelProgress', JSON.stringify(levelProgress));
+        
+        console.log(`Level ${this.currentLevel.levelId} marked as completed with score ${this.currentScore}:`, levelProgress);
+    }
+    
+    private showNextLevelUnlockedMessage(): void {
+        const { centerX, height } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        // Create a more descriptive unlock message
+        const unlockMessage = `Next Level Unlocked! (80% achieved)\nAnswer all questions correctly to auto-advance`;
+        
+        // Create the unlock message text
+        this.nextLevelUnlockedText = this.add.text(
+            centerX, 
+            height - 120, 
+            unlockMessage, 
+            {
+                fontSize: '28px',
+                fontFamily: 'Arial',
+                color: '#00ff00', // Green color
+                stroke: '#004400',
+                strokeThickness: 3,
+                align: 'center'
+            }
+        );
+        this.nextLevelUnlockedText.setOrigin(0.5);
+        this.nextLevelUnlockedText.setDepth(1000); // High depth to appear above everything
+        
+        // Create flashing animation
+        this.tweens.add({
+            targets: this.nextLevelUnlockedText,
+            alpha: { from: 1, to: 0.3 },
+            duration: 300,
+            yoyo: true,
+            repeat: 5, // Flash 6 times total
+            onComplete: () => {
+                // Remove the text after 3 seconds
+                this.time.delayedCall(1000, () => {
+                    if (this.nextLevelUnlockedText) {
+                        this.nextLevelUnlockedText.destroy();
+                        this.nextLevelUnlockedText = undefined;
+                    }
+                });
+            }
+        });
     }
     
 }

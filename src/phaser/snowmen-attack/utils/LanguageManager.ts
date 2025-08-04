@@ -8,7 +8,6 @@ export class LanguageManager {
     private onLanguageChangeCallbacks: ((language: SupportedLanguage) => void)[] = [];
 
     private constructor() {
-        // Load saved language from localStorage
         const savedLanguage = localStorage.getItem('gameLanguage') as SupportedLanguage;
         if (savedLanguage && this.isValidLanguage(savedLanguage)) {
             this.currentLanguage = savedLanguage;
@@ -35,19 +34,16 @@ export class LanguageManager {
         const previousLanguage = this.currentLanguage;
         this.currentLanguage = language;
         
-        // Save to localStorage
         localStorage.setItem('gameLanguage', language);
 
-        // Notify all subscribers if language actually changed
         if (previousLanguage !== language) {
-            // Filter out callbacks that might reference destroyed scenes
             this.onLanguageChangeCallbacks = this.onLanguageChangeCallbacks.filter(callback => {
                 try {
                     callback(language);
-                    return true; // Keep callback if it executed successfully
+                    return true;
                 } catch (error) {
                     console.warn('Removing invalid language change callback:', error);
-                    return false; // Remove callback if it failed
+                    return false;
                 }
             });
         }

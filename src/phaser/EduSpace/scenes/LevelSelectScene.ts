@@ -3,6 +3,7 @@ import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { ParallaxManager } from '../utils/ParallaxManager';
 import { LevelProgress } from './Boot';
+import { QuestionsJsonData, LevelData } from '../models/Types';
 
 export default class LevelSelectScene extends Phaser.Scene {
     private titleText!: Phaser.GameObjects.Text;
@@ -12,6 +13,10 @@ export default class LevelSelectScene extends Phaser.Scene {
     private parallaxManager!: ParallaxManager;
     private languageChangeUnsubscribe?: () => void;
     private levelProgress!: LevelProgress;
+    
+    // Level data from JSON
+    private questionsJsonData?: QuestionsJsonData;
+    private availableLevels: LevelData[] = [];
 
     constructor() {
         super('LevelSelectScene');
@@ -47,8 +52,8 @@ export default class LevelSelectScene extends Phaser.Scene {
         // Create title
         this.createTitle();
 
-        // Create level buttons
-        this.createLevelButtons();
+        // Load questions and create level buttons dynamically
+        this.loadQuestionsAndCreateButtons();
 
         // Create back button
         this.createBackButton();
@@ -147,6 +152,83 @@ export default class LevelSelectScene extends Phaser.Scene {
             
             this.levelButtons.push(levelButton);
         }
+    }
+
+    private async loadQuestionsAndCreateButtons(): Promise<void> {
+        try {
+            console.log('=== LOADING QUESTIONS FOR LEVEL SELECT ===');
+            
+            // Load the questions.json file
+            const response = await fetch('assets/games/Eduspace/questions.json');
+            if (!response.ok) {
+                throw new Error(`Failed to load questions.json: ${response.status}`);
+            }
+            
+            this.questionsJsonData = await response.json() as QuestionsJsonData;
+            this.availableLevels = this.questionsJsonData.levels;
+            
+            console.log(`Loaded ${this.availableLevels.length} levels for level select`);
+            this.availableLevels.forEach(level => {
+                console.log(`Level ${level.levelId}: ${level.levelName} (Difficulty: ${level.difficulty}/5, ${level.questions.length} questions)`);
+            });
+            
+            // Create level buttons based on available levels
+            this.createDynamicLevelButtons();
+            
+        } catch (error) {
+            console.error('Error loading questions for level select:', error);
+            
+            // Fallback to static 6 levels if JSON loading fails
+            console.log('Falling back to static level buttons...');
+            this.createLevelButtons();
+        }
+    }
+
+    private createDynamicLevelButtons(): void {
+        const { width, height, centerX, centerY, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
+        
+        // Check if it's mobile for smaller buttons
+        const isMobile = ResponsiveGameUtils.isMobile(this);
+        const mobileScale = isMobile ? 0.7 : 1.0; // 70% size for mobile
+        
+        const buttonWidth = Math.max(180, 250 * minScale * mobileScale);
+        const buttonHeight = Math.max(60, 80 * minScale * mobileScale);
+        const fontSize = Math.max(20, 32 * minScale * mobileScale);
+        
+        // Calculate grid layout based on number of levels
+        const numLevels = this.availableLevels.length;
+        const columns = Math.min(3, Math.ceil(Math.sqrt(numLevels))); // Max 3 columns
+        const rows = Math.ceil(numLevels / columns);
+        
+        const horizontalSpacing = Math.max(40, 60 * minScale * mobileScale);
+        const verticalSpacing = Math.max(30, 50 * minScale * mobileScale);
+        
+        // Calculate grid dimensions
+        const totalGridWidth = columns * buttonWidth + (columns - 1) * horizontalSpacing;
+        const totalGridHeight = rows * buttonHeight + (rows - 1) * verticalSpacing;
+        
+        // Center the grid
+        const gridStartX = centerX - totalGridWidth / 2 + buttonWidth / 2;
+        const gridStartY = centerY - totalGridHeight / 2;
+        
+        // Create buttons for each level from JSON
+        this.availableLevels.forEach((levelData, index) => {
+            const col = index % columns;
+            const row = Math.floor(index / columns);
+            
+            const x = gridStartX + col * (buttonWidth + horizontalSpacing);
+            const y = gridStartY + row * (buttonHeight + verticalSpacing);
+            
+            const levelButton = this.createLevelButton(
+                x, y, 
+                buttonWidth, buttonHeight, 
+                `${languageManager.getText('level')} ${levelData.levelId}`, // Use levelId instead of levelName
+                fontSize, 
+                levelData.levelId
+            );
+            
+            this.levelButtons.push(levelButton);
+        });
     }
 
     private createLevelButton(x: number, y: number, width: number, height: number, text: string, fontSize: number, level: number): Phaser.GameObjects.Container {

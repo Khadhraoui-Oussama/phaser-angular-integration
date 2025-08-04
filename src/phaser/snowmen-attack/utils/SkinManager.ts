@@ -1,14 +1,14 @@
 export interface SkinConfig {
     id: string;
     name: string;
-    type: 'atlas' | 'individual'; // atlas for classic, individual for wizard
+    type: 'atlas' | 'individual';
     assets: {
         background: string;
         overlay: string;
-        sprites?: string; // for atlas-based skins
-        spritesJson?: string; // for atlas-based skins
-        playerFrames?: string[]; // for individual frame skins
-        enemyFrames?: string[]; // for individual frame skins
+        sprites?: string;
+        spritesJson?: string;
+        playerFrames?: string[];
+        enemyFrames?: string[];
         playerSnowball?: string;
         enemySnowball?: string;
     };
@@ -34,32 +34,31 @@ export class SkinManager {
     private static gameRegistry: Phaser.Data.DataManager | null = null;
 
     static initialize(gameRegistry?: Phaser.Data.DataManager) {
-        // Store reference to game registry for dynamic skin access
         if (gameRegistry) {
             this.gameRegistry = gameRegistry;
         }
-        // Register classic skin (atlas-based) - swapped sprites: player=snowman, enemies=penguin
+        
         this.registerSkin({
             id: 'classic',
             name: 'Classic Winter',
             type: 'atlas',
             assets: {
-                background: 'background.png',  // Use current assets directly
-                overlay: 'overlay.png',        // Use current assets directly  
-                sprites: 'sprites.png',        // Use current assets directly
-                spritesJson: 'sprites.json',   // Use current assets directly
-                playerSnowball: 'sprites', // uses atlas
-                enemySnowball: 'sprites'  // uses atlas
+                background: 'background.png',
+                overlay: 'overlay.png',
+                sprites: 'sprites.png',
+                spritesJson: 'sprites.json',
+                playerSnowball: 'sprites',
+                enemySnowball: 'sprites'
             },
             animations: {
                 player: {
-                    idle: 'idle',                  // Player uses penguin animations
+                    idle: 'idle',
                     throwStart: 'throwStart',
                     throwEnd: 'throwEnd'
                 },
                 enemy: {
-                    idle: 'snowmanIdleSmall',      // Enemies use snowman animations  
-                    walk: 'snowmanWalkSmall',      // Snowmen have walk animation
+                    idle: 'snowmanIdleSmall',
+                    walk: 'snowmanWalkSmall',
                     throwStart: 'snowmanThrowStartSmall',
                     throwEnd: 'snowmanThrowEndSmall',
                     die: 'snowmanDieSmall'
@@ -67,7 +66,6 @@ export class SkinManager {
             }
         });
 
-        // Register wizard skin (individual frames)
         this.registerSkin({
             id: 'wizard',
             name: 'Wizard Battle',

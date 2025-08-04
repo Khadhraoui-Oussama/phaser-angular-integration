@@ -1,14 +1,10 @@
 export class ResponsiveGameUtils {
     
-    /**
-     * Get responsive dimensions and config from scene registry
-     */
     static getResponsiveConfig(scene: Phaser.Scene) {
         const responsiveConfig = scene.game.registry.get('responsiveConfig');
         const width = scene.scale.width;
         const height = scene.scale.height;
         
-        // Calculate minScale for backward compatibility
         const baseWidth = 1024;
         const baseHeight = 768;
         const scaleX = width / baseWidth;
@@ -29,18 +25,12 @@ export class ResponsiveGameUtils {
         };
     }
 
-    /**
-     * Get responsive font size based on UI scale from config
-     */
     static getResponsiveFontSize(baseSize: number, scene: Phaser.Scene): string {
         const { config } = this.getResponsiveConfig(scene);
         const responsiveSize = Math.max(12, baseSize * config.uiScale);
         return `${Math.round(responsiveSize)}px`;
     }
 
-    /**
-     * Get responsive padding based on UI scale from config
-     */
     static getResponsivePadding(basePadding: number, scene: Phaser.Scene): number {
         const { config } = this.getResponsiveConfig(scene);
         return Math.max(5, basePadding * config.uiScale);

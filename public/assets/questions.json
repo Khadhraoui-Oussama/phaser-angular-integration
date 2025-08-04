@@ -1,0 +1,294 @@
+{
+  "levels": [
+    {
+      "levelId": 1,
+      "levelName": "Basic Math",
+      "difficulty": "easy",
+      "questions": [
+        {
+          "id": 1,
+          "media": {
+            "text": "What is 2 + 2?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "3", "correct": false, "url": null },
+            { "type": "text", "value": "4", "correct": true, "url": null },
+            { "type": "text", "value": "5", "correct": false, "url": null },
+            { "type": "text", "value": "6", "correct": false, "url": null }
+          ],
+          "points": 10,
+          "langue": "en",
+          "difficultyLevel": 1
+        },
+        {
+          "id": 2,
+          "media": {
+            "text": "What is 5 - 3?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "1", "correct": false, "url": null },
+            { "type": "text", "value": "2", "correct": true, "url": null },
+            { "type": "text", "value": "3", "correct": false, "url": null },
+            { "type": "text", "value": "8", "correct": false, "url": null }
+          ],
+          "points": 10,
+          "langue": "en",
+          "difficultyLevel": 1
+        },
+        {
+          "id": 3,
+          "media": {
+            "text": "What is 3 × 2?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "5", "correct": false, "url": null },
+            { "type": "text", "value": "6", "correct": true, "url": null },
+            { "type": "text", "value": "7", "correct": false, "url": null },
+            { "type": "text", "value": "8", "correct": false, "url": null }
+          ],
+          "points": 15,
+          "langue": "en",
+          "difficultyLevel": 1
+        }
+      ]
+    },
+    {
+      "levelId": 2,
+      "levelName": "Animal Recognition",
+      "difficulty": "medium",
+      "questions": [
+        {
+          "id": 4,
+          "media": {
+            "text": "Which animal is shown in the image?",
+            "audio": null,
+            "image": "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh"
+          },
+          "answers": [
+            { "type": "text", "value": "Cat", "correct": false, "url": null },
+            { "type": "text", "value": "Dog", "correct": true, "url": null },
+            { "type": "text", "value": "Bird", "correct": false, "url": null },
+            { "type": "text", "value": "Fish", "correct": false, "url": null }
+          ],
+          "points": 15,
+          "langue": "en",
+          "difficultyLevel": 2
+        },
+        {
+          "id": 5,
+          "media": {
+            "text": "What sound does a cow make?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "Woof", "correct": false, "url": null },
+            { "type": "text", "value": "Meow", "correct": false, "url": null },
+            { "type": "text", "value": "Moo", "correct": true, "url": null },
+            { "type": "text", "value": "Chirp", "correct": false, "url": null }
+          ],
+          "points": 10,
+          "langue": "en",
+          "difficultyLevel": 2
+        },
+        {
+          "id": 6,
+          "media": {
+            "text": "How many legs does a spider have?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "6", "correct": false, "url": null },
+            { "type": "text", "value": "8", "correct": true, "url": null },
+            { "type": "text", "value": "10", "correct": false, "url": null },
+            { "type": "text", "value": "12", "correct": false, "url": null }
+          ],
+          "points": 15,
+          "langue": "en",
+          "difficultyLevel": 2
+        }
+      ]
+    },
+    {
+      "levelId": 3,
+      "levelName": "Visual Recognition",
+      "difficulty": "hard",
+      "questions": [
+        {
+          "id": 7,
+          "media": {
+            "text": "Which one is a car?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "image", "value": "Car", "correct": true, "url": "https://hips.hearstapps.com/hmg-prod/images/2025-ford-mustang-60th-anniversary-exterior-66227932bb88e.jpg?crop=0.793xw:1.00xh;0.106xw,0&resize=2048:*" },
+            { "type": "image", "value": "Dog", "correct": false, "url": "https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg?crop=1xw:0.74975xh;0,0.190xh" },
+            { "type": "image", "value": "Cat", "correct": false, "url": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQK1dXQrVCbBvMdU4A83XdwM7Rtte8YFsWFI-y5JLABKyTRyUTBQko0SqyrqNJQf96aNdEqLNo5eZglqCIH2udWwuewokYR5-0QnjucNq4Y5Q" },
+            { "type": "image", "value": "House", "correct": false, "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUlYUm6-xKlW-L0jMgV4713KRacmJfEbIkyQ&s" }
+          ],
+          "points": 20,
+          "langue": "en",
+          "difficultyLevel": 3
+        },
+        {
+          "id": 8,
+          "media": {
+            "text": "Which one is a house?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "image", "value": "Car", "correct": false, "url": "https://hips.hearstapps.com/hmg-prod/images/2025-ford-mustang-60th-anniversary-exterior-66227932bb88e.jpg?crop=0.793xw:1.00xh;0.106xw,0&resize=2048:*" },
+            { "type": "image", "value": "Tree", "correct": false, "url": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1000" },
+            { "type": "image", "value": "House", "correct": true, "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUlYUm6-xKlW-L0jMgV4713KRacmJfEbIkyQ&s" },
+            { "type": "image", "value": "Cat", "correct": false, "url": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQK1dXQrVCbBvMdU4A83XdwM7Rtte8YFsWFI-y5JLABKyTRyUTBQko0SqyrqNJQf96aNdEqLNo5eZglqCIH2udWwuewokYR5-0QnjucNq4Y5Q" }
+          ],
+          "points": 20,
+          "langue": "en",
+          "difficultyLevel": 3
+        },
+        {
+          "id": 9,
+          "media": {
+            "text": "Which object is red?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "image", "value": "Blue Car", "correct": false, "url": "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=1000" },
+            { "type": "image", "value": "Red Apple", "correct": true, "url": "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?q=80&w=1000" },
+            { "type": "image", "value": "Green Tree", "correct": false, "url": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1000" },
+            { "type": "image", "value": "Yellow Sun", "correct": false, "url": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1000" }
+          ],
+          "points": 25,
+          "langue": "en",
+          "difficultyLevel": 3
+        }
+      ]
+    },
+    {
+      "levelId": 4,
+      "levelName": "Advanced Math",
+      "difficulty": "expert",
+      "questions": [
+        {
+          "id": 10,
+          "media": {
+            "text": "What is 12 + 8?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "18", "correct": false, "url": null },
+            { "type": "text", "value": "19", "correct": false, "url": null },
+            { "type": "text", "value": "20", "correct": true, "url": null },
+            { "type": "text", "value": "21", "correct": false, "url": null }
+          ],
+          "points": 25,
+          "langue": "en",
+          "difficultyLevel": 4
+        },
+        {
+          "id": 11,
+          "media": {
+            "text": "What is 15 ÷ 3?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "4", "correct": false, "url": null },
+            { "type": "text", "value": "5", "correct": true, "url": null },
+            { "type": "text", "value": "6", "correct": false, "url": null },
+            { "type": "text", "value": "7", "correct": false, "url": null }
+          ],
+          "points": 30,
+          "langue": "en",
+          "difficultyLevel": 4
+        },
+        {
+          "id": 12,
+          "media": {
+            "text": "What is 7 × 8?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "54", "correct": false, "url": null },
+            { "type": "text", "value": "55", "correct": false, "url": null },
+            { "type": "text", "value": "56", "correct": true, "url": null },
+            { "type": "text", "value": "57", "correct": false, "url": null }
+          ],
+          "points": 35,
+          "langue": "en",
+          "difficultyLevel": 4
+        }
+      ]
+    },
+    {
+      "levelId": 5,
+      "levelName": "Mixed Challenge",
+      "difficulty": "expert",
+      "questions": [
+        {
+          "id": 13,
+          "media": {
+            "text": "Which planet is closest to the Sun?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "Venus", "correct": false, "url": null },
+            { "type": "text", "value": "Mercury", "correct": true, "url": null },
+            { "type": "text", "value": "Earth", "correct": false, "url": null },
+            { "type": "text", "value": "Mars", "correct": false, "url": null }
+          ],
+          "points": 30,
+          "langue": "en",
+          "difficultyLevel": 5
+        },
+        {
+          "id": 14,
+          "media": {
+            "text": "What is the capital of France?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "London", "correct": false, "url": null },
+            { "type": "text", "value": "Berlin", "correct": false, "url": null },
+            { "type": "text", "value": "Paris", "correct": true, "url": null },
+            { "type": "text", "value": "Madrid", "correct": false, "url": null }
+          ],
+          "points": 25,
+          "langue": "en",
+          "difficultyLevel": 5
+        },
+        {
+          "id": 15,
+          "media": {
+            "text": "How many continents are there?",
+            "audio": null,
+            "image": null
+          },
+          "answers": [
+            { "type": "text", "value": "5", "correct": false, "url": null },
+            { "type": "text", "value": "6", "correct": false, "url": null },
+            { "type": "text", "value": "7", "correct": true, "url": null },
+            { "type": "text", "value": "8", "correct": false, "url": null }
+          ],
+          "points": 30,
+          "langue": "en",
+          "difficultyLevel": 5
+        }
+      ]
+    }
+  ]
+}

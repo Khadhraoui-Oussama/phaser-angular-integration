@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-// import { SkinManager } from '../utils/SkinManager';
+import { SkinManager } from '../utils/SkinManager';
 
 export default class Preloader extends Phaser.Scene {
     private loadText!: Phaser.GameObjects.Text;

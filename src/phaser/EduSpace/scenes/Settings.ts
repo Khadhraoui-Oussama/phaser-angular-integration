@@ -13,6 +13,7 @@ export default class Settings extends Phaser.Scene {
     private volumeText!: Phaser.GameObjects.Text;
     private volumeValueText!: Phaser.GameObjects.Text;
     private skinSelectionButton!: Phaser.GameObjects.Container;
+    private resetProgressButton!: Phaser.GameObjects.Container;
     private quitLevelButton!: Phaser.GameObjects.Container;
     private closeButton!: Phaser.GameObjects.Container;
     
@@ -55,6 +56,7 @@ export default class Settings extends Phaser.Scene {
         this.createTitle();
         this.createVolumeSlider();
         this.createSkinSelectionButton();
+        this.createResetProgressButton();
         
         if (this.showQuitLevel) {
             this.createQuitLevelButton();
@@ -89,11 +91,11 @@ export default class Settings extends Phaser.Scene {
         this.settingsContainer = this.add.container(centerX, centerY);
         this.settingsContainer.setDepth(1001);
         
-        // Use dynamic scaling with maximum limit to prevent oversized modals in fullscreen
-        const baseScale = Math.max(width / 400, height / 300) * 0.7;
-        const bgScale = Math.min(baseScale, 2.0); // Cap at 2x scale to prevent oversizing
-        const panelBackground = this.add.image(0, 0, 'ui_element_small');
-        panelBackground.setScale(bgScale);
+       
+        const baseScale = Math.max(width / 400, height / 100) * 0.7; // Ultra aggressive height scaling
+        const bgScale = Math.min(baseScale, 2.5); // Increased max scale for ultra tall modal
+        const panelBackground = this.add.image(0, 0, 'ui_element_large');
+        panelBackground.setScale(bgScale, bgScale * 3.0); // Keep width normal, make height triple (200% taller)
         panelBackground.setTint(0x2a2a2a); // Dark theme
         panelBackground.setAlpha(0.95); // Slightly transparent like game over modal
         
@@ -242,7 +244,7 @@ export default class Settings extends Phaser.Scene {
     }
     
     private createSkinSelectionButton(): void {
-        const yPos = this.showQuitLevel ? 20 : 40;
+        const yPos = this.showQuitLevel ? 0 : 20;
         
         this.skinSelectionButton = this.createButton(
             0,
@@ -256,6 +258,23 @@ export default class Settings extends Phaser.Scene {
         );
         
         this.settingsContainer.add(this.skinSelectionButton);
+    }
+    
+    private createResetProgressButton(): void {
+        const yPos = this.showQuitLevel ? 60 : 80;
+        
+        this.resetProgressButton = this.createButton(
+            0,
+            yPos,
+            languageManager.getText('settings_reset_progress'),
+            () => {
+                this.sound.play('shoot_laser', { volume: 0.5 });
+                this.resetAllProgress();
+            },
+            0xff8800 // Orange tint
+        );
+        
+        this.settingsContainer.add(this.resetProgressButton);
     }
     
     private createQuitLevelButton(): void {
@@ -274,7 +293,7 @@ export default class Settings extends Phaser.Scene {
     }
     
     private createCloseButton(): void {
-        const yPos = this.showQuitLevel ? 200 : 140;
+        const yPos = this.showQuitLevel ? 180 : 140;
         
         this.closeButton = this.createButton(
             0,
@@ -372,6 +391,34 @@ export default class Settings extends Phaser.Scene {
         this.scene.start('MainMenu');
     }
     
+    private resetAllProgress(): void {
+        // Simple confirmation - could be enhanced with a modal later
+        const confirmed = confirm('Are you sure you want to reset all progress? This will delete all level progress, high scores, and unlocked levels.');
+        
+        if (confirmed) {
+            // Clear all progress from localStorage
+            const keysToRemove = [
+                'levelProgress',
+                'highScores', 
+                'unlockedLevels',
+                'attemptHistory'
+            ];
+            
+            keysToRemove.forEach(key => {
+                try {
+                    localStorage.removeItem(key);
+                } catch (error) {
+                    console.error(`Failed to remove ${key}:`, error);
+                }
+            });
+            
+            console.log('All progress has been reset - reloading game...');
+            
+            // Simply reload the page to restart the entire game
+            window.location.reload();
+        }
+    }
+    
     private closeSettings(): void {
         this.animateExit(() => {
             // Resume the calling scene if it was paused
@@ -456,6 +503,11 @@ export default class Settings extends Phaser.Scene {
         if (this.skinSelectionButton) {
             const buttonText = this.skinSelectionButton.list[1] as Phaser.GameObjects.Text;
             buttonText.setText(languageManager.getText('settings_skin_selection'));
+        }
+        
+        if (this.resetProgressButton) {
+            const buttonText = this.resetProgressButton.list[1] as Phaser.GameObjects.Text;
+            buttonText.setText(languageManager.getText('settings_reset_progress'));
         }
         
         if (this.quitLevelButton) {

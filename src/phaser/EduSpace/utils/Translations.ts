@@ -29,6 +29,7 @@ export interface TranslationKeys {
   settings_title: string;
   settings_volume: string;
   settings_skin_selection: string;
+  settings_reset_progress: string;
   settings_quit_level: string;
   settings_close: string;
   
@@ -64,6 +65,7 @@ export const translations: Record<string, TranslationKeys> = {
     settings_title: 'Settings',
     settings_volume: 'Volume',
     settings_skin_selection: 'Skin Selection',
+    settings_reset_progress: 'Reset Progress',
     settings_quit_level: 'Quit Level',
     settings_close: 'Close',
     
@@ -96,6 +98,7 @@ export const translations: Record<string, TranslationKeys> = {
     settings_title: 'Paramètres',
     settings_volume: 'Volume',
     settings_skin_selection: 'Sélection de skin',
+    settings_reset_progress: 'Réinitialiser les progrès',
     settings_quit_level: 'Quitter le niveau',
     settings_close: 'Fermer',
     
@@ -128,6 +131,7 @@ export const translations: Record<string, TranslationKeys> = {
     settings_title: 'الإعدادات',
     settings_volume: 'مستوى الصوت',
     settings_skin_selection: 'اختيار الشكل',
+    settings_reset_progress: 'إعادة تعيين التقدم',
     settings_quit_level: 'ترك المستوى',
     settings_close: 'إغلاق',
     

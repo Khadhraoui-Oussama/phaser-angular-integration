@@ -19,6 +19,11 @@ export class Boot extends Phaser.Scene {
         const parsedHighscore = storedHighscore ? parseInt(storedHighscore) : 0;
         this.registry.set('highscore', parsedHighscore);
         
+        // Initialize EduSpace-specific high score
+        const storedEduSpaceHighscore = localStorage.getItem('highScoreEduspace');
+        const parsedEduSpaceHighscore = storedEduSpaceHighscore ? parseInt(storedEduSpaceHighscore) : 0;
+        this.registry.set('highScoreEduspace', parsedEduSpaceHighscore);
+        
         // Set selected skin in registry from localStorage or default to classic
         const storedSkin = localStorage.getItem('selectedSkin') || 'classic';
         this.registry.set('selectedSkin', storedSkin);

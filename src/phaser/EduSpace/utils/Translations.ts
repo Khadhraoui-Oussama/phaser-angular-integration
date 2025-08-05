@@ -8,6 +8,8 @@ export interface TranslationKeys {
   mission_failed: string;
   energy_depleted: string;
   final_score: string;
+  high_score: string;
+  new_high_score: string;
   restart_level: string;
   main_menu: string;
   
@@ -45,6 +47,8 @@ export const translations: Record<string, TranslationKeys> = {
     mission_failed: 'MISSION FAILED',
     energy_depleted: 'Energy Depleted',
     final_score: 'Final Score',
+    high_score: 'High Score',
+    new_high_score: 'NEW HIGH SCORE!',
     restart_level: 'RESTART LEVEL',
     main_menu: 'MAIN MENU',
     
@@ -75,6 +79,8 @@ export const translations: Record<string, TranslationKeys> = {
     mission_failed: 'MISSION ÉCHOUÉE',
     energy_depleted: 'Énergie Épuisée',
     final_score: 'Score Final',
+    high_score: 'Meilleur Score',
+    new_high_score: 'NOUVEAU RECORD !',
     restart_level: 'RECOMMENCER NIVEAU',
     main_menu: 'MENU PRINCIPAL',
     
@@ -105,6 +111,8 @@ export const translations: Record<string, TranslationKeys> = {
     mission_failed: 'فشلت المهمة',
     energy_depleted: 'نفدت الطاقة',
     final_score: 'النقاط النهائية',
+    high_score: 'أعلى نقاط',
+    new_high_score: 'رقم قياسي جديد!',
     restart_level: 'إعادة تشغيل المستوى',
     main_menu: 'القائمة الرئيسية',
     

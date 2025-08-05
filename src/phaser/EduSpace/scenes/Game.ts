@@ -5,7 +5,7 @@ import { Player } from './Player';
 import PlayerBullet from './PlayerBullet';
 import EnemyBullet from './EnemyBullet';
 import Answer, { AnswerData } from './Answer';
-import { QuestionData, AnswerOption, QuestionsJsonData, LevelData } from '../models/Types';
+import { QuestionData, AnswerOption, QuestionsJsonData, LevelData, EduSpaceWrongAttempt, EduSpaceAttempt } from '../models/Types';
 import EnemySpaceship from './EnemySpaceship';
 
 export default class MainGame extends Phaser.Scene {
@@ -61,6 +61,9 @@ export default class MainGame extends Phaser.Scene {
     
     private answerSpawnTimers: Phaser.Time.TimerEvent[] = [];
     
+   
+    private allAttempts: EduSpaceAttempt[] = [];
+    
     private questionsPerBackgroundChange: number = 2;
     private availableBackgrounds: string[] = ['bg2', 'bg3', 'bg4', 'bg5', 'bg6', 'bg7', 'bg8', 'bg9'];
     private usedBackgrounds: string[] = [];
@@ -75,6 +78,7 @@ export default class MainGame extends Phaser.Scene {
         victoryText: Phaser.GameObjects.Text;
         missionText: Phaser.GameObjects.Text;
         scoreText: Phaser.GameObjects.Text;
+        highScoreText?: Phaser.GameObjects.Text; // Optional since it might be a "new high score" text instead
         levelSelectText: Phaser.GameObjects.Text;
         menuText: Phaser.GameObjects.Text;
     };
@@ -100,6 +104,44 @@ export default class MainGame extends Phaser.Scene {
         this.totalQuestionsAnswered = 0;
         this.nextLevelUnlocked = false;
         this.answerSpawnTimers = [];
+        
+        // Initialize all attempts tracking - load existing attempts from localStorage
+        this.loadExistingAttempts();
+    }
+    
+    private loadExistingAttempts(): void {
+        try {
+            // Load all attempts from localStorage (from all levels and game states)
+            const allAttemptsKey = 'eduspace_all_attempts_global';
+            const existingAttemptsJson = localStorage.getItem(allAttemptsKey);
+            
+            if (existingAttemptsJson) {
+                this.allAttempts = JSON.parse(existingAttemptsJson);
+                console.log(`Loaded ${this.allAttempts.length} existing attempts from localStorage`);
+            } else {
+                this.allAttempts = [];
+                console.log('No existing attempts found, starting fresh');
+            }
+        } catch (error) {
+            console.error('Error loading existing attempts:', error);
+            this.allAttempts = [];
+        }
+    }
+    
+    private saveAttemptsToStorage(): void {
+        try {
+            // Save to global attempts storage to preserve across levels
+            localStorage.setItem('eduspace_all_attempts_global', JSON.stringify(this.allAttempts));
+        } catch (error) {
+            console.error('Error saving attempts to storage:', error);
+        }
+    }
+    
+    // Utility method to clear all attempts (useful for testing/debugging)
+    public clearAllAttempts(): void {
+        this.allAttempts = [];
+        localStorage.removeItem('eduspace_all_attempts_global');
+        console.log('All attempts cleared from memory and localStorage');
     }
     
     private loadVolumeSettings(): void {
@@ -166,6 +208,11 @@ export default class MainGame extends Phaser.Scene {
                 this.victoryScreenTexts.victoryText.setText(languageManager.getText('victory_congratulations'));
                 this.victoryScreenTexts.missionText.setText(languageManager.getText('victory_all_levels_completed'));
                 this.victoryScreenTexts.scoreText.setText(`${languageManager.getText('final_score')}: ${this.currentScore}`);
+                if (this.victoryScreenTexts.highScoreText) {
+                    // Update high score text if it exists (not a new high score case)
+                    const currentHighScore = this.getEduSpaceHighScore();
+                    this.victoryScreenTexts.highScoreText.setText(`${languageManager.getText('high_score')}: ${currentHighScore}`);
+                }
                 this.victoryScreenTexts.levelSelectText.setText(languageManager.getText('victory_level_select'));
                 this.victoryScreenTexts.menuText.setText(languageManager.getText('main_menu'));
             }
@@ -470,6 +517,19 @@ export default class MainGame extends Phaser.Scene {
         console.log('=== CORRECT ANSWER SELECTED ===');
         console.log(`Answer: "${answer.getContent()}" | Score: +${this.currentQuestion.points}`);
         
+        // Record the attempt
+        const attempt: EduSpaceAttempt = {
+            orderOfAppearance: this.questionOrder + 1,
+            questionData: this.currentQuestion,
+            attemptedAnswer: answer.getContent(),
+            isCorrect: true,
+            pointsEarned: this.currentQuestion.points
+        };
+        this.allAttempts.push(attempt);
+        
+        // Save attempts to prevent data loss
+        this.saveAttemptsToStorage();
+        
         this.sound.play('hit_correct', { volume: 0.5 });
         
         this.addScore(this.currentQuestion.points);
@@ -493,11 +553,31 @@ export default class MainGame extends Phaser.Scene {
         console.log('=== WRONG ANSWER SELECTED ===');
         console.log(`Answer: "${answer.getContent()}" | Score: -1 | Energy: -${this.energyLossWrongAnswer}`);
         
+        // Record the attempt
+        const attempt: EduSpaceAttempt = {
+            orderOfAppearance: this.questionOrder + 1,
+            questionData: this.currentQuestion,
+            attemptedAnswer: answer.getContent(),
+            isCorrect: false,
+            pointsEarned: -1
+        };
+        
+        // Check if this exact attempt already exists to prevent duplicates
+        const alreadyRegistered = this.allAttempts.some(
+            existingAttempt => 
+                existingAttempt.questionData === this.currentQuestion && 
+                existingAttempt.attemptedAnswer === answer.getContent()
+        );
+
+        if (!alreadyRegistered) {
+            this.allAttempts.push(attempt);
+            // Save attempts to prevent data loss
+            this.saveAttemptsToStorage();
+        }
+
         this.sound.play('shoot_laser', { volume: 0.3 });
         
         this.addScore(-1);
-        
-        console.log(`Progress: ${this.correctAnswersCount}/${this.totalQuestionsAnswered} correct answers`);
         
         if (this.player) {
             this.removeEnergy(this.energyLossWrongAnswer);
@@ -899,6 +979,33 @@ export default class MainGame extends Phaser.Scene {
         console.log(`Questions Answered: ${this.totalQuestionsAnswered}/${this.questions.length}`);
         console.log(`Correct Answers: ${this.correctAnswersCount}/${this.questions.length}`);
         
+        // Save all attempts to localStorage for review
+        if (this.allAttempts.length > 0) {
+            // Save to global attempts storage (preserves all levels)
+            localStorage.setItem('eduspace_all_attempts_global', JSON.stringify(this.allAttempts));
+            console.log(`Saved ${this.allAttempts.length} total attempts globally`);
+            
+            // Also save current level attempts for backward compatibility
+            const currentLevelAttempts = this.allAttempts.filter(attempt => 
+                attempt.questionData && this.questions.includes(attempt.questionData)
+            );
+            localStorage.setItem(`eduspace_level_${this.selectedLevel || 1}_all_attempts`, JSON.stringify(currentLevelAttempts));
+            console.log(`Saved ${currentLevelAttempts.length} attempts for level ${this.selectedLevel || 1}`);
+            
+            console.log('All Attempts Structure:', this.allAttempts);
+        }
+        
+        // Check and unlock next level based on 80% accuracy
+        const totalQuestions = this.questions.length;
+        const accuracyPercentage = (this.correctAnswersCount / totalQuestions) * 100;
+        
+        if (accuracyPercentage >= 80) {
+            const nextLevelId = (this.selectedLevel || 1) + 1;
+            localStorage.setItem(`eduspace_level_${nextLevelId}_unlocked`, 'true');
+            this.nextLevelUnlocked = true;
+            console.log(`Next level ${nextLevelId} unlocked with ${accuracyPercentage.toFixed(1)}% accuracy`);
+        }
+        
         // Stop all game elements
         this.clearCurrentAnswers();
         this.clearEnemySpaceships();
@@ -911,7 +1018,6 @@ export default class MainGame extends Phaser.Scene {
         this.markCurrentLevelCompleted();
         
         // Check if player answered ALL questions correctly (100% completion)
-        const totalQuestions = this.questions.length;
         const allQuestionsCorrect = this.correctAnswersCount === totalQuestions;
         
         console.log(`Level completion check: correctAnswersCount=${this.correctAnswersCount}, totalQuestions=${totalQuestions}, allQuestionsCorrect=${allQuestionsCorrect}`);
@@ -920,12 +1026,10 @@ export default class MainGame extends Phaser.Scene {
         const nextLevelId = (this.currentLevel?.levelId || 1) + 1;
         const nextLevel = this.allLevels.find(level => level.levelId === nextLevelId);
         
-        // Check if next level is unlocked - either from current session or from previous sessions
-        const levelProgress = this.registry.get('levelProgress') || {};
-        const isNextLevelAlreadyUnlocked = levelProgress[nextLevelId]?.unlocked || false;
-        const isNextLevelUnlocked = this.nextLevelUnlocked || isNextLevelAlreadyUnlocked;
+        // Check if next level is unlocked using localStorage
+        const isNextLevelUnlocked = localStorage.getItem(`eduspace_level_${nextLevelId}_unlocked`) === 'true';
         
-        console.log(`Next level check: nextLevelId=${nextLevelId}, exists=${!!nextLevel}, sessionUnlocked=${this.nextLevelUnlocked}, persistentUnlocked=${isNextLevelAlreadyUnlocked}, finalUnlocked=${isNextLevelUnlocked}`);
+        console.log(`Next level check: nextLevelId=${nextLevelId}, exists=${!!nextLevel}, unlocked=${isNextLevelUnlocked}, accuracy=${accuracyPercentage.toFixed(1)}%`);
         
         // Check if this is the last level completed with 100% accuracy
         const isLastLevel = !nextLevel; // No next level means this is the last one
@@ -948,7 +1052,7 @@ export default class MainGame extends Phaser.Scene {
             if (nextLevel && isNextLevelUnlocked && !allQuestionsCorrect) {
                 console.log(`=== LEVEL COMPLETED (${this.correctAnswersCount}/${totalQuestions} correct - need 100% for auto-progression) ===`);
             } else if (nextLevel && !isNextLevelUnlocked) {
-                console.log(`=== LEVEL COMPLETED (Next level not unlocked - need 80% correct) ===`);
+                console.log(`=== LEVEL COMPLETED (Next level not unlocked - need 80% accuracy) ===`);
             } else {
                 console.log('=== LEVEL COMPLETED (No next level available) ===');
             }
@@ -967,6 +1071,22 @@ export default class MainGame extends Phaser.Scene {
         this.gameState = 'gameOver';
         console.log('=== GAME OVER - ENERGY DEPLETED ===');
         console.log(`Final Score: ${this.currentScore}`);
+        
+        // Save all attempts to localStorage for review
+        if (this.allAttempts.length > 0) {
+            // Save to global attempts storage (preserves all levels)
+            localStorage.setItem('eduspace_all_attempts_global', JSON.stringify(this.allAttempts));
+            console.log(`Saved ${this.allAttempts.length} total attempts globally (game over)`);
+            
+            // Also save current level attempts for backward compatibility
+            const currentLevelAttempts = this.allAttempts.filter(attempt => 
+                attempt.questionData && this.questions.includes(attempt.questionData)
+            );
+            localStorage.setItem(`eduspace_level_${this.selectedLevel || 1}_all_attempts_gameover`, JSON.stringify(currentLevelAttempts));
+            console.log(`Saved ${currentLevelAttempts.length} attempts from game over for level ${this.selectedLevel || 1}`);
+            
+            console.log('All Attempts Structure:', this.allAttempts);
+        }
         
         // Stop all game elements
         this.clearCurrentAnswers();
@@ -1025,7 +1145,7 @@ export default class MainGame extends Phaser.Scene {
         gameOverContainer.add(energyText);
         
         // Final score text
-        const scoreText = this.add.text(0, 0, `${languageManager.getText('final_score')}: ${this.currentScore}`, {
+        const scoreText = this.add.text(0, -20, `${languageManager.getText('final_score')}: ${this.currentScore}`, {
             fontSize: '28px',
             fontFamily: 'Arial',
             color: '#ffff44',
@@ -1035,6 +1155,48 @@ export default class MainGame extends Phaser.Scene {
         scoreText.setOrigin(0.5);
         scoreText.setShadow(2, 2, '#000000', 4, true, false);
         gameOverContainer.add(scoreText);
+        
+        // High score or new high score text
+        const currentHighScore = this.getEduSpaceHighScore();
+        const isNewHigh = this.isNewHighScore();
+        
+        if (isNewHigh) {
+            // Update high score before showing it
+            this.updateEduSpaceHighScore(this.currentScore);
+            
+            // Show "NEW HIGH SCORE!" message
+            const newHighScoreText = this.add.text(0, 20, languageManager.getText('new_high_score'), {
+                fontSize: '24px',
+                fontFamily: 'Arial',
+                color: '#44ff44',
+                fontStyle: 'bold',
+                align: 'center'
+            });
+            newHighScoreText.setOrigin(0.5);
+            newHighScoreText.setShadow(2, 2, '#000000', 4, true, false);
+            gameOverContainer.add(newHighScoreText);
+            
+            // Add flashing animation for new high score
+            this.tweens.add({
+                targets: newHighScoreText,
+                alpha: { from: 1, to: 0.5 },
+                duration: 500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Power2.easeInOut'
+            });
+        } else {
+            // Show regular high score
+            const highScoreText = this.add.text(0, 20, `${languageManager.getText('high_score')}: ${currentHighScore}`, {
+                fontSize: '22px',
+                fontFamily: 'Arial',
+                color: '#88ff88',
+                align: 'center'
+            });
+            highScoreText.setOrigin(0.5);
+            highScoreText.setShadow(2, 2, '#000000', 4, true, false);
+            gameOverContainer.add(highScoreText);
+        }
         
         // Restart button using ui_element_large
         const restartButton = this.add.container(0, 80);
@@ -1152,7 +1314,7 @@ export default class MainGame extends Phaser.Scene {
         victoryContainer.add(missionText);
         
         // Final score text
-        const scoreText = this.add.text(0, -30, `${languageManager.getText('final_score')}: ${this.currentScore}`, {
+        const scoreText = this.add.text(0, -50, `${languageManager.getText('final_score')}: ${this.currentScore}`, {
             fontSize: '28px',
             fontFamily: 'Arial',
             color: '#ffff44',
@@ -1162,6 +1324,48 @@ export default class MainGame extends Phaser.Scene {
         scoreText.setOrigin(0.5);
         scoreText.setShadow(2, 2, '#000000', 4, true, false);
         victoryContainer.add(scoreText);
+        
+        // High score or new high score text for victory screen
+        const currentHighScore = this.getEduSpaceHighScore();
+        const isNewHigh = this.isNewHighScore();
+        let highScoreText: Phaser.GameObjects.Text | undefined;
+        
+        if (isNewHigh) {
+            
+            this.updateEduSpaceHighScore(this.currentScore);
+            
+            
+            const newHighScoreText = this.add.text(0, -10, languageManager.getText('new_high_score'), {
+                fontSize: '24px',
+                fontFamily: 'Arial',
+                color: '#44ff44',
+                fontStyle: 'bold',
+                align: 'center'
+            });
+            newHighScoreText.setOrigin(0.5);
+            newHighScoreText.setShadow(2, 2, '#000000', 4, true, false);
+            victoryContainer.add(newHighScoreText);
+            
+            this.tweens.add({
+                targets: newHighScoreText,
+                alpha: { from: 1, to: 0.5 },
+                duration: 500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Power2.easeInOut'
+            });
+        } else {
+            // Show regular high score
+            highScoreText = this.add.text(0, -10, `${languageManager.getText('high_score')}: ${currentHighScore}`, {
+                fontSize: '22px',
+                fontFamily: 'Arial',
+                color: '#88ff88',
+                align: 'center'
+            });
+            highScoreText.setOrigin(0.5);
+            highScoreText.setShadow(2, 2, '#000000', 4, true, false);
+            victoryContainer.add(highScoreText);
+        }
         
         // Level Select button using ui_element_large
         const levelSelectButton = this.add.container(0, 90);
@@ -1244,6 +1448,7 @@ export default class MainGame extends Phaser.Scene {
             victoryText,
             missionText,
             scoreText,
+            highScoreText, // Will be undefined if new high score
             levelSelectText,
             menuText
         };
@@ -1834,10 +2039,15 @@ export default class MainGame extends Phaser.Scene {
         console.log(`Need ${questionsNeededFor80Percent} correct answers to unlock next level (80% of ${totalQuestions})`);
         
         // Check if we have enough CORRECT answers to reach 80% threshold
-        // This unlocks the next level in localStorage/registry but doesn't transition to it
+        // This unlocks the next level in localStorage but doesn't transition to it
         if (this.correctAnswersCount >= questionsNeededFor80Percent && !this.nextLevelUnlocked) {
             console.log(`=== 80% THRESHOLD REACHED! Unlocking next level... ===`);
             console.log(`Correct answers: ${this.correctAnswersCount}/${totalQuestions} (${Math.round((this.correctAnswersCount / totalQuestions) * 100)}%)`);
+            
+            const nextLevelId = (this.selectedLevel || 1) + 1;
+            localStorage.setItem(`eduspace_level_${nextLevelId}_unlocked`, 'true');
+            this.nextLevelUnlocked = true;
+            
             this.unlockNextLevel();
         }
     }
@@ -1919,6 +2129,27 @@ export default class MainGame extends Phaser.Scene {
         localStorage.setItem('levelProgress', JSON.stringify(levelProgress));
         
         console.log(`Level ${this.currentLevel.levelId} marked as completed with score ${this.currentScore}:`, levelProgress);
+    }
+
+    // EduSpace High Score Management Methods
+    private getEduSpaceHighScore(): number {
+        const highScoreStr = localStorage.getItem('highScoreEduspace');
+        return highScoreStr ? parseInt(highScoreStr) : 0;
+    }
+
+    private updateEduSpaceHighScore(newScore: number): boolean {
+        const currentHighScore = this.getEduSpaceHighScore();
+        if (newScore > currentHighScore) {
+            localStorage.setItem('highScoreEduspace', newScore.toString());
+            this.registry.set('highScoreEduspace', newScore);
+            console.log(`New EduSpace high score: ${newScore} (previous: ${currentHighScore})`);
+            return true; // New high score achieved
+        }
+        return false; // No new high score
+    }
+
+    private isNewHighScore(): boolean {
+        return this.currentScore > this.getEduSpaceHighScore();
     }
     
     private showNextLevelUnlockedMessage(): void {

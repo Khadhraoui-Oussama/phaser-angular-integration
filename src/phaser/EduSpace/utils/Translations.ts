@@ -23,6 +23,13 @@ export interface TranslationKeys {
   next_level_unlocked: string;
   level_unlock_requirement: string;
   
+  // Settings
+  settings_title: string;
+  settings_volume: string;
+  settings_skin_selection: string;
+  settings_quit_level: string;
+  settings_close: string;
+  
   // General
   back: string;
   level: string;
@@ -50,6 +57,12 @@ export const translations: Record<string, TranslationKeys> = {
     next_level_unlocked: 'Next Level Unlocked!',
     level_unlock_requirement: 'Answer all questions correctly to auto-advance',
     
+    settings_title: 'Settings',
+    settings_volume: 'Volume',
+    settings_skin_selection: 'Skin Selection',
+    settings_quit_level: 'Quit Level',
+    settings_close: 'Close',
+    
     back: 'Back',
     level: 'Level',
     score: 'Score'
@@ -74,6 +87,12 @@ export const translations: Record<string, TranslationKeys> = {
     next_level_unlocked: 'Niveau Suivant Débloqué !',
     level_unlock_requirement: 'Répondez correctement à toutes les questions pour avancer automatiquement',
     
+    settings_title: 'Paramètres',
+    settings_volume: 'Volume',
+    settings_skin_selection: 'Sélection de skin',
+    settings_quit_level: 'Quitter le niveau',
+    settings_close: 'Fermer',
+    
     back: 'Retour',
     level: 'Niveau',
     score: 'Score'
@@ -97,6 +116,12 @@ export const translations: Record<string, TranslationKeys> = {
     
     next_level_unlocked: '! تم فتح المستوى التالي',
     level_unlock_requirement: 'أجب على جميع الأسئلة بشكل صحيح للتقدم التلقائي',
+    
+    settings_title: 'الإعدادات',
+    settings_volume: 'مستوى الصوت',
+    settings_skin_selection: 'اختيار الشكل',
+    settings_quit_level: 'ترك المستوى',
+    settings_close: 'إغلاق',
     
     back: 'رجوع',
     level: 'مستوى',

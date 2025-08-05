@@ -11,7 +11,7 @@ import EnemySpaceship from './EnemySpaceship';
 export default class MainGame extends Phaser.Scene {
     private background!: Phaser.GameObjects.Image;
     private titleText!: Phaser.GameObjects.Text;
-    private backButton!: Phaser.GameObjects.Container;
+    private settingsButton!: Phaser.GameObjects.Container;
     private languageChangeUnsubscribe?: () => void;
     private selectedLevel?: number;
     private player!: Player;
@@ -101,6 +101,18 @@ export default class MainGame extends Phaser.Scene {
         this.nextLevelUnlocked = false;
         this.answerSpawnTimers = [];
     }
+    
+    private loadVolumeSettings(): void {
+        // Load volume from localStorage or registry
+        const savedVolume = this.registry.get('gameVolume') || 
+                           parseFloat(localStorage.getItem('gameVolume') || '1.0');
+        
+        // Apply the volume to all sounds
+        this.sound.setVolume(savedVolume);
+        
+        
+        this.registry.set('gameVolume', savedVolume);
+    }
 
     create(): void {
         this.scene.manager.scenes.forEach(scene => {
@@ -108,6 +120,9 @@ export default class MainGame extends Phaser.Scene {
                 scene.scene.stop();
             }
         });
+        
+        // Load and apply saved volume settings
+        this.loadVolumeSettings();
         
         const bgMusic = this.sound.get('main_music');
         if (!bgMusic || !bgMusic.isPlaying) {
@@ -136,7 +151,7 @@ export default class MainGame extends Phaser.Scene {
 
         this.createTitle();
 
-        this.createBackButton();
+        this.createSettingsButton();
 
         this.createEnergyDisplay();
 
@@ -174,7 +189,22 @@ export default class MainGame extends Phaser.Scene {
         this.events.on('destroy', () => {
             this.cleanup();
         });
+        
+        // Handle pause/resume events for settings modal
+        this.events.on('pause', () => {
+            console.log('Game paused - settings opened');
+            // Pause all timers and animations
+            this.time.paused = true;
+            this.tweens.pauseAll();
+        });
+        
+        this.events.on('resume', () => {
+            console.log('Game resumed - settings closed');
+            this.time.paused = false;
+            this.tweens.resumeAll();
+        });
     }
+   
 
     private createBackground(): void {
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
@@ -964,7 +994,8 @@ export default class MainGame extends Phaser.Scene {
         gameOverContainer.setDepth(2000);
         
         // Create background using ui_element_small scaled up
-        const bgScale = Math.max(width / 400, height / 300) * 0.8; // Scale to fit screen with some padding
+        const baseScale = Math.max(width / 400, height / 300) * 0.8;
+        const bgScale = Math.min(baseScale, 2.2); // Cap at 2.2x scale to prevent oversizing in fullscreen
         const backgroundPanel = this.add.image(0, 0, 'ui_element_small');
         backgroundPanel.setScale(bgScale);
         backgroundPanel.setAlpha(0.95); // Slightly transparent
@@ -1088,7 +1119,8 @@ export default class MainGame extends Phaser.Scene {
         victoryContainer.setDepth(2000);
         
         // Create background using ui_element_small scaled up
-        const bgScale = Math.max(width / 400, height / 300) * 0.8; // Scale to fit screen with some padding
+        const baseScale = Math.max(width / 400, height / 300) * 0.8;
+        const bgScale = Math.min(baseScale, 2.2); // Cap at 2.2x scale to prevent oversizing in fullscreen
         const backgroundPanel = this.add.image(0, 0, 'ui_element_small');
         backgroundPanel.setScale(bgScale);
         backgroundPanel.setAlpha(0.95); // Slightly transparent
@@ -1398,41 +1430,41 @@ export default class MainGame extends Phaser.Scene {
         this.titleText.setDepth(100); // Ensure title is above parallax objects
     }
 
-    private createBackButton(): void {
+    private createSettingsButton(): void {
         const { width, height, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
         
         const buttonSize = Math.max(40, 60 * minScale);
         const margin = Math.max(20, 30 * minScale);
 
-        // Exit button positioned at top right corner (same size as main menu corner buttons)
-        this.backButton = this.add.container(width - margin - buttonSize/2, margin + buttonSize/2);
+        // Settings button positioned at top right corner
+        this.settingsButton = this.add.container(width - margin - buttonSize/2, margin + buttonSize/2);
         
-        const exitIcon = this.add.image(0, 0, 'exit');
-        exitIcon.setDisplaySize(buttonSize, buttonSize);
-        exitIcon.setInteractive();
+        const settingsIcon = this.add.image(0, 0, 'settings');
+        settingsIcon.setDisplaySize(buttonSize, buttonSize);
+        settingsIcon.setInteractive();
         
-        this.backButton.add(exitIcon);
-        this.backButton.setDepth(100); // Ensure button is above other elements
+        this.settingsButton.add(settingsIcon);
+        this.settingsButton.setDepth(100); // Ensure button is above other elements
         
         // Store original scale for hover effects
         const originalScale = 1.0;
         
         // Add hover effects (same as main menu corner buttons)
-        exitIcon.on('pointerover', () => {
-            this.backButton.setScale(originalScale * 1.1);
-            exitIcon.setTint(0xcccccc);
+        settingsIcon.on('pointerover', () => {
+            this.settingsButton.setScale(originalScale * 1.1);
+            settingsIcon.setTint(0xcccccc);
         });
         
-        exitIcon.on('pointerout', () => {
-            this.backButton.setScale(originalScale);
-            exitIcon.clearTint();
+        settingsIcon.on('pointerout', () => {
+            this.settingsButton.setScale(originalScale);
+            settingsIcon.clearTint();
         });
         
-        exitIcon.on('pointerdown', () => {
+        settingsIcon.on('pointerdown', () => {
             this.sound.play('shoot_laser');
-            // Stop background music when exiting to main menu
-            this.sound.stopAll();
-            this.scene.start('MainMenu');
+            // Pause the game and open settings modal with quit level option
+            this.scene.pause();
+            this.scene.launch('Settings', { showQuitLevel: true, callingScene: 'MainGame' });
         });
     }
 
@@ -1595,11 +1627,11 @@ export default class MainGame extends Phaser.Scene {
             this.questionContainer.setPosition(centerX, 0);
         }
         
-        // Update back button position to top right corner
-        if (this.backButton) {
+        // Update settings button position to top right corner
+        if (this.settingsButton) {
             const buttonSize = Math.max(40, 60 * minScale);
             const margin = Math.max(20, 30 * minScale);
-            this.backButton.setPosition(width - margin - buttonSize/2, margin + buttonSize/2);
+            this.settingsButton.setPosition(width - margin - buttonSize/2, margin + buttonSize/2);
         }
 
         // Update energy display position and size
@@ -1918,7 +1950,7 @@ export default class MainGame extends Phaser.Scene {
             alpha: { from: 1, to: 0.3 },
             duration: 300,
             yoyo: true,
-            repeat: 5, // Flash 6 times total
+            repeat: 5,                                                                                                                  
             onComplete: () => {
                 // Remove the text after staying on screen for 4 seconds
                 this.time.delayedCall(4000, () => {

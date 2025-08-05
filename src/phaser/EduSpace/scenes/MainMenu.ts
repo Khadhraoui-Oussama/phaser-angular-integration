@@ -38,6 +38,9 @@ export default class MainMenu extends Phaser.Scene {
             this.sound.play('menu_music', { loop: true, volume: 0.6 });
         }
 
+        // Load and apply saved volume settings
+        this.loadVolumeSettings();
+
         const { width, height, centerX, centerY } = ResponsiveGameUtils.getResponsiveConfig(this);
 
         // Setup responsive input for mobile
@@ -129,6 +132,18 @@ export default class MainMenu extends Phaser.Scene {
         this.titleText.setOrigin(0.5);
         this.titleText.setShadow(2, 2, '#000000', 6, true, false);
         this.titleText.setDepth(100); // Ensure title is above parallax objects
+    }
+    
+    private loadVolumeSettings(): void {
+        // Load volume from localStorage or registry
+        const savedVolume = this.registry.get('gameVolume') || 
+                           parseFloat(localStorage.getItem('gameVolume') || '1.0');
+        
+        // Apply the volume to all sounds
+        this.sound.setVolume(savedVolume);
+        
+        
+        this.registry.set('gameVolume', savedVolume);
     }
 
     private createMainButtons(): void {
@@ -260,8 +275,8 @@ export default class MainMenu extends Phaser.Scene {
         this.settingsButton.setDepth(100); // Above parallax objects
         this.setupCornerButtonEffects(this.settingsButton, () => {
             this.sound.play('shoot_laser');
-            // Open settings menu
-            console.log('Settings button clicked');
+            // Open settings modal
+            this.scene.launch('Settings', { showQuitLevel: false, callingScene: 'MainMenu' });
         });
 
         // Language selection button (bottom-left)

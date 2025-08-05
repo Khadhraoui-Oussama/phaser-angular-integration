@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { AudioManager } from '../utils/AudioManager';
 import { ParallaxManager } from '../utils/ParallaxManager';
 import { LevelProgress } from './Boot';
 import { QuestionsJsonData, LevelData } from '../models/Types';
@@ -29,6 +30,9 @@ export default class LevelSelectScene extends Phaser.Scene {
                 scene.scene.stop();
             }
         });
+
+        // Load and apply saved volume settings
+        this.loadVolumeSettings();
 
         // Load level progress from registry/localStorage
         this.loadLevelProgress();
@@ -488,5 +492,10 @@ export default class LevelSelectScene extends Phaser.Scene {
                 buttonText.setText('🔒');
             }
         });
+    }
+
+    private loadVolumeSettings(): void {
+        // Use centralized AudioManager for consistent volume handling
+        AudioManager.loadAndApplyVolume(this);
     }
 }

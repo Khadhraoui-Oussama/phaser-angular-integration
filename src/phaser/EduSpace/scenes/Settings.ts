@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { AudioManager } from '../utils/AudioManager';
 
 export default class Settings extends Phaser.Scene {
     private settingsContainer!: Phaser.GameObjects.Container;
@@ -233,14 +234,11 @@ export default class Settings extends Phaser.Scene {
     }
     
     private applyVolumeToGame(): void {
-        // Save volume to registry
-        this.registry.set('gameVolume', this.currentVolume);
+        // Use centralized AudioManager for consistent volume handling
+        AudioManager.updateVolume(this, this.currentVolume);
         
-        // Apply to all sound instances
-        this.sound.setVolume(this.currentVolume);
-        
-        // Save to localStorage for persistence
-        localStorage.setItem('gameVolume', this.currentVolume.toString());
+        // Also update the current volume to match the clamped value
+        this.currentVolume = Math.max(0, Math.min(1, this.currentVolume));
     }
     
     private createSkinSelectionButton(): void {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 import { languageManager } from '../utils/LanguageManager';
+import { AudioManager } from '../utils/AudioManager';
 import { Player } from './Player';
 import PlayerBullet from './PlayerBullet';
 import EnemyBullet from './EnemyBullet';
@@ -145,15 +146,24 @@ export default class MainGame extends Phaser.Scene {
     }
     
     private loadVolumeSettings(): void {
-        // Load volume from localStorage or registry
-        const savedVolume = this.registry.get('gameVolume') || 
-                           parseFloat(localStorage.getItem('gameVolume') || '1.0');
-        
-        // Apply the volume to all sounds
-        this.sound.setVolume(savedVolume);
-        
-        
-        this.registry.set('gameVolume', savedVolume);
+        // Use centralized AudioManager for consistent volume handling
+        AudioManager.loadAndApplyVolume(this);
+    }
+    
+    /**
+     * Save volume settings to both localStorage and Phaser registry
+     * This ensures audio preferences persist across sessions and scenes
+     */
+    private saveVolumeSettings(volume: number): void {
+        AudioManager.saveVolume(this, volume);
+    }
+    
+    /**
+     * Update volume and save preferences
+     * Public method that can be called from other scenes or components
+     */
+    public updateVolumeSettings(newVolume: number): void {
+        AudioManager.updateVolume(this, newVolume);
     }
 
     create(): void {
@@ -1078,7 +1088,7 @@ export default class MainGame extends Phaser.Scene {
             localStorage.setItem('eduspace_all_attempts_global', JSON.stringify(this.allAttempts));
             console.log(`Saved ${this.allAttempts.length} total attempts globally (game over)`);
             
-            // Also save current level attempts for backward compatibility
+
             const currentLevelAttempts = this.allAttempts.filter(attempt => 
                 attempt.questionData && this.questions.includes(attempt.questionData)
             );

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { languageManager } from '../utils/LanguageManager';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
+import { AudioManager } from '../utils/AudioManager';
 import { ParallaxManager } from '../utils/ParallaxManager';
 import { LevelProgress } from './Boot';
 
@@ -135,15 +136,24 @@ export default class MainMenu extends Phaser.Scene {
     }
     
     private loadVolumeSettings(): void {
-        // Load volume from localStorage or registry
-        const savedVolume = this.registry.get('gameVolume') || 
-                           parseFloat(localStorage.getItem('gameVolume') || '1.0');
-        
-        // Apply the volume to all sounds
-        this.sound.setVolume(savedVolume);
-        
-        
-        this.registry.set('gameVolume', savedVolume);
+        // Use centralized AudioManager for consistent volume handling
+        AudioManager.loadAndApplyVolume(this);
+    }
+    
+    /**
+     * Save volume settings to both localStorage and Phaser registry
+     * This ensures audio preferences persist across sessions and scenes
+     */
+    private saveVolumeSettings(volume: number): void {
+        AudioManager.saveVolume(this, volume);
+    }
+    
+    /**
+     * Update volume and save preferences
+     * Public method that can be called from other scenes or components
+     */
+    public updateVolumeSettings(newVolume: number): void {
+        AudioManager.updateVolume(this, newVolume);
     }
 
     private createMainButtons(): void {

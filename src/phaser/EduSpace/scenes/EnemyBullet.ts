@@ -6,6 +6,7 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
     private isExploding: boolean = false;
     private hasHitTarget: boolean = false;
     private hitboxBorder!: Phaser.GameObjects.Graphics; // Orange border for hitbox visualization
+    public spaceshipId?: string; // ID of the spaceship that fired this bullet
     
     constructor(scene: Phaser.Scene, x: number, y: number) {
         // Use fallback texture if enemy shot texture doesn't exist
@@ -155,12 +156,25 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    public fire(x: number, y: number, direction: { x: number; y: number }): void {
+    public fire(x: number, y: number, direction: { x: number; y: number }, spaceshipId?: string): void {
         if (this.isExploding) return;
         
-        // Check if scene is still valid
-        if (!this.scene || !this.scene.physics) {
-            console.error('EnemyBullet: Scene or physics is undefined, cannot fire');
+        // Store the spaceship ID that fired this bullet
+        this.spaceshipId = spaceshipId;
+        
+        // Check if scene is still valid and active
+        if (!this.scene || 
+            !this.scene.physics || 
+            !this.scene.physics.world || 
+            !this.scene.scene || 
+            !this.scene.scene.isActive() ||
+            this.scene.scene.isPaused() ||
+            this.scene.scene.isSleeping()) {
+            console.error('EnemyBullet: Scene or physics is undefined/inactive, cannot fire');
+            // Clear spaceship ID to prevent future issues
+            this.spaceshipId = undefined;
+            // Return bullet to pool instead of keeping it in limbo
+            this.returnToPool();
             return;
         }
         
@@ -277,6 +291,13 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         return this.isExploding;
     }
     
+    public destroyImmediately(): void {
+        // Immediately destroy bullet without explosion animation
+        // This is used when the parent spaceship is destroyed
+        console.log(`Enemy bullet destroyed immediately (spaceship killed)`);
+        this.returnToPool();
+    }
+    
     private returnToPool(): void {
         // Reset bullet state for reuse
         this.isExploding = false;
@@ -299,6 +320,12 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         
         // Stop any animations
         this.anims.stop();
+        
+        // Clear spaceship ID when bullet is returned to pool
+        this.spaceshipId = undefined;
+        
+        // Remove any animation listeners to prevent memory leaks
+        this.removeAllListeners();
         
         // Return to pool by setting inactive
         this.setActive(false);
@@ -348,6 +375,9 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         
         // Clean up any listeners
         this.removeAllListeners();
+        
+        // Clear spaceship ID
+        this.spaceshipId = undefined;
         
         // Set inactive and invisible
         this.setActive(false);

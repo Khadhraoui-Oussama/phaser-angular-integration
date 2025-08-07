@@ -10,6 +10,7 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
     private shootTimer?: Phaser.Time.TimerEvent;
     private shootCooldown: number = 2000; // 2 seconds between shots
     private hitboxBorder!: Phaser.GameObjects.Graphics; // Red border for hitbox visualization
+    public spaceshipId: string; // Unique ID for this spaceship
     
     // Static configurable speed variable
     public static BASE_SPEED: number = 150;
@@ -19,6 +20,9 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
         
         this.scene = scene;
         this.setOrigin(0.5, 0.5);
+        
+        // Generate a unique ID for this spaceship
+        this.spaceshipId = `spaceship_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
         // Set responsive scale - make enemy spaceship bigger than player
         const { config, minScale } = ResponsiveGameUtils.getResponsiveConfig(scene);
@@ -145,14 +149,15 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
         // Direction toward player (left direction)
         const direction = { x: -1, y: 0 };
         
-        // Emit shoot event to the scene
+        // Emit shoot event to the scene with spaceship ID
         this.scene.events.emit('enemy-shoot', {
             x: shootX,
             y: shootY,
-            direction: direction
+            direction: direction,
+            spaceshipId: this.spaceshipId
         });
         
-        console.log(`Enemy spaceship shot from (${shootX}, ${shootY})`);
+        console.log(`Enemy spaceship ${this.spaceshipId} shot from (${shootX}, ${shootY})`);
     }
     
     override stop(): this {
@@ -217,6 +222,33 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
         return this.isFlashing;
     }
     
+    public destroyMyBullets(): void {
+        // Get all enemy bullets from the scene and destroy those belonging to this spaceship
+        const enemyBullets = this.scene.getEnemyBullets();
+        if (enemyBullets && enemyBullets.children) {
+            enemyBullets.children.entries.forEach((bullet: any) => {
+                if (bullet.active && bullet.spaceshipId === this.spaceshipId) {
+                    console.log(`Immediately destroying bullet from spaceship ${this.spaceshipId}`);
+                    try {
+                        if (bullet.destroyImmediately) {
+                            bullet.destroyImmediately();
+                        } else {
+                            // Fallback for older bullet implementations
+                            bullet.spaceshipId = undefined;
+                            bullet.destroy();
+                        }
+                    } catch (error) {
+                        console.warn('Error destroying bullet:', error);
+                        // If destroy fails: deactivate it
+                        bullet.setActive(false);
+                        bullet.setVisible(false);
+                        bullet.spaceshipId = undefined;
+                    }
+                }
+            });
+        }
+    }
+    
     // Method to flash red when hit by player bullet
     public flashRed(callback?: () => void): void {
         if (this.isFlashing) return; // Prevent multiple flashes
@@ -236,10 +268,32 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
             this.shootTimer = undefined;
         }
         
+        // IMMEDIATELY destroy bullets when hit (don't wait for red flashing animation)
+        this.destroyMyBullets();
+        
+        // Store original values for reset
+        const originalScale = this.scaleX;
+        const originalTint = this.tint;
+        
         // Set red tint
         this.setTint(0xff0000);
         
-        // Flash effect: quick tint changes
+        // Create size flash effect: grow then shrink like player ship
+        this.scene.tweens.add({
+            targets: this,
+            scaleX: originalScale * 1.3, // Grow 30% bigger
+            scaleY: originalScale * 1.3,
+            duration: 180,
+            ease: 'Power2',
+            yoyo: true,
+            repeat: 2,
+            onComplete: () => {
+                // Ensure we're back to original scale
+                this.setScale(originalScale);
+            }
+        });
+        
+        // Flash effect: quick alpha changes
         this.scene.tweens.add({
             targets: this,
             alpha: 0.5,
@@ -252,7 +306,7 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
                 this.setAlpha(1);
                 this.isFlashing = false;
                 
-                // Call the callback (usually to destroy the spaceship)
+                // Call the callback to destroy the spaceship
                 if (callback) {
                     callback();
                 }
@@ -294,6 +348,8 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
     }
     
     override destroy(fromScene?: boolean): void {
+        this.destroyMyBullets();
+        
         // Clean up hitbox border
         if (this.hitboxBorder) {
             this.hitboxBorder.destroy();

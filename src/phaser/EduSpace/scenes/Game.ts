@@ -1608,12 +1608,18 @@ export default class MainGame extends Phaser.Scene {
         });
         
         // Set up event listener for enemy shooting
-        this.events.on('enemy-shoot', (data: { x: number; y: number; direction: { x: number; y: number } }) => {
+        this.events.on('enemy-shoot', (data: { x: number; y: number; direction: { x: number; y: number }; spaceshipId: string }) => {
+            // Check if scene is still active before trying to fire bullets
+            if (!this.scene.isActive() || this.scene.isPaused() || this.scene.isSleeping()) {
+                console.warn('Game scene is not active, ignoring enemy-shoot event');
+                return;
+            }
+            
             // Create a new enemy bullet from the pool
             const bullet = this.enemyBullets.get() as EnemyBullet;
             if (bullet) {
-                bullet.fire(data.x, data.y, data.direction);
-                console.log('Enemy bullet created at:', data.x, data.y, 'Direction:', data.direction);
+                bullet.fire(data.x, data.y, data.direction, data.spaceshipId);
+                console.log('Enemy bullet created at:', data.x, data.y, 'Direction:', data.direction, 'SpaceshipId:', data.spaceshipId);
             } else {
                 console.warn('Could not get enemy bullet from pool (pool might be full)');
             }

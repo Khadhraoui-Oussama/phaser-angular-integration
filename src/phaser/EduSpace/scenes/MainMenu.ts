@@ -274,8 +274,7 @@ export default class MainMenu extends Phaser.Scene {
         this.informationButton.setDepth(100); // Above parallax objects
         this.setupCornerButtonEffects(this.informationButton, () => {
             this.sound.play('shoot_laser');
-            // Show information popup or navigate to info scene
-            console.log('Information button clicked');
+            this.scene.start('Information');
         });
 
         // Settings button (top-right)

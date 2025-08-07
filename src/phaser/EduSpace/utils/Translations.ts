@@ -33,6 +33,18 @@ export interface TranslationKeys {
   settings_quit_level: string;
   settings_close: string;
   
+  // Information
+  information_title: string;
+  information_how_to_play: string;
+  information_objective: string;
+  information_objective_text: string;
+  information_controls: string;
+  information_controls_text: string;
+  information_gameplay: string;
+  information_gameplay_text: string;
+  information_tips: string;
+  information_tips_text: string;
+  
   // General
   back: string;
   level: string;
@@ -69,6 +81,17 @@ export const translations: Record<string, TranslationKeys> = {
     settings_quit_level: 'Quit Level',
     settings_close: 'Close',
     
+    information_title: 'How to Play',
+    information_how_to_play: 'How to Play EDUSPACE',
+    information_objective: 'Objective',
+    information_objective_text: 'Navigate through space while avoiding enemy bullets and asteroids. Answer questions correctly by steering your spaceship towards the correct answer objects to score points and progress through levels.',
+    information_controls: 'Controls',
+    information_controls_text: 'Use Up and Down KEYS or your mouse to move your spaceship. On mobile devices, use touch controls to steer and tap once to shoot',
+    information_gameplay: 'Gameplay',
+    information_gameplay_text: 'Each level presents multiple-choice questions. Steer towards answer objects to select your response. Correct answers give you points and energy. Wrong answers cost energy. Avoid enemy bullets and obstacles!, if your energy reaches 0, you lose and must retry the level' ,
+    information_tips: 'Tips',
+    information_tips_text: 'Stay alert for enemy spacehips bullets.\nRead questions carefully before choosing answers.',
+    
     back: 'Back',
     level: 'Level',
     score: 'Score'
@@ -102,6 +125,17 @@ export const translations: Record<string, TranslationKeys> = {
     settings_quit_level: 'Quitter le niveau',
     settings_close: 'Fermer',
     
+    information_title: 'Comment Jouer',
+    information_how_to_play: 'Comment Jouer EDUSPACE',
+    information_objective: 'Objectif',
+    information_objective_text: 'Naviguez dans l\'espace en évitant les balles ennemies et les astéroïdes. Répondez correctement aux questions en dirigeant votre vaisseau spatial vers les objets correspondants pour marquer des points et progresser dans les niveaux.',
+    information_controls: 'Contrôles',
+    information_controls_text: 'Utilisez les touches Haut et Bas ou la souris pour déplacer votre vaisseau. Sur mobile, utilisez les commandes tactiles pour piloter et appuyez une fois pour tirer.',
+    information_gameplay: 'Gameplay',
+    information_gameplay_text: 'Chaque niveau propose des questions à choix multiples. Dirigez-vous vers les objets de réponse pour choisir votre réponse. Les bonnes réponses vous rapportent des points et de l\'énergie. Les mauvaises réponses coûtent de l\'énergie. Évitez les balles ennemies et les obstacles ! Si votre énergie atteint 0, vous perdez et devez recommencer le niveau.',
+    information_tips: 'Conseils',
+    information_tips_text: 'Restez vigilant face aux balles des vaisseaux spatiaux ennemis.\nLisez attentivement les questions avant de choisir les réponses.',
+    
     back: 'Retour',
     level: 'Niveau',
     score: 'Score'
@@ -134,6 +168,17 @@ export const translations: Record<string, TranslationKeys> = {
     settings_reset_progress: 'إعادة تعيين التقدم',
     settings_quit_level: 'ترك المستوى',
     settings_close: 'إغلاق',
+    
+    information_title: 'كيفية اللعب',
+    information_how_to_play: 'كيفية لعب EDUSPACE',
+    information_objective: 'الهدف',
+    information_objective_text: 'انطلق في الفضاء متجنبًا رصاصات العدو والكويكبات. أجب عن الأسئلة بشكل صحيح بتوجيه مركبتك الفضائية نحو العناصر المطلوبة لكسب النقاط والتقدم في المستويات',
+    information_controls: 'التحكم',
+    information_controls_text: 'استخدم مفاتيح الأعلى والأسفل أو الماوس لتحريك مركبتك الفضائية. على الأجهزة المحمولة، استخدم أزرار التحكم باللمس للتوجيه، وانقر مرة واحدة لإطلاق النار.',
+    information_gameplay: 'طريقة اللعب',
+    information_gameplay_text: 'يقدم كل مستوى أسئلة اختيار من متعدد. توجه نحو العناصر المطلوبة لاختيار إجابتك. تمنحك الإجابات الصحيحة نقاطًا وطاقة. أما الإجابات الخاطئة فتكلفك طاقة. تجنب رصاصات العدو والعقبات! إذا وصلت طاقتك إلى صفر، فستخسر ويجب عليك إعادة محاولة إكمال المستوى.',
+    information_tips: 'نصائح',
+    information_tips_text: 'كن متيقظًا لرصاصات سفن الفضاء المعادية.\nاقرأ الأسئلة بعناية قبل اختيار الإجابات.',
     
     back: 'رجوع',
     level: 'مستوى',

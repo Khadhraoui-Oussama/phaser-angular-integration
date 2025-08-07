@@ -187,6 +187,7 @@ export default class Preloader extends Phaser.Scene {
         this.load.audio('shoot_laser', 'shoot_laser.mp3');
         this.load.audio('hit_correct', 'success_sfx.mp3'); // Add hit sound for player damage
         this.load.audio('hit_wrong', 'error_sfx.mp3'); // Add hit sound for player damage
+        this.load.audio('hit_enemy', 'hit_enemy.mp3'); // Add hit sound for enemy destruction
         
         // For now, fallback to snowmen-attack assets for missing ones
         this.load.setPath('assets/games/snowmen-attack/');

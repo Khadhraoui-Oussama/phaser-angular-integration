@@ -3,6 +3,8 @@ import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 
 export class Player extends Phaser.GameObjects.Container {
     private ship!: Phaser.GameObjects.Sprite;
+    private hitboxBorder!: Phaser.GameObjects.Graphics; // Green border for hitbox visualization
+    private spriteBorder!: Phaser.GameObjects.Graphics; // Yellow border for sprite outline
     private lives: number = 3;
     private energy: number = 100;
     private maxEnergy: number = 100;
@@ -43,6 +45,8 @@ export class Player extends Phaser.GameObjects.Container {
         this.x = width / 8;
         
         this.createShip();
+        this.createHitboxBorder(); // Add hitbox visualization
+        this.createSpriteBorder(); // Add sprite outline visualization
         this.setupInput();
         this.setupTouchControls();
         
@@ -73,13 +77,55 @@ export class Player extends Phaser.GameObjects.Container {
         
         // Set physics body size based on ship sprite
         const body = this.body as Phaser.Physics.Arcade.Body;
-        body.setSize(
-            this.ship.width * shipScale * 0.8, // Slightly smaller hitbox
-            this.ship.height * shipScale * 0.8
-        );
+        const physicsWidth = this.ship.width * shipScale * 0.7; // Slightly bigger hitbox (was 0.6)
+        const physicsHeight = this.ship.height * shipScale * 0.7; // Slightly bigger hitbox (was 0.6)
+        body.setSize(physicsWidth, physicsHeight);
+        
+        // Remove setOffset to let physics body center naturally
+        // The offset might be causing collision position issues
+        
+        console.log(`Player physics body: ${physicsWidth}x${physicsHeight}`);
+        console.log(`Player ship size: ${this.ship.width * shipScale}x${this.ship.height * shipScale}`);
         
         // Create ship movement animation
         this.createShipAnimation();
+    }
+    
+    private createHitboxBorder(): void {
+        // Create a graphics object for the hitbox border
+        this.hitboxBorder = this.scene.add.graphics();
+        this.add(this.hitboxBorder);
+        
+        // Get the physics body size to show actual collision area
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        const width = body.width;
+        const height = body.height;
+        
+        // Draw green border for player hitbox (showing actual physics body)
+        this.hitboxBorder.lineStyle(2, 0x00ff00, 1); // Green color, 2px thickness
+        this.hitboxBorder.strokeRect(-width/2, -height/2, width, height);
+        
+        // Set depth to ensure border is visible
+        this.hitboxBorder.setDepth(60);
+    }
+    
+    private createSpriteBorder(): void {
+        // Create a graphics object for the sprite border
+        this.spriteBorder = this.scene.add.graphics();
+        this.add(this.spriteBorder);
+        
+        // Get the ship sprite size with scaling
+        const { minScale } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
+        const shipScale = Math.max(0.5, 0.8 * minScale);
+        const spriteWidth = this.ship.width * shipScale;
+        const spriteHeight = this.ship.height * shipScale;
+        
+        // Draw yellow border for sprite outline (visual reference)
+        this.spriteBorder.lineStyle(2, 0xffff00, 0.8); // Yellow color, 2px thickness, slightly transparent
+        this.spriteBorder.strokeRect(-spriteWidth/2, -spriteHeight/2, spriteWidth, spriteHeight);
+        
+        // Set depth to ensure border is visible but behind hitbox border
+        this.spriteBorder.setDepth(59);
     }
     
     private createFallbackShipTexture(): string {
@@ -501,6 +547,16 @@ export class Player extends Phaser.GameObjects.Container {
         // Clean up animations
         if (this.ship) {
             this.ship.destroy();
+        }
+        
+        // Clean up hitbox border
+        if (this.hitboxBorder) {
+            this.hitboxBorder.destroy();
+        }
+        
+        // Clean up sprite border
+        if (this.spriteBorder) {
+            this.spriteBorder.destroy();
         }
         
         super.destroy(fromScene);

@@ -5,6 +5,7 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
     private travelSpeed: number = 800;
     private isExploding: boolean = false;
     private hasHitTarget: boolean = false;
+    private hitboxBorder!: Phaser.GameObjects.Graphics; // Blue border for hitbox visualization
     
     // Note: Bullets now travel horizontally (X-axis) from left to right
     constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -32,6 +33,9 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
         
         // Create explosion animation
         this.createExplosionAnimation();
+        
+        // Create hitbox border for visualization
+        this.createHitboxBorder();
         
         // Start with travel animation
         this.play('bullet_travel');
@@ -81,6 +85,43 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
             }
         }
     }
+    
+    private createHitboxBorder(): void {
+        // Create a graphics object for the hitbox border
+        this.hitboxBorder = this.scene.add.graphics();
+        
+        // Get the physics body size to match the hitbox border
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (body) {
+            const width = body.width;
+            const height = body.height;
+            
+            // Draw blue border for player bullet hitbox
+            this.hitboxBorder.lineStyle(2, 0x0080ff, 1); // Blue color, 2px thickness
+            this.hitboxBorder.strokeRect(this.x - width/2, this.y - height/2, width, height);
+        }
+        
+        // Set depth to ensure border is visible
+        this.hitboxBorder.setDepth(45);
+    }
+    
+    private updateHitboxBorder(): void {
+        if (!this.hitboxBorder || !this.active) return;
+        
+        // Clear previous border
+        this.hitboxBorder.clear();
+        
+        // Get the physics body size to match the hitbox border
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (body && body.enable) {
+            const width = body.width;
+            const height = body.height;
+            
+            // Draw blue border for player bullet hitbox at current position
+            this.hitboxBorder.lineStyle(2, 0x0080ff, 1); // Blue color, 2px thickness
+            this.hitboxBorder.strokeRect(this.x - width/2, this.y - height/2, width, height);
+        }
+    }
 
     public fire(x: number, y: number, direction: { x: number; y: number }): void {
         console.log(`=== PLAYER BULLET FIRE DEBUG ===`);
@@ -101,6 +142,11 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
         this.isExploding = false;
         this.hasHitTarget = false;
         console.log(`Bullet activated and made visible`);
+
+        // Show hitbox border
+        if (this.hitboxBorder) {
+            this.hitboxBorder.setVisible(true);
+        }
 
         // Set responsive speed based on screen size and direction
         const { config } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
@@ -138,6 +184,10 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
         // Stop movement
         this.setVelocity(0, 0);
         
+        // Make explosion 50% smaller by reducing scale to half current scale
+        const currentScale = this.scaleX;
+        this.setScale(currentScale * 0.8);
+        
         // Play explosion animation
         if (this.scene.anims.exists('bullet_explosion')) {
             this.play('bullet_explosion');
@@ -171,6 +221,9 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
         // Don't auto-destroy if exploding
         if (this.isExploding) return;
 
+        // Update hitbox border position
+        this.updateHitboxBorder();
+
         // Get screen bounds
         const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
         
@@ -203,6 +256,12 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
     // Override destroy to ensure cleanup
     public override destroy(fromScene?: boolean): void {
         console.log('PlayerBullet destroyed');
+        
+        // Clean up hitbox border
+        if (this.hitboxBorder) {
+            this.hitboxBorder.destroy();
+        }
+        
         super.destroy(fromScene);
     }
 }

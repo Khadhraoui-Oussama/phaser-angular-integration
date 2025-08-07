@@ -6,7 +6,8 @@ good for ML params later.
 
 
 //TODO
-add asteroid it's a must
+add asteroid it's a must (later time)
 add different enemy spaceships and different shoot bullet animations, fix the player spaceship hitbox
 add correct and wrong answer visual cues with green and red overlays or change colors, while making all other answer objects greyed out and no collision
 add parallex in the main game with planets
+start looking into what parameters to use in the ml

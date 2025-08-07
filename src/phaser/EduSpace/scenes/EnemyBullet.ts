@@ -5,6 +5,7 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
     private travelSpeed: number = 400;
     private isExploding: boolean = false;
     private hasHitTarget: boolean = false;
+    private hitboxBorder!: Phaser.GameObjects.Graphics; // Orange border for hitbox visualization
     
     constructor(scene: Phaser.Scene, x: number, y: number) {
         // Use fallback texture if enemy shot texture doesn't exist
@@ -32,7 +33,15 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
         const body = this.body as Phaser.Physics.Arcade.Body | null;
         if (body) {
-            body.setSize(this.width * 0.8, this.height * 0.6);
+            // Make physics body much smaller for precise collision detection
+            const physicsWidth = this.width * 0.4; // Much smaller than visual (was 0.7)
+            const physicsHeight = this.height * 0.4; // Much smaller than visual (was 0.7)
+            body.setSize(physicsWidth, physicsHeight);
+            
+            // IMPORTANT: Don't use setOffset - let it center automatically
+            // The offset might be causing the collision to happen in the wrong position
+            console.log(`EnemyBullet physics body: ${physicsWidth}x${physicsHeight}`);
+            console.log(`EnemyBullet sprite size: ${this.width}x${this.height}, scale: ${this.scaleX}`);
         } else {
             console.error('EnemyBullet: Failed to create physics body in constructor');
         }
@@ -40,6 +49,9 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         this.createTravelAnimation();
         
         this.createExplosionAnimation();
+        
+        // Create hitbox border for visualization
+        this.createHitboxBorder();
         
         // Start with travel animation
         this.play('enemy_bullet_travel');
@@ -105,6 +117,43 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
             }
         }
     }
+    
+    private createHitboxBorder(): void {
+        // Create a graphics object for the hitbox border
+        this.hitboxBorder = this.scene.add.graphics();
+        
+        // Show the actual physics body size for accurate collision visualization
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (body) {
+            const width = body.width;
+            const height = body.height;
+            
+            // Draw orange border for enemy bullet hitbox (showing actual physics body)
+            this.hitboxBorder.lineStyle(2, 0xffa500, 1); // Orange color, 2px thickness
+            this.hitboxBorder.strokeRect(this.x - width/2, this.y - height/2, width, height);
+        }
+        
+        // Set depth to ensure border is visible
+        this.hitboxBorder.setDepth(40);
+    }
+    
+    private updateHitboxBorder(): void {
+        if (!this.hitboxBorder || !this.active) return;
+        
+        // Clear previous border
+        this.hitboxBorder.clear();
+        
+        // Show the actual physics body size for accurate collision visualization
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (body && body.enable) {
+            const width = body.width;
+            const height = body.height;
+            
+            // Draw orange border for enemy bullet hitbox (showing actual physics body)
+            this.hitboxBorder.lineStyle(2, 0xffa500, 1); // Orange color, 2px thickness
+            this.hitboxBorder.strokeRect(this.x - width/2, this.y - height/2, width, height);
+        }
+    }
 
     public fire(x: number, y: number, direction: { x: number; y: number }): void {
         if (this.isExploding) return;
@@ -124,7 +173,12 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
             this.scene.physics.add.existing(this);
             const body = this.body as Phaser.Physics.Arcade.Body | null;
             if (body) {
-                body.setSize(this.width * 0.8, this.height * 0.6);
+                // Make physics body much smaller for precise collision detection
+                const physicsWidth = this.width * 0.4; // Much smaller than visual
+                const physicsHeight = this.height * 0.4; // Much smaller than visual
+                body.setSize(physicsWidth, physicsHeight);
+                // Center the physics body properly
+                body.setOffset((this.width - physicsWidth) / 2, (this.height - physicsHeight) / 2);
             }
         }
         
@@ -139,6 +193,11 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         
         this.setActive(true);
         this.setVisible(true);
+        
+        // Show hitbox border
+        if (this.hitboxBorder) {
+            this.hitboxBorder.setVisible(true);
+        }
         
         // Set responsive speed based on screen size
         const { config } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
@@ -226,6 +285,12 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         // Stop movement
         this.setVelocity(0, 0);
         
+        // Hide hitbox border
+        if (this.hitboxBorder) {
+            this.hitboxBorder.clear();
+            this.hitboxBorder.setVisible(false);
+        }
+        
         // Disable physics body
         const body = this.body as Phaser.Physics.Arcade.Body;
         if (body) {
@@ -246,6 +311,9 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         super.preUpdate(time, delta);
         
         if (!this.active || this.isExploding) return;
+        
+        // Update hitbox border position
+        this.updateHitboxBorder();
         
         // Check if scene is still valid
         if (!this.scene) {
@@ -271,6 +339,11 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         // Stop any velocity
         if (this.body) {
             this.setVelocity(0, 0);
+        }
+        
+        // Clean up hitbox border
+        if (this.hitboxBorder) {
+            this.hitboxBorder.destroy();
         }
         
         // Clean up any listeners

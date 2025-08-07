@@ -5,9 +5,11 @@ import MainGame from './Game';
 export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
     declare scene: MainGame;
     private isAlive: boolean;
+    private isFlashing: boolean = false; // Track if currently flashing
     private speed: number;
     private shootTimer?: Phaser.Time.TimerEvent;
     private shootCooldown: number = 2000; // 2 seconds between shots
+    private hitboxBorder!: Phaser.GameObjects.Graphics; // Red border for hitbox visualization
     
     // Static configurable speed variable
     public static BASE_SPEED: number = 150;
@@ -55,7 +57,43 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
         }
         this.speed = baseSpeed;
         
+        // Create hitbox border for visualization
+        this.createHitboxBorder();
+        
         console.log(`EnemySpaceship created at (${x}, ${y}) with speed ${this.speed}`);
+    }
+    
+    private createHitboxBorder(): void {
+        // Create a graphics object for the hitbox border
+        this.hitboxBorder = this.scene.add.graphics();
+        
+        // Get the physics body size to match the hitbox border
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        const width = body.width;
+        const height = body.height;
+        
+        // Draw red border for enemy spaceship hitbox
+        this.hitboxBorder.lineStyle(2, 0xff0000, 1); // Red color, 2px thickness
+        this.hitboxBorder.strokeRect(this.x - width/2, this.y - height/2, width, height);
+        
+        // Set depth to ensure border is visible
+        this.hitboxBorder.setDepth(30);
+    }
+    
+    private updateHitboxBorder(): void {
+        if (!this.hitboxBorder) return;
+        
+        // Clear previous border
+        this.hitboxBorder.clear();
+        
+        // Get the physics body size to match the hitbox border
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        const width = body.width;
+        const height = body.height;
+        
+        // Draw red border for enemy spaceship hitbox at current position
+        this.hitboxBorder.lineStyle(2, 0xff0000, 1); // Red color, 2px thickness
+        this.hitboxBorder.strokeRect(this.x - width/2, this.y - height/2, width, height);
     }
     
     start(): void {
@@ -126,6 +164,11 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
             this.shootTimer = undefined;
         }
         
+        // Clean up hitbox border
+        if (this.hitboxBorder) {
+            this.hitboxBorder.destroy();
+        }
+        
         // Stop movement
         const body = this.body as Phaser.Physics.Arcade.Body;
         if (body) {
@@ -143,6 +186,9 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
         super.preUpdate(time, delta);
         
         if (!this.isAlive) return;
+        
+        // Update hitbox border position
+        this.updateHitboxBorder();
         
         // Check if spaceship is off-screen (left side) and should be destroyed
         if (this.x < -100) {
@@ -165,6 +211,53 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
     
     public getIsAlive(): boolean {
         return this.isAlive;
+    }
+    
+    public getIsFlashing(): boolean {
+        return this.isFlashing;
+    }
+    
+    // Method to flash red when hit by player bullet
+    public flashRed(callback?: () => void): void {
+        if (this.isFlashing) return; // Prevent multiple flashes
+        
+        this.isFlashing = true;
+        
+        // Disable physics body to prevent further collisions during flash
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        if (body) {
+            body.enable = false;
+        }
+        
+        // Stop movement and shooting during flash
+        this.setVelocity(0, 0);
+        if (this.shootTimer) {
+            this.shootTimer.destroy();
+            this.shootTimer = undefined;
+        }
+        
+        // Set red tint
+        this.setTint(0xff0000);
+        
+        // Flash effect: quick tint changes
+        this.scene.tweens.add({
+            targets: this,
+            alpha: 0.5,
+            duration: 100,
+            yoyo: true,
+            repeat: 2, // Flash 3 times total
+            onComplete: () => {
+                // Reset tint and alpha
+                this.clearTint();
+                this.setAlpha(1);
+                this.isFlashing = false;
+                
+                // Call the callback (usually to destroy the spaceship)
+                if (callback) {
+                    callback();
+                }
+            }
+        });
     }
     
     // Method to update scale for fullscreen changes
@@ -198,5 +291,20 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
         
         console.log(`EnemySpaceship spawned off-screen at (${spawnX}, ${spawnY})`);
         return spaceship;
+    }
+    
+    override destroy(fromScene?: boolean): void {
+        // Clean up hitbox border
+        if (this.hitboxBorder) {
+            this.hitboxBorder.destroy();
+        }
+        
+        // Clean up shooting timer
+        if (this.shootTimer) {
+            this.shootTimer.destroy();
+            this.shootTimer = undefined;
+        }
+        
+        super.destroy(fromScene);
     }
 }

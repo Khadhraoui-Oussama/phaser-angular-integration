@@ -482,33 +482,63 @@ export default class MainGame extends Phaser.Scene {
         const bullet = object1 as PlayerBullet;
         const spaceship = object2 as EnemySpaceship;
         
+        // Skip if spaceship is already flashing (being destroyed)
+        if (spaceship.getIsFlashing()) {
+            return;
+        }
+        
         console.log('Player bullet hit enemy spaceship!');
         
         if (bullet.explode) {
             bullet.explode();
         }
         
-        spaceship.destroy();
-        
-        const index = this.enemySpaceships.indexOf(spaceship);
-        if (index > -1) {
-            this.enemySpaceships.splice(index, 1);
-        }
+        // Flash red before destroying the spaceship
+        spaceship.flashRed(() => {
+            // This callback runs after the flash effect completes
+            spaceship.destroy();
+            
+            const index = this.enemySpaceships.indexOf(spaceship);
+            if (index > -1) {
+                this.enemySpaceships.splice(index, 1);
+            }
+        });
         
         this.addScore(this.scoreEnemyKill);
         
-        this.sound.play('hit_correct', { volume: 0.3 });
+        this.sound.play('hit_enemy', { volume: 0.3 });
     }
 
     private handlePlayerEnemyBulletCollision(object1: any, object2: any): void {
         const player = object1 as Player;
         const bullet = object2 as EnemyBullet;
         
+        console.log('=== COLLISION DETECTED ===');
+        console.log(`Player position: (${player.x}, ${player.y})`);
+        console.log(`Bullet position: (${bullet.x}, ${bullet.y})`);
+        
+        // Check physics body positions
+        const playerBody = player.body as Phaser.Physics.Arcade.Body;
+        const bulletBody = bullet.body as Phaser.Physics.Arcade.Body;
+        
+        if (playerBody && bulletBody) {
+            console.log(`Player body center: (${playerBody.center.x}, ${playerBody.center.y})`);
+            console.log(`Player body bounds: left=${playerBody.left}, right=${playerBody.right}, top=${playerBody.top}, bottom=${playerBody.bottom}`);
+            console.log(`Bullet body center: (${bulletBody.center.x}, ${bulletBody.center.y})`);
+            console.log(`Bullet body bounds: left=${bulletBody.left}, right=${bulletBody.right}, top=${bulletBody.top}, bottom=${bulletBody.bottom}`);
+            console.log(`Distance between centers: ${Phaser.Math.Distance.Between(playerBody.center.x, playerBody.center.y, bulletBody.center.x, bulletBody.center.y)}`);
+        }
+        
+        console.log(`Bullet has hit target: ${bullet.getHasHitTarget()}`);
+        console.log(`Bullet is exploding: ${bullet.getIsExploding()}`);
+        console.log(`Bullet active: ${bullet.active}`);
+        
         if (bullet.getHasHitTarget() || bullet.getIsExploding() || !bullet.active) {
+            console.log('Collision ignored - bullet already processed');
             return;
         }
         
-        console.log('Player hit by enemy bullet!');
+        console.log('Processing bullet collision with player!');
         
         if (bullet.explode) {
             bullet.explode();
@@ -521,6 +551,8 @@ export default class MainGame extends Phaser.Scene {
         if (this.currentEnergy <= 0) {
             this.triggerGameOver();
         }
+        
+        console.log('=== END COLLISION ===');
     }
     
     private handleCorrectAnswer(answer: Answer): void {
@@ -2036,7 +2068,7 @@ export default class MainGame extends Phaser.Scene {
             if (!bullet.active) return;
             
             this.enemySpaceships.forEach((spaceship, spaceshipIndex) => {
-                if (!spaceship || !spaceship.active) return;
+                if (!spaceship || !spaceship.active || spaceship.getIsFlashing()) return;
                 
                 // Use Phaser's built-in overlap detection
                 if (this.physics.overlap(bullet, spaceship)) {
@@ -2047,15 +2079,24 @@ export default class MainGame extends Phaser.Scene {
                         bullet.explode();
                     }
                     
-                    // Destroy the spaceship
-                    spaceship.destroy();
-                    this.enemySpaceships.splice(spaceshipIndex, 1);
+                    // Flash red before destroying the spaceship
+                    spaceship.flashRed(() => {
+                        // This callback runs after the flash effect completes
+                        spaceship.destroy();
+                        const index = this.enemySpaceships.indexOf(spaceship);
+                        if (index > -1) {
+                            this.enemySpaceships.splice(index, 1);
+                        }
+                    });
+                    
+                    this.addScore(this.scoreEnemyKill);
+                    this.sound.play('hit_enemy', { volume: 0.3 });
                     
                     // Add score for destroying enemy
                     this.addScore(this.scoreEnemyKill);
                     
                     // Play hit sound
-                    this.sound.play('hit_correct', { volume: 0.3 });
+                    this.sound.play('hit_enemy', { volume: 0.3 });
                 }
             });
         });

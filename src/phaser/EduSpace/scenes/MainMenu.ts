@@ -177,6 +177,9 @@ export default class MainMenu extends Phaser.Scene {
                 this.sound.stopAll()
                 this.sound.play('shoot_laser');
 
+                // Reset review attempts data for new session
+                this.resetReviewAttemptsData();
+
                 // Get the last unlocked level and go directly to MainGame
                 const lastUnlockedLevel = this.getLastUnlockedLevel();
                 this.scene.start('MainGame', { selectedLevel: lastUnlockedLevel });
@@ -655,5 +658,26 @@ export default class MainMenu extends Phaser.Scene {
         }
 
         return lastUnlockedLevel;
+    }
+
+    /**
+     * Reset review attempts data for a new game session
+     * Clears both localStorage and registry to ensure only current session attempts are tracked
+     */
+    private resetReviewAttemptsData(): void {
+        try {
+            // Clear main attempts from localStorage
+            const allAttemptsKey = 'eduspace_all_attempts_global';
+            localStorage.removeItem(allAttemptsKey);
+            
+            // Clear attempts from registry if they exist
+            if (this.registry.has('allAttempts')) {
+                this.registry.remove('allAttempts');
+            }
+            
+            console.log('Review attempts data reset for new session');
+        } catch (error) {
+            console.error('Error resetting review attempts data:', error);
+        }
     }
 }

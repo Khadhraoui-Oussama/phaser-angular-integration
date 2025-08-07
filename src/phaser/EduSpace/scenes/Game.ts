@@ -991,16 +991,9 @@ export default class MainGame extends Phaser.Scene {
         
         // Save all attempts to localStorage for review
         if (this.allAttempts.length > 0) {
-            // Save to global attempts storage (preserves all levels)
+            // Save to global attempts storage (used by ReviewAttempts scene)
             localStorage.setItem('eduspace_all_attempts_global', JSON.stringify(this.allAttempts));
             console.log(`Saved ${this.allAttempts.length} total attempts globally`);
-            
-            // Also save current level attempts for backward compatibility
-            const currentLevelAttempts = this.allAttempts.filter(attempt => 
-                attempt.questionData && this.questions.includes(attempt.questionData)
-            );
-            localStorage.setItem(`eduspace_level_${this.selectedLevel || 1}_all_attempts`, JSON.stringify(currentLevelAttempts));
-            console.log(`Saved ${currentLevelAttempts.length} attempts for level ${this.selectedLevel || 1}`);
             
             console.log('All Attempts Structure:', this.allAttempts);
         }
@@ -1084,16 +1077,9 @@ export default class MainGame extends Phaser.Scene {
         
         // Save all attempts to localStorage for review
         if (this.allAttempts.length > 0) {
-            // Save to global attempts storage (preserves all levels)
+            // Save to global attempts storage (used by ReviewAttempts scene)
             localStorage.setItem('eduspace_all_attempts_global', JSON.stringify(this.allAttempts));
             console.log(`Saved ${this.allAttempts.length} total attempts globally (game over)`);
-            
-
-            const currentLevelAttempts = this.allAttempts.filter(attempt => 
-                attempt.questionData && this.questions.includes(attempt.questionData)
-            );
-            localStorage.setItem(`eduspace_level_${this.selectedLevel || 1}_all_attempts_gameover`, JSON.stringify(currentLevelAttempts));
-            console.log(`Saved ${currentLevelAttempts.length} attempts from game over for level ${this.selectedLevel || 1}`);
             
             console.log('All Attempts Structure:', this.allAttempts);
         }
@@ -1209,14 +1195,14 @@ export default class MainGame extends Phaser.Scene {
         }
         
         // Restart button using ui_element_large
-        const restartButton = this.add.container(0, 80);
+        const restartButton = this.add.container(-80, 80);
         
         const restartBg = this.add.image(0, 0, 'ui_element_large');
-        restartBg.setScale(0.8); // Increased scale for much larger buttons
+        restartBg.setScale(0.7); // Slightly smaller to fit multiple buttons
         restartBg.setInteractive();
         
         const restartText = this.add.text(0, 0, languageManager.getText('restart_level'), {
-            fontSize: '28px', // Increased font size for better readability
+            fontSize: '24px', // Adjusted font size
             fontFamily: 'Arial',
             color: '#ffffff',
             fontStyle: 'bold',
@@ -1244,16 +1230,53 @@ export default class MainGame extends Phaser.Scene {
             this.restartLevel();
         });
         
+        // Review Attempts button using ui_element_large
+        const reviewButton = this.add.container(80, 80);
+        
+        const reviewBg = this.add.image(0, 0, 'ui_element_large');
+        reviewBg.setScale(0.7); // Slightly smaller to fit multiple buttons
+        reviewBg.setInteractive();
+        reviewBg.setTint(0x4444ff); // Blue tint for review button
+        
+        const reviewText = this.add.text(0, 0, languageManager.getText('review_attempts_button'), {
+            fontSize: '24px', // Adjusted font size
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        reviewText.setOrigin(0.5);
+        reviewText.setShadow(2, 2, '#000000', 4, true, false);
+        
+        reviewButton.add([reviewBg, reviewText]);
+        gameOverContainer.add(reviewButton);
+        
+        // Review button hover effects
+        reviewBg.on('pointerover', () => {
+            reviewBg.setTint(0x6666ff);
+            reviewButton.setScale(1.05);
+        });
+        
+        reviewBg.on('pointerout', () => {
+            reviewBg.setTint(0x4444ff);
+            reviewButton.setScale(1.0);
+        });
+        
+        reviewBg.on('pointerdown', () => {
+            this.sound.play('shoot_laser', { volume: 0.5 });
+            this.scene.start('ReviewAttempts');
+        });
+        
         // Main menu button using ui_element_large
-        const menuButton = this.add.container(0, 180); // Increased spacing due to larger buttons
+        const menuButton = this.add.container(0, 180); // Moved down to accommodate review button
         
         const menuBg = this.add.image(0, 0, 'ui_element_large');
-        menuBg.setScale(0.8); // Increased scale for much larger buttons
+        menuBg.setScale(0.7); // Consistent with other buttons
         menuBg.setInteractive();
         menuBg.setTint(0x888888); // Slightly darker tint for menu button
         
         const menuText = this.add.text(0, 0, languageManager.getText('main_menu'), {
-            fontSize: '28px', // Increased font size for better readability
+            fontSize: '24px', // Consistent font size
             fontFamily: 'Arial',
             color: '#ffffff',
             fontStyle: 'bold',
@@ -1378,15 +1401,15 @@ export default class MainGame extends Phaser.Scene {
         }
         
         // Level Select button using ui_element_large
-        const levelSelectButton = this.add.container(0, 90);
+        const levelSelectButton = this.add.container(-80, 90);
         
         const levelSelectBg = this.add.image(0, 0, 'ui_element_large');
-        levelSelectBg.setScale(0.8);
+        levelSelectBg.setScale(0.7); // Smaller to fit multiple buttons
         levelSelectBg.setInteractive();
         levelSelectBg.setTint(0x4444ff); // Blue tint for level select
         
         const levelSelectText = this.add.text(0, 0, languageManager.getText('victory_level_select'), {
-            fontSize: '28px',
+            fontSize: '24px', // Adjusted font size
             fontFamily: 'Arial',
             color: '#ffffff',
             fontStyle: 'bold',
@@ -1415,16 +1438,53 @@ export default class MainGame extends Phaser.Scene {
             this.scene.start('LevelSelectScene');
         });
         
+        // Review Attempts button using ui_element_large
+        const reviewButton = this.add.container(80, 90);
+        
+        const reviewBg = this.add.image(0, 0, 'ui_element_large');
+        reviewBg.setScale(0.7); // Smaller to fit multiple buttons
+        reviewBg.setInteractive();
+        reviewBg.setTint(0xff8800); // Orange tint for review button
+        
+        const reviewText = this.add.text(0, 0, languageManager.getText('review_attempts_button'), {
+            fontSize: '24px', // Adjusted font size
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center'
+        });
+        reviewText.setOrigin(0.5);
+        reviewText.setShadow(2, 2, '#000000', 4, true, false);
+        
+        reviewButton.add([reviewBg, reviewText]);
+        victoryContainer.add(reviewButton);
+        
+        // Review button hover effects
+        reviewBg.on('pointerover', () => {
+            reviewBg.setTint(0xffaa44);
+            reviewButton.setScale(1.05);
+        });
+        
+        reviewBg.on('pointerout', () => {
+            reviewBg.setTint(0xff8800);
+            reviewButton.setScale(1.0);
+        });
+        
+        reviewBg.on('pointerdown', () => {
+            this.sound.play('shoot_laser', { volume: 0.5 });
+            this.scene.start('ReviewAttempts');
+        });
+        
         // Main menu button using ui_element_large
-        const menuButton = this.add.container(0, 180);
+        const menuButton = this.add.container(0, 180); // Moved down to accommodate review button
         
         const menuBg = this.add.image(0, 0, 'ui_element_large');
-        menuBg.setScale(0.8);
+        menuBg.setScale(0.7); // Consistent with other buttons
         menuBg.setInteractive();
         menuBg.setTint(0x888888); // Gray tint for menu button
         
         const menuText = this.add.text(0, 0, languageManager.getText('main_menu'), {
-            fontSize: '28px',
+            fontSize: '24px', // Consistent font size
             fontFamily: 'Arial',
             color: '#ffffff',
             fontStyle: 'bold',

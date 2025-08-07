@@ -45,6 +45,14 @@ export interface TranslationKeys {
   information_tips: string;
   information_tips_text: string;
   
+  // Review Attempts
+  review_attempts_title: string;
+  review_attempts_button: string;
+  attempt_number: string;
+  question_text: string;
+  your_answer: string;
+  correct_answer: string;
+  
   // General
   back: string;
   level: string;
@@ -92,6 +100,13 @@ export const translations: Record<string, TranslationKeys> = {
     information_tips: 'Tips',
     information_tips_text: 'Stay alert for enemy spacehips bullets.\nRead questions carefully before choosing answers.',
     
+    review_attempts_title: 'Review Attempts',
+    review_attempts_button: 'Review',
+    attempt_number: 'Attempt',
+    question_text: 'Question',
+    your_answer: 'Your Answer',
+    correct_answer: 'Correct Answer',
+    
     back: 'Back',
     level: 'Level',
     score: 'Score'
@@ -136,6 +151,13 @@ export const translations: Record<string, TranslationKeys> = {
     information_tips: 'Conseils',
     information_tips_text: 'Restez vigilant face aux balles des vaisseaux spatiaux ennemis.\nLisez attentivement les questions avant de choisir les réponses.',
     
+    review_attempts_title: 'Réviser les Tentatives',
+    review_attempts_button: 'Réviser',
+    attempt_number: 'Tentative',
+    question_text: 'Question',
+    your_answer: 'Votre Réponse',
+    correct_answer: 'Bonne Réponse',
+    
     back: 'Retour',
     level: 'Niveau',
     score: 'Score'
@@ -179,6 +201,13 @@ export const translations: Record<string, TranslationKeys> = {
     information_gameplay_text: 'يقدم كل مستوى أسئلة اختيار من متعدد. توجه نحو العناصر المطلوبة لاختيار إجابتك. تمنحك الإجابات الصحيحة نقاطًا وطاقة. أما الإجابات الخاطئة فتكلفك طاقة. تجنب رصاصات العدو والعقبات! إذا وصلت طاقتك إلى صفر، فستخسر ويجب عليك إعادة محاولة إكمال المستوى.',
     information_tips: 'نصائح',
     information_tips_text: 'كن متيقظًا لرصاصات سفن الفضاء المعادية.\nاقرأ الأسئلة بعناية قبل اختيار الإجابات.',
+    
+    review_attempts_title: 'مراجعة المحاولات',
+    review_attempts_button: 'مراجعة',
+    attempt_number: 'محاولة',
+    question_text: 'السؤال',
+    your_answer: 'إجابتك',
+    correct_answer: 'الإجابة الصحيحة',
     
     back: 'رجوع',
     level: 'مستوى',

@@ -9,6 +9,7 @@ import LanguageSelectionScene from './scenes/LanguageSelectionScene';
 import Information from './scenes/Information';
 import SkinSelection from './scenes/SkinSelection';
 import Settings from './scenes/Settings';
+import ReviewAttempts from './scenes/ReviewAttempts';
 
 // Import types for responsive configuration
 export interface GameDimensions {
@@ -49,7 +50,7 @@ const createResponsiveConfig = (dimensions: GameDimensions, parent: string): Pha
             }
         },
         backgroundColor: '#3366b2',
-        scene: [Boot, Preloader, MainMenu, LevelSelectScene, MainGame, LanguageSelectionScene, Information, SkinSelection, Settings],
+        scene: [Boot, Preloader, MainMenu, LevelSelectScene, MainGame, LanguageSelectionScene, Information, SkinSelection, Settings, ReviewAttempts],
         physics: {
             default: 'arcade',
             arcade: {

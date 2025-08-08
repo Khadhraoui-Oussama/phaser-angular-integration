@@ -17,6 +17,9 @@ export default class Answer extends Phaser.GameObjects.Container {
     private basePortalScale: number = 4.0; // Store base scale for fullscreen calculations
     private baseImageScale: number = 1.0; // Store base image scale
     private isFullscreen: boolean = false;
+    private isMarkedAsWrong: boolean = false; // Track if this answer has been marked as wrong
+    private wrongOverlay?: Phaser.GameObjects.Graphics; // Red overlay for wrong answers
+    private canCollide: boolean = true; // Whether this answer can be collided with
     
     // Predefined Y positions (quarters of screen height)
     public static readonly Y_POSITIONS = {
@@ -376,9 +379,45 @@ export default class Answer extends Phaser.GameObjects.Container {
         return this.answerData.isImage;
     }
     
+    // Method to mark this answer as wrong (red overlay, reduced opacity, no collision)
+    public markAsWrongAnswer(): void {
+        if (this.isMarkedAsWrong || this.isDestroyed) return;
+        
+        this.isMarkedAsWrong = true;
+        this.canCollide = false;
+        
+        console.log(`Marking answer as wrong: "${this.answerData.content}"`);
+        
+        // Create red overlay
+        this.wrongOverlay = this.scene.add.graphics();
+        this.wrongOverlay.fillStyle(0xff0000, 0.6); // Red with 60% opacity
+        
+        // Get the bounds of the portal background to overlay it
+        const bounds = this.cloudBg.getBounds();
+        const radius = Math.max(bounds.width, bounds.height) / 2;
+        
+        this.wrongOverlay.fillCircle(0, 0, radius);
+        this.add(this.wrongOverlay);
+        
+        // Reduce overall opacity to 50%
+        this.setAlpha(0.5);
+        
+        console.log(`Answer "${this.answerData.content}" marked as wrong with red overlay and 50% opacity`);
+    }
+    
+    // Method to check if this answer can be collided with
+    public canBeCollided(): boolean {
+        return this.canCollide && !this.isDestroyed;
+    }
+    
+    // Method to check if this answer has been marked as wrong
+    public getIsMarkedAsWrong(): boolean {
+        return this.isMarkedAsWrong;
+    }
+    
     // Method to handle collision with player (to be called from Game scene)
     public onPlayerCollision(): void {
-        if (this.isDestroyed) return;
+        if (this.isDestroyed || !this.canCollide) return;
         
         console.log(`Player collided with answer: "${this.answerData.content}", correct: ${this.answerData.isCorrect}`);
         
@@ -389,8 +428,10 @@ export default class Answer extends Phaser.GameObjects.Container {
             content: this.answerData.content
         });
         
-        // Destroy the answer
-        this.destroy();
+        // Only destroy the answer if it's correct, wrong answers stay and move off-screen
+        if (this.answerData.isCorrect) {
+            this.destroy();
+        }
     }
     
     // Override destroy to ensure cleanup
@@ -406,6 +447,9 @@ export default class Answer extends Phaser.GameObjects.Container {
         }
         if (this.answerContent) {
             this.answerContent.destroy();
+        }
+        if (this.wrongOverlay) {
+            this.wrongOverlay.destroy();
         }
         
         super.destroy(fromScene);

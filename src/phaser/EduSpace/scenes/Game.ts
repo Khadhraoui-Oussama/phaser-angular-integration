@@ -74,6 +74,9 @@ export default class MainGame extends Phaser.Scene {
     private enemySpawnTimer?: Phaser.Time.TimerEvent;
     public enemySpaceshipSpeed: number = 50;
     
+    // Wrong answer respawn configuration
+    private wrongAnswerRespawnDelay: number = 1000; // 3 seconds delay before respawning wrong answers
+    
     // Victory screen text elements for localization updates
     private victoryScreenTexts?: {
         victoryText: Phaser.GameObjects.Text;
@@ -435,17 +438,17 @@ export default class MainGame extends Phaser.Scene {
         this.events.on('answer-collision', (data: { answer: Answer; isCorrect: boolean; content: string }) => {
             console.log(`Answer collision detected: "${data.content}", correct: ${data.isCorrect}`);
             
-            const answerIndex = this.answers.indexOf(data.answer);
-            if (answerIndex === -1) {
-                console.log('Answer already processed, ignoring duplicate collision event');
-                return;
-            }
-            
-            this.answers.splice(answerIndex, 1);
-            
             if (data.isCorrect) {
+                // Remove correct answers from tracking array immediately
+                const answerIndex = this.answers.indexOf(data.answer);
+                if (answerIndex === -1) {
+                    console.log('Answer already processed, ignoring duplicate collision event');
+                    return;
+                }
+                this.answers.splice(answerIndex, 1);
                 this.handleCorrectAnswer(data.answer);
             } else {
+                // Wrong answers stay in the array but are marked visually
                 this.handleWrongAnswer(data.answer);
             }
         });
@@ -458,7 +461,18 @@ export default class MainGame extends Phaser.Scene {
                 this.answers.splice(index, 1);
             }
             
-            this.checkAndRespawnAnswers();
+            // If this was a wrong answer that was marked, respawn it after a delay
+            if (!data.isCorrect && data.answer.getIsMarkedAsWrong()) {
+                console.log(`Scheduling respawn of wrong answer: "${data.content}" in ${this.wrongAnswerRespawnDelay}ms`);
+                this.time.delayedCall(this.wrongAnswerRespawnDelay, () => {
+                    // Double-check game state before respawning
+                    if (this.gameState === 'gameOver' || !this.currentQuestion) {
+                        console.log('Game state changed, cancelling wrong answer respawn');
+                        return;
+                    }
+                    this.respawnSpecificAnswer(data.answer.getAnswerData());
+                });
+            }
         });
        
         this.setupPlayerEnemyBulletCollisions();
@@ -631,12 +645,8 @@ export default class MainGame extends Phaser.Scene {
             }
         }
         
-        this.clearCurrentAnswers();
-        
-        const respawnAnswersDelayMS = 500;
-        this.time.delayedCall(respawnAnswersDelayMS, () => {
-            this.respawnCurrentQuestionAnswers();
-        });
+        // Mark the answer as wrong visually and disable its hitbox
+        answer.markAsWrongAnswer();
     }
 
     // Question system methods
@@ -955,9 +965,35 @@ export default class MainGame extends Phaser.Scene {
     }
 
     /**
-     * Check if we need to respawn answers for the current question.
-     * This is called when answers go off-screen to ensure the question continues
-     * until the correct answer is selected.
+     * Respawn a specific answer (used for wrong answers that need to come back after going off-screen).
+     * This creates a fresh answer instance in its original state.
+     */
+    private respawnSpecificAnswer(answerData: AnswerData): void {
+        // Don't respawn if game is over or no current question
+        if (this.gameState === 'gameOver' || !this.currentQuestion) {
+            return;
+        }
+        
+        console.log('=== RESPAWNING SPECIFIC ANSWER ===');
+        console.log(`Respawning answer: "${answerData.content}", correct: ${answerData.isCorrect}`);
+        
+        // Create the answer with a random Y position (fresh state, no wrong marking)
+        const yPosition = Answer.getRandomYPosition(this);
+        const answer = new Answer(this, answerData, yPosition);
+        this.answers.push(answer);
+        
+        // Apply current fullscreen state to new answer
+        if (this.isCurrentlyFullscreen) {
+            answer.updateFullscreenScale(true);
+        }
+        
+        console.log(`Answer respawned: "${answerData.content}" at Y: ${yPosition} (Correct: ${answerData.isCorrect})`);
+    }
+
+    /**
+     * Fallback method to check if we need to respawn answers for the current question.
+     * This is now primarily a safety net in case all answers disappear simultaneously.
+     * Individual answers now respawn immediately when they go off-screen.
      */
     private checkAndRespawnAnswers(): void {
         // Don't respawn if game is over or no current question
@@ -1722,6 +1758,17 @@ export default class MainGame extends Phaser.Scene {
         console.log(`Enemy spaceship speed set to: ${newSpeed}`);
     }
 
+    // Method to configure wrong answer respawn delay
+    public setWrongAnswerRespawnDelay(delayMs: number): void {
+        this.wrongAnswerRespawnDelay = delayMs;
+        console.log(`Wrong answer respawn delay set to: ${delayMs}ms`);
+    }
+
+    // Method to get current wrong answer respawn delay
+    public getWrongAnswerRespawnDelay(): number {
+        return this.wrongAnswerRespawnDelay;
+    }
+
     private createTitle(): void {
         const { width, height, centerX, centerY, minScale } = ResponsiveGameUtils.getResponsiveConfig(this);
         
@@ -2042,6 +2089,16 @@ export default class MainGame extends Phaser.Scene {
         // Check for collisions between player bullets and enemy spaceships
         this.checkPlayerBulletEnemyCollisions();
         
+        // Safety check: Ensure we have active answers on screen (fallback mechanism)
+        // This runs every few seconds to prevent edge cases where all answers disappear
+        if (this.gameStarted && this.currentQuestion && time % 3000 < 16) { // Check roughly every 3 seconds
+            const activeAnswers = this.answers.filter(answer => answer && answer.active);
+            if (activeAnswers.length === 0) {
+                console.log('Safety check: No active answers found, using fallback respawn...');
+                this.checkAndRespawnAnswers();
+            }
+        }
+        
         // Other game update logic can be added here later
     }
     
@@ -2049,7 +2106,7 @@ export default class MainGame extends Phaser.Scene {
         if (!this.player || !this.player.active) return;
         
         this.answers.forEach(answer => {
-            if (answer && answer.active) {
+            if (answer && answer.active && answer.canBeCollided()) {
                 // Simple distance-based collision detection
                 const distance = Phaser.Math.Distance.Between(
                     this.player.x, this.player.y,

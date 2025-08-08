@@ -75,7 +75,7 @@ export default class MainGame extends Phaser.Scene {
     public enemySpaceshipSpeed: number = 50;
     
     // Wrong answer respawn configuration
-    private wrongAnswerRespawnDelay: number = 1000; // 3 seconds delay before respawning wrong answers
+    private wrongAnswerRespawnDelay: number = 1500; // 3 seconds delay before respawning wrong answers
     
     // Victory screen text elements for localization updates
     private victoryScreenTexts?: {
@@ -631,7 +631,7 @@ export default class MainGame extends Phaser.Scene {
             this.saveAttemptsToStorage();
         }
 
-        this.sound.play('shoot_laser', { volume: 0.3 });
+        this.sound.play('hit_wrong', { volume: 0.7 });
         
         this.addScore(-1);
         
@@ -645,8 +645,55 @@ export default class MainGame extends Phaser.Scene {
             }
         }
         
+        // Pause movement of all answers temporarily (except the wrong one for animation)
+        this.pauseAnswerMovement(answer);
+        
         // Mark the answer as wrong visually and disable its hitbox
         answer.markAsWrongAnswer();
+        
+        // Resume normal movement after 1 second
+        this.time.delayedCall(1000, () => {
+            this.resumeAnswerMovement();
+            console.log('Answer movement resumed after wrong answer animation');
+        });
+    }
+    
+    private pauseAnswerMovement(excludeAnswer?: Answer): void {
+        console.log('Pausing answer movement for dramatic effect');
+        this.answers.forEach(answer => {
+            if (answer && answer.active && answer !== excludeAnswer) {
+                // Store current velocity and stop movement
+                const body = answer.body as Phaser.Physics.Arcade.Body;
+                if (body) {
+                    (answer as any).pausedVelocityX = body.velocity.x;
+                    body.setVelocity(0, 0);
+                }
+            }
+        });
+        
+        // Also pause player movement temporarily
+        if (this.player) {
+            this.player.setActive(false);
+        }
+    }
+    
+    private resumeAnswerMovement(): void {
+        console.log('Resuming answer movement');
+        this.answers.forEach(answer => {
+            if (answer && answer.active) {
+                // Restore previous velocity
+                const body = answer.body as Phaser.Physics.Arcade.Body;
+                if (body && (answer as any).pausedVelocityX !== undefined) {
+                    body.setVelocityX((answer as any).pausedVelocityX);
+                    delete (answer as any).pausedVelocityX;
+                }
+            }
+        });
+        
+        // Re-enable player movement
+        if (this.player) {
+            this.player.setActive(true);
+        }
     }
 
     // Question system methods

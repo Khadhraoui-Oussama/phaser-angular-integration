@@ -18,7 +18,7 @@ export default class Answer extends Phaser.GameObjects.Container {
     private baseImageScale: number = 1.0; // Store base image scale
     private isFullscreen: boolean = false;
     private isMarkedAsWrong: boolean = false; // Track if this answer has been marked as wrong
-    private wrongOverlay?: Phaser.GameObjects.Graphics; // Red overlay for wrong answers
+    private wrongAnswerTween?: Phaser.Tweens.Tween; // Animation tween for wrong answers
     private canCollide: boolean = true; // Whether this answer can be collided with
     
     // Predefined Y positions (quarters of screen height)
@@ -379,7 +379,7 @@ export default class Answer extends Phaser.GameObjects.Container {
         return this.answerData.isImage;
     }
     
-    // Method to mark this answer as wrong (red overlay, reduced opacity, no collision)
+    // Method to mark this answer as wrong (red glow, scale animation, no collision)
     public markAsWrongAnswer(): void {
         if (this.isMarkedAsWrong || this.isDestroyed) return;
         
@@ -388,21 +388,33 @@ export default class Answer extends Phaser.GameObjects.Container {
         
         console.log(`Marking answer as wrong: "${this.answerData.content}"`);
         
-        // Create red overlay
-        this.wrongOverlay = this.scene.add.graphics();
-        this.wrongOverlay.fillStyle(0xff0000, 0.6); // Red with 60% opacity
+        // Apply red tint to the portal background
+        if (this.cloudBg) {
+            this.cloudBg.setTint(0xff4444); // Red tint
+        }
         
-        // Get the bounds of the portal background to overlay it
-        const bounds = this.cloudBg.getBounds();
-        const radius = Math.max(bounds.width, bounds.height) / 2;
+        // Apply red tint to the answer content as well
+        if (this.answerContent) {
+            this.answerContent.setTint(0xf22a2a); // Red tint
+        }
         
-        this.wrongOverlay.fillCircle(0, 0, radius);
-        this.add(this.wrongOverlay);
         
-        // Reduce overall opacity to 50%
-        this.setAlpha(0.5);
+        // Create pulsing grow/shrink animation
+        this.wrongAnswerTween = this.scene.tweens.add({
+            targets: this,
+            scaleX: { from: this.scaleX, to: this.scaleX * 1.2 },
+            scaleY: { from: this.scaleY, to: this.scaleY * 1.2 },
+            duration: 600,
+            ease: 'Power2.easeInOut',
+            yoyo: true,
+            repeat: -1, // Infinite repeat
+            onUpdate: () => {
+                // Optional: Add slight rotation for more dramatic effect
+                this.rotation += 0.0001;
+            }
+        });
         
-        console.log(`Answer "${this.answerData.content}" marked as wrong with red overlay and 50% opacity`);
+        console.log(`Answer "${this.answerData.content}" marked as wrong with red glow and pulsing animation`);
     }
     
     // Method to check if this answer can be collided with
@@ -448,8 +460,8 @@ export default class Answer extends Phaser.GameObjects.Container {
         if (this.answerContent) {
             this.answerContent.destroy();
         }
-        if (this.wrongOverlay) {
-            this.wrongOverlay.destroy();
+        if (this.wrongAnswerTween) {
+            this.wrongAnswerTween.destroy();
         }
         
         super.destroy(fromScene);

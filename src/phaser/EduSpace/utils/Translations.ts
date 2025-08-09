@@ -61,6 +61,9 @@ export interface TranslationKeys {
   // Wrong Answer Messages
   wrong_answer_try_again: string;
   try_again: string;
+  
+  // Correct Answer Messages
+  correct_answer_next_question: string;
 }
 
 export const translations: Record<string, TranslationKeys> = {
@@ -116,7 +119,9 @@ export const translations: Record<string, TranslationKeys> = {
     score: 'Score',
     
     wrong_answer_try_again: 'Wrong Answer! Try Again in',
-    try_again: 'Try Again!'
+    try_again: 'Try Again!',
+    
+    correct_answer_next_question: 'Correct Answer! Prepare for next question in'
   },
   fr: {
     main_menu_play: 'Jouer',
@@ -170,7 +175,9 @@ export const translations: Record<string, TranslationKeys> = {
     score: 'Score',
     
     wrong_answer_try_again: 'Mauvaise réponse ! Réessayez dans',
-    try_again: 'Réessayez !'
+    try_again: 'Réessayez !',
+    
+    correct_answer_next_question: 'Bonne réponse ! Préparez-vous pour la prochaine question dans'
   },
   ar: {
     main_menu_play: 'لعب',
@@ -224,6 +231,8 @@ export const translations: Record<string, TranslationKeys> = {
     score: 'النقاط',
     
     wrong_answer_try_again: 'إجابة خاطئة! حاول مرة أخرى خلال',
-    try_again: 'حاول مرة أخرى!'
+    try_again: 'حاول مرة أخرى!',
+    
+    correct_answer_next_question: 'إجابة صحيحة! استعد للسؤال التالي خلال'
   }
 };

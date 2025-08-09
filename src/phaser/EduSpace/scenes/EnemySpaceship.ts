@@ -223,6 +223,12 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
     }
     
     public destroyMyBullets(): void {
+        // Safety check: ensure scene is still valid
+        if (!this.scene || !this.scene.sys || !this.scene.sys.isActive()) {
+            console.warn(`Cannot destroy bullets: scene is invalid for spaceship ${this.spaceshipId}`);
+            return;
+        }
+        
         // Get all enemy bullets from the scene and destroy those belonging to this spaceship
         const enemyBullets = this.scene.getEnemyBullets();
         if (enemyBullets && enemyBullets.children) {
@@ -306,9 +312,18 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
                 this.setAlpha(1);
                 this.isFlashing = false;
                 
-                // Call the callback to destroy the spaceship
+                // Call the callback to destroy the spaceship (with safety checks)
                 if (callback) {
-                    callback();
+                    try {
+                        // Additional safety check to ensure the object is still valid
+                        if (this && this.scene && this.active) {
+                            callback();
+                        } else {
+                            console.warn(`EnemySpaceship ${this.spaceshipId} callback skipped - object invalid`);
+                        }
+                    } catch (error) {
+                        console.error(`Error in EnemySpaceship ${this.spaceshipId} callback:`, error);
+                    }
                 }
             }
         });
@@ -348,7 +363,12 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
     }
     
     override destroy(fromScene?: boolean): void {
-        this.destroyMyBullets();
+        // Only try to destroy bullets if we haven't been destroyed yet
+        if (!this.scene || this.scene === undefined) {
+            console.warn(`EnemySpaceship ${this.spaceshipId} destroy called but scene is undefined`);
+        } else {
+            this.destroyMyBullets();
+        }
         
         // Clean up hitbox border
         if (this.hitboxBorder) {

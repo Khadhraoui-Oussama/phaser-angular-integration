@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ResponsiveGameUtils } from '../utils/ResponsiveGameUtils';
 
 export class Player extends Phaser.GameObjects.Container {
+    private static readonly PLAYER_X_POSITION_RATIO = 1/6; // Player X position as ratio of screen width
     private ship!: Phaser.GameObjects.Sprite;
     private hitboxBorder!: Phaser.GameObjects.Graphics; // Green border for hitbox visualization
     private spriteBorder!: Phaser.GameObjects.Graphics; // Yellow border for sprite outline
@@ -15,18 +16,14 @@ export class Player extends Phaser.GameObjects.Container {
     private isInvulnerable: boolean = false;
     private invulnerabilityTime: number = 2000; // 2 seconds of invulnerability after hit
     
-    // Input handling - NOTE: Player movement is restricted to Y-axis only
-    // X position is fixed at window width / 4
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
     private wasdKeys?: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
     private spaceKey?: Phaser.Input.Keyboard.Key;
     
-    // Mobile touch controls - only vertical movement allowed
     private touchStartX: number = 0;
     private touchStartY: number = 0;
     private isDragging: boolean = false;
     
-    // Mouse/cursor dragging controls
     private isMouseDragging: boolean = false;
     private mouseStartY: number = 0;
     
@@ -40,9 +37,8 @@ export class Player extends Phaser.GameObjects.Container {
         const body = this.body as Phaser.Physics.Arcade.Body;
         body.setCollideWorldBounds(true);
         
-        // Fix X position to width/4
         const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
-        this.x = width / 8;
+        this.x = width * Player.PLAYER_X_POSITION_RATIO;
         
         this.createShip();
         this.createHitboxBorder(); // Add hitbox visualization
@@ -210,31 +206,25 @@ export class Player extends Phaser.GameObjects.Container {
         });
         
         this.scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-            // Mobile touch dragging
             if (this.isDragging && ResponsiveGameUtils.isMobile(this.scene)) {
                 const deltaY = pointer.y - this.touchStartY;
                 
-                // Move player based on touch drag - only Y axis
-                this.y += deltaY * 0.5; // Dampen movement for better control
+                this.y += deltaY * 0.5;
                 
-                // Keep player within screen bounds - only Y axis, X is fixed
                 const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
-                this.x = width / 8; // Always keep X fixed at width/8
+                this.x = width * Player.PLAYER_X_POSITION_RATIO;
                 this.y = Phaser.Math.Clamp(this.y, 50, height - 50);
                 
                 this.touchStartY = pointer.y;
             }
             
-            // Desktop mouse dragging
             if (this.isMouseDragging && !ResponsiveGameUtils.isMobile(this.scene)) {
                 const deltaY = pointer.y - this.mouseStartY;
                 
-                // Move player based on mouse drag - only Y axis
-                this.y += deltaY * 0.8; // Slightly less damping for desktop precision
+                this.y += deltaY * 0.8;
                 
-                // Keep player within screen bounds - only Y axis, X is fixed
                 const { width, height } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
-                this.x = width / 8; // Always keep X fixed at width/8
+                this.x = width * Player.PLAYER_X_POSITION_RATIO;
                 this.y = Phaser.Math.Clamp(this.y, 50, height - 50);
                 
                 this.mouseStartY = pointer.y;
@@ -266,9 +256,8 @@ export class Player extends Phaser.GameObjects.Container {
     }
     
     private enforceFixedXPosition(): void {
-        // Always ensure X position remains at width/4
         const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
-        this.x = width / 8;
+        this.x = width * Player.PLAYER_X_POSITION_RATIO;
     }
     
     private handleInput(delta: number): void {
@@ -277,14 +266,11 @@ export class Player extends Phaser.GameObjects.Container {
         const body = this.body as Phaser.Physics.Arcade.Body;
         const moveSpeed = this.speed;
         
-        // Reset velocity
         body.setVelocity(0);
         
-        // Ensure X position remains fixed
         const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
-        this.x = width / 8;
+        this.x = width * Player.PLAYER_X_POSITION_RATIO;
         
-        // Handle vertical movement input only
         let moving = false;
         
         if (this.cursors) {
@@ -535,11 +521,8 @@ export class Player extends Phaser.GameObjects.Container {
     public updateForScreenResize(): void {
         const { width } = ResponsiveGameUtils.getResponsiveConfig(this.scene);
         
-        // Update fixed X position
-        this.x = width / 8;
+        this.x = width * Player.PLAYER_X_POSITION_RATIO;
         
-        // The physics body collision bounds are automatically updated by Phaser
-        // when setCollideWorldBounds(true) is set, so no manual bounds update needed
         console.log(`Player position updated for screen resize. New X: ${this.x}`);
     }
     

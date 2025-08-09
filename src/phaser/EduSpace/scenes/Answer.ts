@@ -417,6 +417,97 @@ export default class Answer extends Phaser.GameObjects.Container {
         console.log(`Answer "${this.answerData.content}" marked as wrong with red glow and pulsing animation`);
     }
     
+    // Method to mark this answer as correct (green glow, no collision)
+    public markAsCorrectAnswer(): void {
+        if (this.isDestroyed) return;
+        
+        this.canCollide = false;
+        
+        console.log(`Marking answer as correct: "${this.answerData.content}"`);
+        
+        // Apply green tint to the portal background
+        if (this.cloudBg) {
+            this.cloudBg.setTint(0x44ff44); // Green tint
+        }
+        
+        // Apply green tint to the answer content as well
+        if (this.answerContent) {
+            this.answerContent.setTint(0x2af22a); // Green tint
+        }
+        
+        console.log(`Answer "${this.answerData.content}" marked as correct with green glow`);
+    }
+    
+    // Method to clear content (make text empty or hide image)
+    public clearContent(): void {
+        if (this.isDestroyed) return;
+        
+        if (this.answerContent) {
+            if (this.answerData.isImage) {
+                // Hide image content
+                this.answerContent.setVisible(false);
+            } else {
+                // Set text to empty
+                (this.answerContent as Phaser.GameObjects.Text).setText('');
+            }
+        }
+        
+        console.log(`Cleared content for answer: "${this.answerData.content}"`);
+    }
+    
+    // Method to update answer content with new data
+    public updateContent(newAnswerData: AnswerData): void {
+        if (this.isDestroyed) return;
+        
+        console.log(`Updating answer content from "${this.answerData.content}" to "${newAnswerData.content}"`);
+        
+        // Update the stored data
+        this.answerData = newAnswerData;
+        
+        // Remove existing content
+        if (this.answerContent) {
+            this.answerContent.destroy();
+        }
+        
+        // Create new content based on new data
+        this.createAnswerContent();
+        
+        // Clear any tints and reset collision
+        this.clearEffects();
+        
+        console.log(`Answer content updated to: "${newAnswerData.content}"`);
+    }
+    
+    // Method to clear all visual effects and reset state
+    public clearEffects(): void {
+        if (this.isDestroyed) return;
+        
+        // Clear tints
+        if (this.cloudBg) {
+            this.cloudBg.clearTint();
+        }
+        if (this.answerContent) {
+            this.answerContent.clearTint();
+            this.answerContent.setVisible(true);
+        }
+        
+        // Reset collision
+        this.canCollide = true;
+        this.isMarkedAsWrong = false;
+        
+        // Stop any tweens
+        if (this.wrongAnswerTween) {
+            this.wrongAnswerTween.destroy();
+            this.wrongAnswerTween = undefined;
+        }
+        
+        // Reset scale and rotation
+        this.setScale(1, 1);
+        this.setRotation(0);
+        
+        console.log(`Cleared all effects for answer: "${this.answerData.content}"`);
+    }
+    
     // Method to check if this answer can be collided with
     public canBeCollided(): boolean {
         return this.canCollide && !this.isDestroyed;

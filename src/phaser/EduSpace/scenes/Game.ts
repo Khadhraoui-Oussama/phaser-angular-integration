@@ -34,8 +34,9 @@ export default class MainGame extends Phaser.Scene {
     private scoreText!: Phaser.GameObjects.Text;
     private scoreLabelText!: Phaser.GameObjects.Text;
     
-    // Wrong answer countdown text
     private wrongAnswerCountdownText?: Phaser.GameObjects.Text;
+    
+    private correctAnswerCountdownText?: Phaser.GameObjects.Text;
     
     private currentScore: number = 0;
     private currentEnergy: number = 100;
@@ -133,6 +134,10 @@ export default class MainGame extends Phaser.Scene {
         if (this.wrongAnswerCountdownText) {
             this.wrongAnswerCountdownText.destroy();
             this.wrongAnswerCountdownText = undefined;
+        }
+        if (this.correctAnswerCountdownText) {
+            this.correctAnswerCountdownText.destroy();
+            this.correctAnswerCountdownText = undefined;
         }
         
         // Initialize all attempts tracking - load existing attempts from localStorage
@@ -625,14 +630,45 @@ export default class MainGame extends Phaser.Scene {
         
         this.checkLevelUnlockCondition();
         
-        // Dim and disable other answers for 3 seconds
-        this.dimNonCollidedAnswers(answer);
+        // Mark the correct answer with green overlay
+        answer.markAsCorrectAnswer();
         
-        this.clearCurrentAnswers();
+        this.continuousSpawnEnabled = false;
         
-        const loadNextQuestionDelayMS = 500;
-        this.time.delayedCall(loadNextQuestionDelayMS, () => {
-            this.loadNextQuestion();
+        // Clear timers to stop spawning
+        this.answerSpawnTimers.forEach(timer => {
+            if (timer) {
+                timer.destroy();
+            }
+        });
+        this.answerSpawnTimers = [];
+        this.dimAndClearOtherAnswers(answer);
+        
+        this.showCorrectAnswerCountdown();
+        
+        // Prepare next question data early
+        this.questionOrder++;
+        if (this.questionOrder >= this.questions.length) {
+            // Level completed - handle it after countdown
+            this.time.delayedCall(3000, () => {
+                this.levelCompleted();
+            });
+            return;
+        }
+        
+        // Get next question
+        this.currentQuestion = this.questions[this.questionOrder];
+        this.buildAnswerPool();
+        
+        // After 3 seconds, restore answers with new content and update question
+        this.time.delayedCall(3000, () => {
+            // Update question text and image for the new question
+            const questionText = this.currentQuestion.media.text;
+            const questionImage = this.currentQuestion.media.image;
+            this.createQuestionUI(questionText, questionImage || undefined);
+            
+            this.restoreAnswersWithNewContent();
+            this.resumeContinuousSpawning();
         });
     }
     
@@ -806,6 +842,157 @@ export default class MainGame extends Phaser.Scene {
         });
         
         console.log('Wrong answer countdown started');
+    }
+    
+    /**
+     * Shows a countdown text in the center of the screen for correct answers.
+     * Displays "Correct Answer! Prepare for next question in 3... 2... 1..." with localization.
+     */
+    private showCorrectAnswerCountdown(): void {
+        const { width, height } = this.scale.gameSize;
+        
+        // Create the countdown text in the center of the screen
+        this.correctAnswerCountdownText = this.add.text(
+            width / 2, 
+            height / 2, 
+            languageManager.getText('correct_answer_next_question') + ' 3',
+            {
+                fontSize: '48px',
+                fontFamily: 'Arial, sans-serif',
+                color: '#44ff44',
+                align: 'center',
+                stroke: '#000000',
+                strokeThickness: 4,
+                shadow: {
+                    offsetX: 2,
+                    offsetY: 2,
+                    color: '#000000',
+                    blur: 4,
+                    fill: true
+                }
+            }
+        ).setOrigin(0.5).setDepth(100);
+        
+        // Countdown from 3 to 1
+        let countdown = 2; // Start at 2 since we already showed 3
+        
+        const countdownTimer = this.time.addEvent({
+            delay: 1000, // Update every second
+            repeat: 2, // Repeat 2 times (for 2, 1, then stop)
+            callback: () => {
+                if (this.correctAnswerCountdownText && countdown > 0) {
+                    this.correctAnswerCountdownText.setText(
+                        languageManager.getText('correct_answer_next_question') + ' ' + countdown
+                    );
+                    countdown--;
+                } else if (this.correctAnswerCountdownText && countdown === 0) {
+                    // Remove text when countdown reaches 0
+                    this.correctAnswerCountdownText.destroy();
+                    this.correctAnswerCountdownText = undefined;
+                    countdown--;
+                }
+            }
+        });
+        
+        console.log('Correct answer countdown started');
+    }
+    
+    /**
+     * Dims other answers and clears their content, but keeps them on screen
+     */
+    private dimAndClearOtherAnswers(correctAnswer: Answer): void {
+        this.answers.forEach(answer => {
+            if (answer && answer.active && answer !== correctAnswer) {
+                // Dim the answer
+                answer.setAlpha(0.3);
+                
+                // Disable collision
+                (answer as any).canCollide = false;
+                
+                // Clear the content
+                answer.clearContent();
+                
+                console.log(`Dimmed and cleared content for answer: "${answer.getContent()}"`);
+            }
+        });
+    }
+    
+    /**
+     * Builds the answer pool for the current question
+     */
+    private buildAnswerPool(): void {
+        if (!this.currentQuestion) {
+            console.error('Cannot build answer pool: no current question');
+            return;
+        }
+        
+        console.log('Building answer pool for new question:', this.currentQuestion.media.text);
+        
+        // Reset answer pool
+        this.answerPool = [];
+        this.nextAnswerIndex = 0;
+        
+        // Add all answers from the question
+        this.currentQuestion.answers.forEach(answerOption => {
+            this.answerPool.push({
+                content: answerOption.value,
+                isCorrect: answerOption.correct,
+                isImage: answerOption.type === 'image',
+                isUrl: answerOption.url !== null
+            });
+        });
+        
+        // Shuffle the pool
+        for (let i = this.answerPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.answerPool[i], this.answerPool[j]] = [this.answerPool[j], this.answerPool[i]];
+        }
+        
+        console.log(`Answer pool built with ${this.answerPool.length} answers:`, this.answerPool.map(a => a.content));
+    }
+    
+    /**
+     * Restores dimmed answers with new content from the current question
+     */
+    private restoreAnswersWithNewContent(): void {
+        let answerIndex = 0;
+        
+        this.answers.forEach(answer => {
+            if (answer && answer.active) {
+                // Get new answer data from pool
+                if (answerIndex < this.answerPool.length) {
+                    const newAnswerData = this.answerPool[answerIndex];
+                    
+                    // Update the answer with new content
+                    answer.updateContent(newAnswerData);
+                    
+                    // Restore visibility and collision
+                    answer.setAlpha(1.0);
+                    (answer as any).canCollide = true;
+                    
+                    console.log(`Restored answer ${answerIndex + 1} with content: "${newAnswerData.content}"`);
+                    answerIndex++;
+                } else {
+                    // If we have more answers than content, hide the excess
+                    answer.setAlpha(0.3);
+                    (answer as any).canCollide = false;
+                    answer.clearContent();
+                }
+            }
+        });
+        
+        // Update next answer index for spawning
+        this.nextAnswerIndex = answerIndex % this.answerPool.length;
+        
+        console.log('All answers restored with new question content');
+    }
+    
+    /**
+     * Resumes continuous spawning after correct answer transition
+     */
+    private resumeContinuousSpawning(): void {
+        this.continuousSpawnEnabled = true;
+        console.log('Continuous spawning resumed');
     }
     
     private pauseAnswerMovement(excludeAnswer?: Answer): void {
@@ -1068,6 +1255,10 @@ export default class MainGame extends Phaser.Scene {
             this.wrongAnswerCountdownText.destroy();
             this.wrongAnswerCountdownText = undefined;
         }
+        if (this.correctAnswerCountdownText) {
+            this.correctAnswerCountdownText.destroy();
+            this.correctAnswerCountdownText = undefined;
+        }
 
         this.questionOrder++;
         console.log(`=== LOADING QUESTION ${this.questionOrder + 1}/${this.questions.length} ===`);
@@ -1305,6 +1496,10 @@ export default class MainGame extends Phaser.Scene {
         if (this.wrongAnswerCountdownText) {
             this.wrongAnswerCountdownText.destroy();
             this.wrongAnswerCountdownText = undefined;
+        }
+        if (this.correctAnswerCountdownText) {
+            this.correctAnswerCountdownText.destroy();
+            this.correctAnswerCountdownText = undefined;
         }
         
         // Save all attempts to localStorage for review

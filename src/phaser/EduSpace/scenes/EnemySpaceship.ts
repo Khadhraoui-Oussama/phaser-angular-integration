@@ -62,7 +62,7 @@ export default class EnemySpaceship extends Phaser.Physics.Arcade.Sprite {
         this.speed = baseSpeed;
         
         // Create hitbox border for visualization
-        this.createHitboxBorder();
+        //this.createHitboxBorder();
         
         console.log(`EnemySpaceship created at (${x}, ${y}) with speed ${this.speed}`);
     }

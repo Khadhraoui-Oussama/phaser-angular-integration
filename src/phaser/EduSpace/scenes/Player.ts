@@ -41,8 +41,8 @@ export class Player extends Phaser.GameObjects.Container {
         this.x = width * Player.PLAYER_X_POSITION_RATIO;
         
         this.createShip();
-        this.createHitboxBorder(); // Add hitbox visualization
-        this.createSpriteBorder(); // Add sprite outline visualization
+        //this.createHitboxBorder(); // Add hitbox visualization
+        //this.createSpriteBorder(); // Add sprite outline visualization
         this.setupInput();
         this.setupTouchControls();
         

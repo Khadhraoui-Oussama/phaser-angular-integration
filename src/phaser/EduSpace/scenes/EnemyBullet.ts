@@ -52,7 +52,7 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
         this.createExplosionAnimation();
         
         // Create hitbox border for visualization
-        this.createHitboxBorder();
+        //this.createHitboxBorder();
         
         // Start with travel animation
         this.play('enemy_bullet_travel');

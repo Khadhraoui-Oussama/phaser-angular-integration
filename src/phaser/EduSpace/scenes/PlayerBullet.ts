@@ -35,7 +35,7 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
         this.createExplosionAnimation();
         
         // Create hitbox border for visualization
-        this.createHitboxBorder();
+        //this.createHitboxBorder();
         
         // Start with travel animation
         this.play('bullet_travel');

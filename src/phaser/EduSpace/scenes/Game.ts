@@ -21,6 +21,10 @@ export default class MainGame extends Phaser.Scene {
     private answers: Answer[] = [];
     private isCurrentlyFullscreen: boolean = false;
     
+    // Answer dimming state
+    private isDimmingActive: boolean = false;
+    private collidedAnswerDuringDimming: Answer | null = null;
+    
     // UI Elements
     private energyDisplay!: Phaser.GameObjects.Container;
     private energyDisplayImage!: Phaser.GameObjects.Image;
@@ -29,6 +33,9 @@ export default class MainGame extends Phaser.Scene {
     private scorePanelImage!: Phaser.GameObjects.Image;
     private scoreText!: Phaser.GameObjects.Text;
     private scoreLabelText!: Phaser.GameObjects.Text;
+    
+    // Wrong answer countdown text
+    private wrongAnswerCountdownText?: Phaser.GameObjects.Text;
     
     private currentScore: number = 0;
     private currentEnergy: number = 100;
@@ -39,8 +46,7 @@ export default class MainGame extends Phaser.Scene {
     private energyLossEnemyBullet: number = 10;
     private energyLossEnemyShip: number = 20;
     
-    private scoreCorrectAnswer: number = 2; // Deprecated: now using currentQuestion.points
-    private scoreEnemyKill: number = 1;
+   private scoreEnemyKill: number = 1;
     
     // Question system properties
     private questionContainer!: Phaser.GameObjects.Container;
@@ -61,6 +67,12 @@ export default class MainGame extends Phaser.Scene {
     private nextLevelUnlockedText?: Phaser.GameObjects.Text;
     
     private answerSpawnTimers: Phaser.Time.TimerEvent[] = [];
+    private continuousSpawnEnabled: boolean = false;
+    private answerPool: AnswerData[] = [];
+    private nextAnswerIndex: number = 0;
+    private spawnDelayMs: number = 2000; // 2 seconds between spawns
+    private lastSpawnTime: number = 0;
+    private maxAnswersInPool: number = 4; // Maximum number of answers in the pool
     
    
     private allAttempts: EduSpaceAttempt[] = [];
@@ -108,6 +120,20 @@ export default class MainGame extends Phaser.Scene {
         this.totalQuestionsAnswered = 0;
         this.nextLevelUnlocked = false;
         this.answerSpawnTimers = [];
+        this.continuousSpawnEnabled = false;
+        this.answerPool = [];
+        this.nextAnswerIndex = 0;
+        this.lastSpawnTime = 0;
+        
+        // Initialize dimming flags
+        this.isDimmingActive = false;
+        this.collidedAnswerDuringDimming = null;
+        
+        // Clean up countdown text if it exists
+        if (this.wrongAnswerCountdownText) {
+            this.wrongAnswerCountdownText.destroy();
+            this.wrongAnswerCountdownText = undefined;
+        }
         
         // Initialize all attempts tracking - load existing attempts from localStorage
         this.loadExistingAttempts();
@@ -461,17 +487,19 @@ export default class MainGame extends Phaser.Scene {
                 this.answers.splice(index, 1);
             }
             
-            // If this was a wrong answer that was marked, respawn it after a delay
-            if (!data.isCorrect && data.answer.getIsMarkedAsWrong()) {
-                console.log(`Scheduling respawn of wrong answer: "${data.content}" in ${this.wrongAnswerRespawnDelay}ms`);
-                this.time.delayedCall(this.wrongAnswerRespawnDelay, () => {
-                    // Double-check game state before respawning
-                    if (this.gameState === 'gameOver' || !this.currentQuestion) {
-                        console.log('Game state changed, cancelling wrong answer respawn');
-                        return;
-                    }
-                    this.respawnSpecificAnswer(data.answer.getAnswerData());
-                });
+            // When an answer leaves the screen, immediately try to spawn a new one to maintain the maximum count
+            if (this.continuousSpawnEnabled && this.gameState === 'playing') {
+                const activeAnswers = this.answers.filter(answer => answer && answer.active);
+                if (activeAnswers.length < this.maxAnswersInPool) {
+                    console.log(`Answer left screen, spawning replacement. Active: ${activeAnswers.length}/${this.maxAnswersInPool}`);
+                    // Small delay to prevent too rapid spawning
+                    this.time.delayedCall(100, () => {
+                        if (this.gameState === 'gameOver' || !this.currentQuestion || !this.continuousSpawnEnabled) {
+                            return;
+                        }
+                        this.spawnSingleAnswerFromPool();
+                    });
+                }
             }
         });
        
@@ -597,6 +625,9 @@ export default class MainGame extends Phaser.Scene {
         
         this.checkLevelUnlockCondition();
         
+        // Dim and disable other answers for 3 seconds
+        this.dimNonCollidedAnswers(answer);
+        
         this.clearCurrentAnswers();
         
         const loadNextQuestionDelayMS = 500;
@@ -645,17 +676,136 @@ export default class MainGame extends Phaser.Scene {
             }
         }
         
-        // Pause movement of all answers temporarily (except the wrong one for animation)
-        this.pauseAnswerMovement(answer);
-        
         // Mark the answer as wrong visually and disable its hitbox
         answer.markAsWrongAnswer();
         
-        // Resume normal movement after 1 second
-        this.time.delayedCall(1000, () => {
-            this.resumeAnswerMovement();
-            console.log('Answer movement resumed after wrong answer animation');
+        // Dim and disable other answers for 3 seconds with countdown
+        this.dimNonCollidedAnswers(answer, true);
+        
+        // Note: The wrong answer will continue moving off-screen and trigger automatic respawn
+        // through the continuous spawning system when it goes off-screen
+    }
+    
+    /**
+     * Disables hitboxes and reduces opacity of all answers except the collided one.
+     * Restores them after 3 seconds. Used for both correct and wrong answer scenarios.
+     * Also affects newly spawned answers during the 3-second period.
+     * Shows countdown text for wrong answers only.
+     */
+    private dimNonCollidedAnswers(collidedAnswer: Answer, isWrongAnswer: boolean = false): void {
+        console.log('Dimming non-collided answers for 3 seconds');
+        
+        // Set dimming state
+        this.isDimmingActive = true;
+        this.collidedAnswerDuringDimming = collidedAnswer;
+        
+        const dimmedAnswers: { answer: Answer, originalAlpha: number, originalCanCollide: boolean }[] = [];
+        
+        // Show countdown text for wrong answers only
+        if (isWrongAnswer) {
+            this.showWrongAnswerCountdown();
+        }
+        
+        // Dim and disable all other answers
+        this.answers.forEach(answer => {
+            if (answer && answer.active && answer !== collidedAnswer) {
+                // Store original state
+                const originalAlpha = answer.alpha;
+                const originalCanCollide = (answer as any).canCollide !== false;
+                
+                dimmedAnswers.push({
+                    answer: answer,
+                    originalAlpha: originalAlpha,
+                    originalCanCollide: originalCanCollide
+                });
+                
+                // Reduce opacity and disable collision
+                answer.setAlpha(0.3);
+                (answer as any).canCollide = false;
+                
+                console.log(`Dimmed answer: "${answer.getContent()}" - alpha: ${originalAlpha} -> 0.3, collision disabled`);
+            }
         });
+        
+        // Restore after 3 seconds
+        this.time.delayedCall(3000, () => {
+            // Clear dimming state
+            this.isDimmingActive = false;
+            this.collidedAnswerDuringDimming = null;
+            
+            // Remove countdown text if it exists
+            if (this.wrongAnswerCountdownText) {
+                this.wrongAnswerCountdownText.destroy();
+                this.wrongAnswerCountdownText = undefined;
+            }
+            
+            // Restore all dimmed answers (including any that were spawned during dimming)
+            this.answers.forEach(answer => {
+                if (answer && answer.active && answer !== collidedAnswer) {
+                    // Find stored state or use defaults for newly spawned answers
+                    const storedState = dimmedAnswers.find(state => state.answer === answer);
+                    const originalAlpha = storedState ? storedState.originalAlpha : 1.0;
+                    const originalCanCollide = storedState ? storedState.originalCanCollide : true;
+                    
+                    answer.setAlpha(originalAlpha);
+                    (answer as any).canCollide = originalCanCollide;
+                    console.log(`Restored answer: "${answer.getContent()}" - alpha: 0.3 -> ${originalAlpha}, collision: ${originalCanCollide}`);
+                }
+            });
+            console.log('All answers (including newly spawned) restored after 3 seconds');
+        });
+    }
+    
+    /**
+     * Shows a countdown text in the center of the screen for wrong answers.
+     * Displays "Wrong Answer! Try Again in 3... 2... 1..." with localization.
+     */
+    private showWrongAnswerCountdown(): void {
+        const { width, height } = this.scale.gameSize;
+        
+        // Create the countdown text in the center of the screen
+        this.wrongAnswerCountdownText = this.add.text(
+            width / 2, 
+            height / 2, 
+            languageManager.getText('wrong_answer_try_again') + ' 3',
+            {
+                fontSize: '48px',
+                fontFamily: 'Arial, sans-serif',
+                color: '#ff4444',
+                align: 'center',
+                stroke: '#000000',
+                strokeThickness: 4,
+                shadow: {
+                    offsetX: 2,
+                    offsetY: 2,
+                    color: '#000000',
+                    blur: 4,
+                    fill: true
+                }
+            }
+        ).setOrigin(0.5).setDepth(100);
+        
+        // Countdown from 3 to 1
+        let countdown = 2; // Start at 2 since we already showed 3
+        
+        const countdownTimer = this.time.addEvent({
+            delay: 1000, // Update every second
+            repeat: 2, // Repeat 2 times (for 2, 1, then stop)
+            callback: () => {
+                if (this.wrongAnswerCountdownText && countdown > 0) {
+                    this.wrongAnswerCountdownText.setText(
+                        languageManager.getText('wrong_answer_try_again') + ' ' + countdown
+                    );
+                    countdown--;
+                } else if (this.wrongAnswerCountdownText && countdown === 0) {
+                    // Show "Try Again!" for the last moment
+                    this.wrongAnswerCountdownText.setText(languageManager.getText('try_again'));
+                    countdown--;
+                }
+            }
+        });
+        
+        console.log('Wrong answer countdown started');
     }
     
     private pauseAnswerMovement(excludeAnswer?: Answer): void {
@@ -908,6 +1058,16 @@ export default class MainGame extends Phaser.Scene {
 
         // Clear existing answers and timers FIRST
         this.clearCurrentAnswers();
+        
+        // Reset dimming flags when transitioning questions
+        this.isDimmingActive = false;
+        this.collidedAnswerDuringDimming = null;
+        
+        // Clean up countdown text if it exists
+        if (this.wrongAnswerCountdownText) {
+            this.wrongAnswerCountdownText.destroy();
+            this.wrongAnswerCountdownText = undefined;
+        }
 
         this.questionOrder++;
         console.log(`=== LOADING QUESTION ${this.questionOrder + 1}/${this.questions.length} ===`);
@@ -947,84 +1107,77 @@ export default class MainGame extends Phaser.Scene {
             return;
         }
         
-        console.log(`Spawning ${answerOptions.length} answers for current question`);
+        console.log(`Setting up continuous spawning for ${answerOptions.length} answers`);
         
         // Clear any existing spawn timers first
         this.clearAnswerSpawnTimers();
         
-        // Convert AnswerOptions to AnswerData format
-        const answerDataArray: AnswerData[] = answerOptions.map(option => ({
+        // Convert AnswerOptions to AnswerData format and set up the answer pool
+        let answerPool = answerOptions.map(option => ({
             content: option.type === 'image' && option.url ? option.url : option.value,
             isCorrect: option.correct,
             isImage: option.type === 'image',
             isUrl: option.type === 'image' && !!option.url
         }));
+        
+        // Limit the answer pool to maximum configured number of answers
+        if (answerPool.length > this.maxAnswersInPool) {
+            // Shuffle first to get random selection
+            for (let i = answerPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [answerPool[i], answerPool[j]] = [answerPool[j], answerPool[i]];
+            }
+            // Take only the configured maximum number of answers after shuffling
+            answerPool = answerPool.slice(0, this.maxAnswersInPool);
+            console.log(`Answer pool limited to ${this.maxAnswersInPool} answers (from original ${answerOptions.length})`);
+        }
+        
+        this.answerPool = answerPool;
+        
+        // Randomize the initial order of answers
+        this.shuffleAnswerPool();
+        
+        // Reset spawn index
+        this.nextAnswerIndex = 0;
+        
+        // Enable continuous spawning
+        this.continuousSpawnEnabled = true;
+        
+        // Spawn initial answers up to the maximum limit with delays between them
+        this.spawnInitialAnswers();
+        
+        console.log(`Continuous spawning enabled with ${this.answerPool.length} answers in pool`);
+    }
 
-        // Spawn answers with delay and store timer references
-        const answerSpawnDelayMS = 2500; 
-        answerDataArray.forEach((answerData, index) => {
-            const timer = this.time.delayedCall(index * answerSpawnDelayMS, () => {
-                // Double-check game state before spawning each answer
-                if (this.gameState === 'gameOver') {
+    private spawnInitialAnswers(): void {
+        // Spawn answers with staggered delays to reach the maximum on screen
+        for (let i = 0; i < this.maxAnswersInPool && i < this.answerPool.length; i++) {
+            this.time.delayedCall(i * (this.spawnDelayMs), () => {
+                // Double-check game state before spawning
+                if (this.gameState === 'gameOver' || !this.continuousSpawnEnabled) {
                     return;
                 }
-                
-                const yPosition = Answer.getRandomYPosition(this);
-                const answer = new Answer(this, answerData, yPosition);
-                this.answers.push(answer);
-                
-                // Apply current fullscreen state to new answer
-                if (this.isCurrentlyFullscreen) {
-                    answer.updateFullscreenScale(true);
-                }
-                
-                console.log(`Answer ${index + 1}/${answerOptions.length} spawned: "${answerData.content}" at Y: ${yPosition} (Correct: ${answerData.isCorrect})`);
-                
-                // Remove this timer from the active list
-                const timerIndex = this.answerSpawnTimers.indexOf(timer);
-                if (timerIndex > -1) {
-                    this.answerSpawnTimers.splice(timerIndex, 1);
-                }
+                this.spawnSingleAnswerFromPool();
             });
-            
-            // Store the timer reference
-            this.answerSpawnTimers.push(timer);
-        });
-        
-        console.log(`All ${answerOptions.length} answers scheduled to spawn over ${(answerOptions.length - 1) * answerSpawnDelayMS}ms`);
+        }
     }
 
-    /**
-     * Respawn the current question's answers without changing the question.
-     * This is used when wrong answers are selected or answers go off-screen.
-     */
-    private respawnCurrentQuestionAnswers(): void {
-        // Don't respawn if game is over or no current question
-        if (this.gameState === 'gameOver' || !this.currentQuestion) {
+    private spawnSingleAnswerFromPool(): void {
+        // Don't spawn if game is over or continuous spawning is disabled
+        if (this.gameState === 'gameOver' || !this.continuousSpawnEnabled || !this.currentQuestion) {
             return;
         }
         
-        console.log('=== RESPAWNING CURRENT QUESTION ANSWERS ===');
-        console.log(`Respawning answers for question: "${this.currentQuestion.media.text}"`);
-        
-        // Spawn the same question's answers again
-        this.spawnAnswersFromQuestion(this.currentQuestion.answers);
-    }
-
-    /**
-     * Respawn a specific answer (used for wrong answers that need to come back after going off-screen).
-     * This creates a fresh answer instance in its original state.
-     */
-    private respawnSpecificAnswer(answerData: AnswerData): void {
-        // Don't respawn if game is over or no current question
-        if (this.gameState === 'gameOver' || !this.currentQuestion) {
-            return;
+        // Check if we already have the maximum number of answers on screen
+        const activeAnswers = this.answers.filter(answer => answer && answer.active);
+        if (activeAnswers.length >= this.maxAnswersInPool) {
+            return; // Don't spawn if at maximum
         }
         
-        console.log('=== RESPAWNING SPECIFIC ANSWER ===');
-        console.log(`Respawning answer: "${answerData.content}", correct: ${answerData.isCorrect}`);
+        // Get the next answer from the pool
+        const answerData = this.answerPool[this.nextAnswerIndex];
         
-        // Create the answer with a random Y position (fresh state, no wrong marking)
+        // Create and spawn the answer
         const yPosition = Answer.getRandomYPosition(this);
         const answer = new Answer(this, answerData, yPosition);
         this.answers.push(answer);
@@ -1034,35 +1187,72 @@ export default class MainGame extends Phaser.Scene {
             answer.updateFullscreenScale(true);
         }
         
-        console.log(`Answer respawned: "${answerData.content}" at Y: ${yPosition} (Correct: ${answerData.isCorrect})`);
+        // Apply dimming effect if currently active (for newly spawned answers during collision animation)
+        if (this.isDimmingActive && answer !== this.collidedAnswerDuringDimming) {
+            answer.setAlpha(0.3);
+            (answer as any).canCollide = false;
+            console.log(`Applied dimming to newly spawned answer: "${answerData.content}" - alpha: 1.0 -> 0.3, collision disabled`);
+        }
+        
+        console.log(`Spawned answer ${this.nextAnswerIndex + 1}/${this.answerPool.length}: "${answerData.content}" at Y: ${yPosition} (Correct: ${answerData.isCorrect}). Active answers: ${this.answers.length}/${this.maxAnswersInPool}`);
+        
+        // Move to next answer in pool (cycle back to beginning if at end)
+        this.nextAnswerIndex = (this.nextAnswerIndex + 1) % this.answerPool.length;
+        
+        // If we've cycled through all answers, shuffle the pool again for variety
+        if (this.nextAnswerIndex === 0) {
+            this.shuffleAnswerPool();
+            console.log('Cycled through all answers, reshuffling pool');
+        }
     }
 
-    /**
-     * Fallback method to check if we need to respawn answers for the current question.
-     * This is now primarily a safety net in case all answers disappear simultaneously.
-     * Individual answers now respawn immediately when they go off-screen.
-     */
-    private checkAndRespawnAnswers(): void {
-        // Don't respawn if game is over or no current question
-        if (this.gameState === 'gameOver' || !this.currentQuestion) {
+    private shuffleAnswerPool(): void {
+        // Fisher-Yates shuffle algorithm
+        for (let i = this.answerPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.answerPool[i], this.answerPool[j]] = [this.answerPool[j], this.answerPool[i]];
+        }
+        console.log('Answer pool shuffled');
+    }
+
+    private spawnNextAnswerFromPool(): void {
+        // Don't spawn if game is over or continuous spawning is disabled
+        if (this.gameState === 'gameOver' || !this.continuousSpawnEnabled || !this.currentQuestion) {
             return;
         }
         
-        // Check if there are any active answers remaining
+        // Check if we already have the maximum number of answers on screen
         const activeAnswers = this.answers.filter(answer => answer && answer.active);
-        
-        console.log(`Active answers remaining: ${activeAnswers.length}`);
-        
-        // If no answers are active and we're still on a question, respawn them
-        if (activeAnswers.length === 0) {
-            console.log('No active answers remaining, respawning current question answers...');
-            
-            // Add a small delay before respawning to avoid immediate overlap
-            const respawnDelayMS = 1000;
-            this.time.delayedCall(respawnDelayMS, () => {
-                this.respawnCurrentQuestionAnswers();
+        if (activeAnswers.length >= this.maxAnswersInPool) {
+            console.log(`Maximum answers on screen reached (${activeAnswers.length}/${this.maxAnswersInPool}), waiting for one to leave`);
+            // Schedule to check again after the spawn delay
+            this.time.delayedCall(this.spawnDelayMs, () => {
+                this.spawnNextAnswerFromPool();
             });
+            return;
         }
+        
+        // Spawn a single answer
+        this.spawnSingleAnswerFromPool();
+        
+        // Schedule the next spawn automatically with the delay
+        this.time.delayedCall(this.spawnDelayMs, () => {
+            this.spawnNextAnswerFromPool();
+        });
+    }
+
+    /**
+     * Stop continuous spawning when transitioning questions or game states
+     */
+    private stopContinuousSpawning(): void {
+        this.continuousSpawnEnabled = false;
+        this.answerPool = [];
+        this.nextAnswerIndex = 0;
+        
+        // Clear any pending spawn timers
+        this.clearAnswerSpawnTimers();
+        
+        console.log('Continuous spawning stopped');
     }
 
     private clearCurrentAnswers(): void {
@@ -1070,6 +1260,9 @@ export default class MainGame extends Phaser.Scene {
 
         // Clear any pending answer spawn timers first
         this.clearAnswerSpawnTimers();
+        
+        // Stop continuous spawning
+        this.continuousSpawnEnabled = false;
         
         // Clear existing answers
         let clearedCount = 0;
@@ -1081,7 +1274,7 @@ export default class MainGame extends Phaser.Scene {
         });
         this.answers = [];
         
-        console.log(`Successfully cleared ${clearedCount} answers`);
+        console.log(`Successfully cleared ${clearedCount} answers and stopped continuous spawning`);
     }
 
     private clearAnswerSpawnTimers(): void {
@@ -1103,6 +1296,16 @@ export default class MainGame extends Phaser.Scene {
         console.log(`Final Score: ${this.currentScore}`);
         console.log(`Questions Answered: ${this.totalQuestionsAnswered}/${this.questions.length}`);
         console.log(`Correct Answers: ${this.correctAnswersCount}/${this.questions.length}`);
+        
+        // Reset dimming flags when level is completed
+        this.isDimmingActive = false;
+        this.collidedAnswerDuringDimming = null;
+        
+        // Clean up countdown text if it exists
+        if (this.wrongAnswerCountdownText) {
+            this.wrongAnswerCountdownText.destroy();
+            this.wrongAnswerCountdownText = undefined;
+        }
         
         // Save all attempts to localStorage for review
         if (this.allAttempts.length > 0) {
@@ -1202,6 +1405,7 @@ export default class MainGame extends Phaser.Scene {
         // Stop all game elements
         this.clearCurrentAnswers();
         this.clearEnemySpaceships();
+        this.stopContinuousSpawning();
         
         // Stop the player from moving/shooting
         if (this.player) {
@@ -2092,6 +2296,7 @@ export default class MainGame extends Phaser.Scene {
         // Clean up answers and timers
         this.cleanupAnswers();
         this.clearAnswerSpawnTimers();
+        this.stopContinuousSpawning();
         
         // Clean up question system
         this.clearCurrentAnswers();
@@ -2136,13 +2341,13 @@ export default class MainGame extends Phaser.Scene {
         // Check for collisions between player bullets and enemy spaceships
         this.checkPlayerBulletEnemyCollisions();
         
-        // Safety check: Ensure we have active answers on screen (fallback mechanism)
-        // This runs every few seconds to prevent edge cases where all answers disappear
-        if (this.gameStarted && this.currentQuestion && time % 3000 < 16) { // Check roughly every 3 seconds
+        // Safety check: Ensure continuous spawning is working if enabled
+        // This runs every few seconds to ensure answers keep flowing
+        if (this.continuousSpawnEnabled && this.gameStarted && this.currentQuestion && time % 5000 < 16) { // Check roughly every 5 seconds
             const activeAnswers = this.answers.filter(answer => answer && answer.active);
             if (activeAnswers.length === 0) {
-                console.log('Safety check: No active answers found, using fallback respawn...');
-                this.checkAndRespawnAnswers();
+                console.log('Safety check: No active answers found with continuous spawning enabled, triggering spawn...');
+                this.spawnNextAnswerFromPool();
             }
         }
         
@@ -2413,6 +2618,38 @@ export default class MainGame extends Phaser.Scene {
                 });
             }
         });
+    }
+    
+    // Configuration methods for answer pool settings
+    
+    /**
+     * Set the maximum number of answers in the pool (default: 4)
+     */
+    public setMaxAnswersInPool(maxAnswers: number): void {
+        this.maxAnswersInPool = Math.max(1, maxAnswers); // Ensure at least 1 answer
+        console.log(`Maximum answers in pool set to: ${this.maxAnswersInPool}`);
+    }
+    
+    /**
+     * Get the current maximum number of answers in the pool
+     */
+    public getMaxAnswersInPool(): number {
+        return this.maxAnswersInPool;
+    }
+    
+    /**
+     * Set the spawn delay between answers in milliseconds (default: 2000ms = 2 seconds)
+     */
+    public setSpawnDelay(delayMs: number): void {
+        this.spawnDelayMs = Math.max(500, delayMs); // Minimum 500ms delay
+        console.log(`Answer spawn delay set to: ${this.spawnDelayMs}ms`);
+    }
+    
+    /**
+     * Get the current spawn delay in milliseconds
+     */
+    public getSpawnDelay(): number {
+        return this.spawnDelayMs;
     }
     
 }

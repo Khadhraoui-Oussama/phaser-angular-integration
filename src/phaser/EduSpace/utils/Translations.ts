@@ -57,6 +57,10 @@ export interface TranslationKeys {
   back: string;
   level: string;
   score: string;
+  
+  // Wrong Answer Messages
+  wrong_answer_try_again: string;
+  try_again: string;
 }
 
 export const translations: Record<string, TranslationKeys> = {
@@ -109,7 +113,10 @@ export const translations: Record<string, TranslationKeys> = {
     
     back: 'Back',
     level: 'Level',
-    score: 'Score'
+    score: 'Score',
+    
+    wrong_answer_try_again: 'Wrong Answer! Try Again in',
+    try_again: 'Try Again!'
   },
   fr: {
     main_menu_play: 'Jouer',
@@ -160,7 +167,10 @@ export const translations: Record<string, TranslationKeys> = {
     
     back: 'Retour',
     level: 'Niveau',
-    score: 'Score'
+    score: 'Score',
+    
+    wrong_answer_try_again: 'Mauvaise réponse ! Réessayez dans',
+    try_again: 'Réessayez !'
   },
   ar: {
     main_menu_play: 'لعب',
@@ -211,6 +221,9 @@ export const translations: Record<string, TranslationKeys> = {
     
     back: 'رجوع',
     level: 'مستوى',
-    score: 'النقاط'
+    score: 'النقاط',
+    
+    wrong_answer_try_again: 'إجابة خاطئة! حاول مرة أخرى خلال',
+    try_again: 'حاول مرة أخرى!'
   }
 };
